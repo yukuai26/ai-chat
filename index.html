@@ -352,6 +352,45 @@
     }
     .resize-handle:hover { background: var(--accent); }
     /* ==================== 面包屑导航 ==================== */
+    .tree-toggle-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      margin-right: 4px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .tree-toggle-btn:hover { background: rgba(233,69,96,0.12); color: var(--accent); }
+    .tree-drawer-header {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tree-drawer-header span { font-size: 13px; font-weight: 600; color: var(--text); }
+    .tree-drawer-close {
+      background: none; border: none;
+      color: var(--text-secondary); font-size: 20px;
+      cursor: pointer; padding: 2px 6px; border-radius: 4px;
+      line-height: 1;
+    }
+    .tree-drawer-close:hover { background: rgba(233,69,96,0.12); color: var(--accent); }
+    .tree-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 99;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .tree-backdrop.show { display: block; opacity: 1; }
     .breadcrumb {
       display: flex;
       align-items: center;
@@ -660,8 +699,53 @@
     .loading-overlay .spinner { margin-bottom: 4px; }
     @media (max-width: 768px) {
       body { flex-direction: column; }
-      .sidebar { width: 100%; min-width: auto; max-height: 40vh; }
-      .main { height: 60vh; }
+      .sidebar { width: 100%; min-width: auto; max-height: 35vh; }
+      .main { height: 65vh; }
+
+      /* 显示目录树切换按钮 */
+      .tree-toggle-btn { display: inline-flex; align-items: center; justify-content: center; }
+
+      /* 抽屉式目录树 */
+      .file-tree {
+        position: fixed;
+        top: 0; left: 0;
+        width: 280px;
+        max-width: 85vw;
+        height: 100vh;
+        height: 100dvh;
+        min-width: auto;
+        max-width: 300px;
+        z-index: 100;
+        transform: translateX(-100%);
+        transition: transform 0.28s ease;
+        border-right: 1px solid var(--border);
+        box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+      }
+      .file-tree.open { transform: translateX(0); }
+      .tree-drawer-header { display: flex; }
+
+      /* 隐藏 resize handle */
+      .resize-handle { display: none !important; }
+
+      /* 查看器全宽 */
+      .file-viewer { width: 100%; }
+
+      /* Tab 导航紧凑化 */
+      .tab-bar { padding: 0 12px; overflow-x: auto; }
+      .tab-btn { padding: 10px 14px; font-size: 13px; }
+
+      /* 面包屑可横向滚动 */
+      .breadcrumb { padding: 6px 12px; gap: 1px; }
+
+      /* 目录树条目触控友好 */
+      .tree-item { padding: 8px 12px 8px 0; font-size: 14px; min-height: 40px; }
+      .tree-toggle { width: 28px; min-width: 28px; height: 32px; font-size: 12px; }
+      .tree-icon { width: 24px; min-width: 24px; font-size: 16px; }
+      .file-tree-header { font-size: 12px; padding: 10px 16px; }
+
+      /* 查看器头部紧凑化 */
+      .viewer-header { padding: 8px 12px; }
+      .viewer-header .file-name { font-size: 12px; }
     }
   </style>
 </head>
@@ -722,10 +806,16 @@
     </div>
     <div class="tab-content" id="tab-files">
       <div class="breadcrumb" id="breadcrumb">
+        <button class="tree-toggle-btn" onclick="toggleFileTree()" title="目录" aria-label="切换目录树">☰</button>
         <span class="breadcrumb-item root-icon current" data-path="" onclick="navigateBreadcrumb('')">🏠 /</span>
       </div>
       <div class="file-browser">
+        <div class="tree-backdrop" id="treeBackdrop" onclick="toggleFileTree()"></div>
         <div class="file-tree" id="fileTree">
+          <div class="tree-drawer-header">
+            <span>📂 目录</span>
+            <button class="tree-drawer-close" onclick="toggleFileTree()" aria-label="关闭目录">×</button>
+          </div>
           <div class="file-tree-header">📂 目录</div>
           <div id="fileTreeContent"></div>
         </div>
@@ -1089,6 +1179,7 @@
     }
 
     function selectTreeItem(row, entry, fullPath) {
+      closeTreeOnMobile();
       if (activeTreeItem) {
         activeTreeItem.classList.remove('active');
       }
@@ -1142,6 +1233,7 @@
     }
 
     function navigateBreadcrumb(path) {
+      closeTreeOnMobile();
       renderBreadcrumb(path);
       // Reset active item
       if (activeTreeItem) { activeTreeItem.classList.remove('active'); activeTreeItem = null; }
@@ -1374,9 +1466,11 @@
       if (fileTreeInitialized) return;
       fileTreeInitialized = true;
 
+      treeContent.innerHTML = '';
       treeContent.appendChild(createInlineLoading('加载目录...'));
       try {
         const entries = await apiLs('/');
+        treeContent.innerHTML = '';
         renderEntries(entries, treeContent, 0, '');
       } catch (err) {
         treeContent.innerHTML = '<div class="tree-item" style="padding-left:12px;color:var(--accent);">⚠️ ' + err.message + '</div>';
@@ -1422,6 +1516,37 @@
         }
       });
     })();
+
+    // ==================== 响应式目录树抽屉（移动端） ====================
+    let treeVisible = false;
+
+    function toggleFileTree() {
+      treeVisible = !treeVisible;
+      const tree = document.getElementById('fileTree');
+      const backdrop = document.getElementById('treeBackdrop');
+      if (treeVisible) {
+        tree.classList.add('open');
+        backdrop.classList.add('show');
+      } else {
+        tree.classList.remove('open');
+        backdrop.classList.remove('show');
+      }
+    }
+
+    // 选中文件后自动关闭移动端抽屉
+    function closeTreeOnMobile() {
+      if (window.innerWidth <= 768 && treeVisible) toggleFileTree();
+    }
+
+    // Escape 关闭
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && treeVisible) toggleFileTree();
+    });
+
+    // 窗口变大到桌面宽度时自动关闭抽屉
+    window.addEventListener('resize', function() {
+      if (window.innerWidth > 768 && treeVisible) toggleFileTree();
+    });
 
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>

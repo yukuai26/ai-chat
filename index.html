@@ -939,6 +939,90 @@
     .modal-buttons .btn-secondary:hover { background: var(--border); }
     .modal-buttons .btn-danger { background: transparent; color: var(--accent); border-color: var(--accent); }
     .modal-buttons .btn-danger:hover { background: rgba(233,69,96,0.12); }
+    /* ==================== 会话列表 ==================== */
+    .conv-section {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      margin-top: 2px;
+    }
+    .conv-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding: 0 4px;
+    }
+    .conv-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+      margin: 0;
+    }
+    .btn-new-conv {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 5px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-new-conv:hover { background: var(--accent-hover); }
+    .conv-groups {
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+    }
+    .conv-group-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      padding: 10px 4px 4px;
+      letter-spacing: 0.5px;
+      position: sticky;
+      top: 0;
+      background: var(--sidebar-bg);
+      z-index: 1;
+    }
+    .conv-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 2px;
+    }
+    .conv-item:hover { background: rgba(233, 69, 96, 0.08); }
+    .conv-item.active { background: rgba(233, 69, 96, 0.16); }
+    .conv-item-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+    .conv-item.active .conv-item-title { color: var(--accent); }
+    .conv-item-meta {
+      font-size: 11px;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+    }
+    .conv-empty {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+      padding: 24px 16px;
+      line-height: 1.5;
+    }
     /* ==================== 目录树工具栏 ==================== */
     .tree-toolbar {
       display: flex;
@@ -986,6 +1070,15 @@
     <button class="btn-connect" id="btnConnect" onclick="connect()">连接</button>
     <div class="hint">
       💡 Token 保存在你浏览器本地，不会上传。
+    </div>
+    <div class="conv-section">
+      <div class="conv-header">
+        <h3>📋 会话</h3>
+        <button class="btn-new-conv" onclick="newConversation()">+ 新建</button>
+      </div>
+      <div class="conv-groups" id="convGroups">
+        <div class="conv-empty">暂未连接，<br>连接后将显示会话列表</div>
+      </div>
     </div>
   </div>
 
@@ -1172,6 +1265,7 @@
         if (msgs.querySelector('.empty-state')) msgs.innerHTML = '';
         addMessage('assistant', '连接成功！有什么我可以帮助你的？');
         localStorage.setItem('aichat_config', JSON.stringify({ apiUrl, token, agentId }));
+        initConvListDemo();
         showToast('连接成功', 'success');
       } catch (e) {
         connected = false;
@@ -1269,6 +1363,137 @@
       sendBtn.disabled = false;
       document.getElementById('input').focus();
     }
+    // ==================== 会话列表组件 (F20) ====================
+
+    let activeConversationId = null;
+
+    /**
+     * 按时间分组：今天 / 昨天 / 更早（日期）
+     */
+    function timeGroupLabel(isoString) {
+      const date = new Date(isoString);
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+      const itemDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+      if (itemDay.getTime() === todayStart.getTime()) return '今天';
+      if (itemDay.getTime() === yesterdayStart.getTime()) return '昨天';
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      return mm + '/' + dd;
+    }
+
+    /**
+     * 格式化对话时间：HH:MM
+     */
+    function formatConvTime(isoString) {
+      const date = new Date(isoString);
+      const hh = String(date.getHours()).padStart(2, '0');
+      const mm = String(date.getMinutes()).padStart(2, '0');
+      return hh + ':' + mm;
+    }
+
+    /**
+     * 渲染会话列表，按时间分组
+     * @param {Array} sessions — [{ id, title, created, updated, msgCount }]
+     */
+    function renderConversationList(sessions) {
+      const container = document.getElementById('convGroups');
+      if (!container) return;
+
+      if (!sessions || sessions.length === 0) {
+        container.innerHTML = '<div class="conv-empty">暂无会话，<br>点击「+ 新建」开始</div>';
+        return;
+      }
+
+      // 按时间分组
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+
+      const groups = { '今天': [], '昨天': [], '更早': [] };
+      sessions.forEach(s => {
+        const d = new Date(s.updated || s.created);
+        if (d >= todayStart) {
+          groups['今天'].push(s);
+        } else if (d >= yesterdayStart) {
+          groups['昨天'].push(s);
+        } else {
+          groups['更早'].push(s);
+        }
+      });
+
+      let html = '';
+      ['今天', '昨天', '更早'].forEach(label => {
+        if (groups[label].length === 0) return;
+        html += '<div class="conv-group-label">' + label + '</div>';
+        groups[label].forEach(s => {
+          const cls = (s.id === activeConversationId) ? ' conv-item active' : 'conv-item';
+          html +=
+            '<div class="' + cls + '" onclick="selectConversation(\'' + s.id + '\')" data-sid="' + s.id + '">' +
+              '<div class="conv-item-title">' + escapeHtmlSafe(s.title || '新会话') + '</div>' +
+              '<div class="conv-item-meta">' +
+                '<span>' + (s.msgCount || 0) + ' 条消息</span>' +
+                '<span>' + formatConvTime(s.updated || s.created) + '</span>' +
+              '</div>' +
+            '</div>';
+        });
+      });
+
+      container.innerHTML = html;
+    }
+
+    function selectConversation(sessionId) {
+      activeConversationId = sessionId;
+      document.querySelectorAll('.conv-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.sid === sessionId);
+      });
+    }
+
+    function newConversation() {
+      // F22 将实现后端对接，目前仅提示
+      showToast('新建会话功能将在下一阶段实现', 'info');
+    }
+
+    /**
+     * 连接成功后初始化会话列表（展示 Mock 数据供 UI 验证）
+     */
+    function initConvListDemo() {
+      const now = new Date();
+      const mockSessions = [
+        {
+          id: 'sess_1',
+          title: '分析财报数据',
+          created: new Date(now - 3600000).toISOString(),
+          updated: new Date(now - 1800000).toISOString(),
+          msgCount: 12
+        },
+        {
+          id: 'sess_2',
+          title: '写周报模板',
+          created: new Date(now - 86400000).toISOString(),
+          updated: new Date(now - 86400000 + 7200000).toISOString(),
+          msgCount: 8
+        },
+        {
+          id: 'sess_3',
+          title: '代码重构方案讨论',
+          created: new Date(now - 172800000).toISOString(),
+          updated: new Date(now - 90000000).toISOString(),
+          msgCount: 24
+        },
+        {
+          id: 'sess_4',
+          title: '部署脚本优化',
+          created: new Date(now - 259200000).toISOString(),
+          updated: new Date(now - 200000000).toISOString(),
+          msgCount: 5
+        },
+      ];
+      renderConversationList(mockSessions);
+    }
+
     // ==================== 文件浏览器 API ====================
 
     async function apiLs(path) {

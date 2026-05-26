@@ -350,6 +350,51 @@
       flex-shrink: 0;
     }
     .resize-handle:hover { background: var(--accent); }
+    /* ==================== 面包屑导航 ==================== */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      background: var(--sidebar-bg);
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      flex-shrink: 0;
+      overflow-x: auto;
+      white-space: nowrap;
+      gap: 2px;
+      min-height: 36px;
+    }
+    .breadcrumb::-webkit-scrollbar { height: 4px; }
+    .breadcrumb::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .breadcrumb-item {
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .breadcrumb-item:hover {
+      color: var(--text);
+      background: rgba(233, 69, 96, 0.1);
+    }
+    .breadcrumb-item.current {
+      color: var(--accent);
+      font-weight: 600;
+      cursor: default;
+    }
+    .breadcrumb-item.current:hover {
+      background: transparent;
+    }
+    .breadcrumb-item.root-icon {
+      font-size: 15px;
+      padding: 2px 4px;
+    }
+    .breadcrumb-separator {
+      color: var(--text-secondary);
+      font-size: 11px;
+      padding: 0 2px;
+      user-select: none;
+    }
     /* ==================== 文件查看器 ==================== */
     .viewer-header {
       display: flex;
@@ -540,6 +585,9 @@
       </div>
     </div>
     <div class="tab-content" id="tab-files">
+      <div class="breadcrumb" id="breadcrumb">
+        <span class="breadcrumb-item root-icon current" data-path="" onclick="navigateBreadcrumb('')">🏠 /</span>
+      </div>
       <div class="file-browser">
         <div class="file-tree" id="fileTree">
           <div class="file-tree-header">📂 目录</div>
@@ -868,10 +916,81 @@
       }
       row.classList.add('active');
       activeTreeItem = row;
-      // 文件：触发查看器；目录：不处理（展开/折叠由 toggle 处理）
-      if (entry.type === 'file') {
+      // Update breadcrumb
+      if (entry.type === 'directory') {
+        renderBreadcrumb(fullPath);
+      } else {
+        const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+        renderBreadcrumb(dirPath);
+        // 文件：触发查看器
         renderFileViewer(fullPath, entry.name);
       }
+    }
+
+    // ==================== 面包屑导航 ====================
+
+    let currentBreadcrumbPath = '';
+
+    function renderBreadcrumb(path) {
+      currentBreadcrumbPath = path;
+      const bc = document.getElementById('breadcrumb');
+      bc.innerHTML = '';
+
+      // Root / Home
+      const rootItem = document.createElement('span');
+      rootItem.className = 'breadcrumb-item root-icon' + (path === '' || path === '/' ? ' current' : '');
+      rootItem.textContent = '🏠 /';
+      rootItem.onclick = function() { navigateBreadcrumb(''); };
+      bc.appendChild(rootItem);
+
+      if (path === '' || path === '/') return;
+
+      const parts = path.replace(/^\//, '').split('/');
+      let cumulative = '';
+      parts.forEach((part, i) => {
+        cumulative += '/' + part;
+
+        const sep = document.createElement('span');
+        sep.className = 'breadcrumb-separator';
+        sep.textContent = '›';
+        bc.appendChild(sep);
+
+        const item = document.createElement('span');
+        item.className = 'breadcrumb-item' + (i === parts.length - 1 ? ' current' : '');
+        item.textContent = part;
+        item.onclick = function() { navigateBreadcrumb(cumulative); };
+        bc.appendChild(item);
+      });
+    }
+
+    function navigateBreadcrumb(path) {
+      renderBreadcrumb(path);
+      // Reload the file tree for this path
+      const treeContent = document.getElementById('fileTreeContent');
+      treeContent.innerHTML = '<div class="tree-item" style="padding-left:12px;color:var(--text-secondary);">⏳ 加载目录...</div>';
+      // Reset active item
+      if (activeTreeItem) { activeTreeItem.classList.remove('active'); activeTreeItem = null; }
+      // Show empty viewer
+      const viewer = document.getElementById('fileViewer');
+      viewer.innerHTML = `
+        <div class="placeholder">
+          <div class="icon">📁</div>
+          <p>${path || '/'}</p>
+        </div>`;
+      // Load directory listing
+      apiLs(path || '/').then(entries => {
+        const container = document.createElement('div');
+        renderEntries(entries, container, 0, path || '');
+        // We need to replace treeContent but also handle expandable state:
+        // For subdirectory navigation from breadcrumb, we need to show the entries directly.
+        // Since this is root-level navigation from breadcrumb, just render as new.
+        treeContent.innerHTML = '';
+        const items = container.querySelectorAll('.tree-item, .tree-children');
+        items.forEach(el => treeContent.appendChild(el));
+      }).catch(err => {
+        treeContent.innerHTML = '<div class="tree-item" style="padding-left:12px;color:var(--accent);">⚠️ ' + err.message + '</div>';
+        showToast('目录加载失败: ' + err.message);
+      });
     }
 
     // ==================== 文件查看器（highlight.js 语法高亮） ====================

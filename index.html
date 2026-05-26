@@ -1265,7 +1265,7 @@
         if (msgs.querySelector('.empty-state')) msgs.innerHTML = '';
         addMessage('assistant', '连接成功！有什么我可以帮助你的？');
         localStorage.setItem('aichat_config', JSON.stringify({ apiUrl, token, agentId }));
-        initConvListDemo();
+        loadConversations();
         showToast('连接成功', 'success');
       } catch (e) {
         connected = false;
@@ -1459,39 +1459,39 @@
     /**
      * 连接成功后初始化会话列表（展示 Mock 数据供 UI 验证）
      */
-    function initConvListDemo() {
-      const now = new Date();
-      const mockSessions = [
-        {
-          id: 'sess_1',
-          title: '分析财报数据',
-          created: new Date(now - 3600000).toISOString(),
-          updated: new Date(now - 1800000).toISOString(),
-          msgCount: 12
-        },
-        {
-          id: 'sess_2',
-          title: '写周报模板',
-          created: new Date(now - 86400000).toISOString(),
-          updated: new Date(now - 86400000 + 7200000).toISOString(),
-          msgCount: 8
-        },
-        {
-          id: 'sess_3',
-          title: '代码重构方案讨论',
-          created: new Date(now - 172800000).toISOString(),
-          updated: new Date(now - 90000000).toISOString(),
-          msgCount: 24
-        },
-        {
-          id: 'sess_4',
-          title: '部署脚本优化',
-          created: new Date(now - 259200000).toISOString(),
-          updated: new Date(now - 200000000).toISOString(),
-          msgCount: 5
-        },
-      ];
-      renderConversationList(mockSessions);
+    /**
+     * 从后端加载会话列表并渲染
+     */
+    async function loadConversations() {
+      try {
+        const resp = await fetch(apiUrl + '/v1/sessions/list', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) {
+          if (resp.status === 404) {
+            renderConversationList([]);
+            return;
+          }
+          throw new Error('HTTP ' + resp.status);
+        }
+        const data = await resp.json();
+        if (!data.sessions || !Array.isArray(data.sessions)) {
+          renderConversationList([]);
+          return;
+        }
+        const sessions = data.sessions.map(s => ({
+          id: s.id,
+          title: s.title || '新会话',
+          created: s.created,
+          updated: s.updated,
+          msgCount: (s.messages && Array.isArray(s.messages)) ? s.messages.length : 0
+        }));
+        renderConversationList(sessions);
+      } catch (e) {
+        console.error('加载会话列表失败:', e);
+        showToast('加载会话列表失败', 'warning');
+        renderConversationList([]);
+      }
     }
 
     // ==================== 文件浏览器 API ====================

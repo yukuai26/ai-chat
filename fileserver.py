@@ -586,6 +586,7 @@ TEXT_EXTENSIONS: set[str] = {
 }
 MAX_TEXT_EXTRACT_SIZE = 100 * 1024  # 100KB，超过此大小的文本文件跳过内容提取
 MAX_EXTRACT_CONTENT_LENGTH = 4000   # 注入 Gateway 的最大字符数
+MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024  # 10MB，超过此大小的文件附件拒绝注入，提示走文件浏览器
 
 
 def _parse_file_attachment(file_path_str: str) -> dict:
@@ -630,7 +631,28 @@ def _parse_file_attachment(file_path_str: str) -> dict:
         file_size = file_path.stat().st_size
     except OSError:
         result["type"] = "binary"
+        result["mime"] = "application/octet-stream"
         result["summary"] = f"⚠️ 无法读取文件元数据: {file_path.name}"
+        return result
+
+    # MIME 类型识别（所有文件都标注）
+    mime_type, _ = mimetypes.guess_type(str(file_path))
+    mime_desc = mime_type or "application/octet-stream"
+
+    # 大小检查：>10MB 的文件附件拒绝注入，提示走文件浏览器
+    if file_size > MAX_ATTACHMENT_SIZE:
+        if file_size < 1024 * 1024:
+            size_str = f"{file_size / 1024:.1f}KB"
+        else:
+            size_str = f"{file_size / (1024 * 1024):.1f}MB"
+        result["type"] = "too_large"
+        result["mime"] = mime_desc
+        result["size"] = file_size
+        result["summary"] = (
+            f"⚠️ 文件过大 ({size_str}): {file_path.name}\n"
+            f"类型: {mime_desc}\n"
+            f"请使用文件浏览器 (左侧目录树 → 找到文件 → 点击查看) 在独立窗口中打开此文件。"
+        )
         return result
 
     ext = file_path.suffix.lower()
@@ -640,6 +662,7 @@ def _parse_file_attachment(file_path_str: str) -> dict:
         try:
             content = file_path.read_text(encoding="utf-8")
             result["type"] = "text"
+            result["mime"] = mime_desc
             # 截断过长内容
             total_len = len(content)
             if total_len > MAX_EXTRACT_CONTENT_LENGTH:
@@ -648,7 +671,7 @@ def _parse_file_attachment(file_path_str: str) -> dict:
                     + f"\n\n... (文件内容已截断，完整 {total_len} 字符)"
                 )
             result["summary"] = (
-                f"📄 文件: {file_path.name} ({ext} 文本文件)\n"
+                f"📄 文件: {file_path.name} ({mime_desc})\n"
                 f"```\n{content}\n```"
             )
             return result
@@ -657,8 +680,6 @@ def _parse_file_attachment(file_path_str: str) -> dict:
             pass
 
     # 非文本文件 / 文件过大 → 仅标注类型和路径
-    mime_type, _ = mimetypes.guess_type(str(file_path))
-    mime_desc = mime_type or "未知类型"
     if file_size < 1024:
         size_str = f"{file_size}B"
     elif file_size < 1024 * 1024:
@@ -667,6 +688,8 @@ def _parse_file_attachment(file_path_str: str) -> dict:
         size_str = f"{file_size / (1024 * 1024):.1f}MB"
 
     result["type"] = "binary"
+    result["mime"] = mime_desc
+    result["size"] = file_size
     result["summary"] = (
         f"📎 文件: {file_path.name} | 类型: {mime_desc} | 大小: {size_str} | 路径: {file_path}"
     )

@@ -573,6 +573,33 @@
       color: var(--accent);
       font-size: 14px;
     }
+    .image-preview-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      padding: 16px;
+      background: repeating-conic-gradient(var(--sidebar-bg) 0% 25%, transparent 0% 50%) 50% / 20px 20px;
+    }
+    .image-preview-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+      background: transparent;
+    }
+    .image-info {
+      position: absolute;
+      bottom: 12px;
+      right: 16px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      background: rgba(0,0,0,0.5);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
     .truncate-notice {
       flex-shrink: 0;
       padding: 8px 16px;
@@ -1469,6 +1496,7 @@
         'sh': '💻', 'service': '⚡', 'conf': '🔧', 'cfg': '🔧',
         'txt': '📄', 'log': '📋',
         'png': '🖼️', 'jpg': '🖼️', 'jpeg': '🖼️', 'gif': '🖼️', 'svg': '🖼️',
+        'bmp': '🖼️', 'ico': '🖼️', 'webp': '🖼️',
       };
       return icons[ext] || '📄';
     }
@@ -1710,6 +1738,15 @@
       return BINARY_EXTS.has(ext);
     }
 
+    const IMAGE_EXTS = new Set([
+      'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico',
+    ]);
+
+    function isImageByExtension(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      return IMAGE_EXTS.has(ext);
+    }
+
     function isBinaryContent(text) {
       const sample = text.slice(0, 4096);
       if (sample.indexOf('\x00') >= 0) return true;
@@ -1743,6 +1780,22 @@
       return await resp.text();
     }
 
+    async function apiReadBlob(path) {
+      const url = (apiUrl || '') + '/v1/files/read?path=' + encodeURIComponent(path);
+      const resp = await fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + (token || '') }
+      });
+      if (!resp.ok) {
+        if (resp.status === 404) throw new Error('文件不存在（404）');
+        if (resp.status === 401) throw new Error('认证失败，请先连接');
+        const body = await resp.text();
+        let msg = 'HTTP ' + resp.status;
+        try { msg = JSON.parse(body).message || msg; } catch(e) {}
+        throw new Error(msg);
+      }
+      return await resp.blob();
+    }
+
     function escapeHtmlSafe(str) {
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
@@ -1763,9 +1816,17 @@
       isDirty: false, isEditing: false
     };
 
+    /** Object URLs for image previews — cleaned up on navigation */
+    let imgObjectUrls = {};
+
     function resetViewerState() {
       viewerState.path = ''; viewerState.filename = ''; viewerState.content = '';
       viewerState.originalContent = ''; viewerState.isDirty = false; viewerState.isEditing = false;
+      // Revoke any active image object URLs
+      Object.keys(imgObjectUrls).forEach(function(k) {
+        URL.revokeObjectURL(imgObjectUrls[k]);
+      });
+      imgObjectUrls = {};
     }
 
     function setViewerContent(path, filename, content) {
@@ -1792,6 +1853,29 @@
       const viewer = document.getElementById('fileViewer');
       const lang = getLanguage(filename);
       const isMd = lang === 'markdown' || filename.toLowerCase().endsWith('.md');
+
+      // Image file — fetch as blob and display <img>
+      if (isImageByExtension(filename)) {
+        viewer.innerHTML = viewerHeaderHtml(filename, 'image', false) +
+          '<div class="viewer-loading"><div class="spinner spinner-lg"></div><span>加载图片...</span></div>';
+
+        try {
+          const blob = await apiReadBlob(fullPath);
+          const objectUrl = URL.createObjectURL(blob);
+          viewer.innerHTML = viewerHeaderHtml(filename, 'image', false) +
+            '<div class="image-preview-container">' +
+              '<img src="' + objectUrl + '" alt="' + escapeHtmlSafe(filename) + '" class="image-preview-img">' +
+              '<div class="image-info">' + formatFileSize(blob.size) + '</div>' +
+            '</div>';
+          // Revoke object URL when navigating away or closing tab
+          imgObjectUrls[fullPath] = objectUrl;
+        } catch (err) {
+          viewer.innerHTML = viewerHeaderHtml(filename, 'image', false) +
+            '<div class="viewer-error"><span style="font-size:32px;">⚠️</span><span>图片加载失败: ' + escapeHtmlSafe(err.message) + '</span></div>';
+          showToast('图片加载失败: ' + err.message, 'error');
+        }
+        return;
+      }
 
       // Binary file
       if (isBinaryByExtension(filename)) {

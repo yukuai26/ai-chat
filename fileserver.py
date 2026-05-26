@@ -455,6 +455,49 @@ def get_session(session_id):
         return error_response(f"Session 读取失败: {e}", 500)
 
 
+
+
+@app.route("/v1/sessions/<session_id>", methods=["DELETE"])
+@require_token
+def delete_session(session_id):
+    """DELETE /v1/sessions/{id} — 删除指定 Session。
+
+    参数：session_id (URL 路径参数)，对应 POST /v1/sessions/new 返回的 id。
+    成功 200: {"message": "Session 已删除", "id": "..."}
+    失败 404: Session 不存在
+    失败 400: Session ID 格式无效
+
+    Session 文件存储在 SESSION_DIR/{id}.json，删除操作不可逆。
+    """
+    # 安全校验：拒绝路径穿越字符和空 ID
+    if not session_id or not session_id.strip():
+        return error_response("Session ID 不能为空", 400)
+    if "/" in session_id or "\\" in session_id or ".." in session_id:
+        return error_response("Session ID 格式无效", 400)
+
+    session_dir = Path(SESSION_DIR)
+    session_file = session_dir / f"{session_id}.json"
+
+    try:
+        session_resolved = session_file.resolve()
+        session_dir_resolved = session_dir.resolve()
+        if not (str(session_resolved).startswith(str(session_dir_resolved) + os.sep) or session_resolved == session_dir_resolved):
+            logger.warning(f"Session 路径校验失败: {session_id} 解析到 {session_resolved}")
+            return error_response("Session ID 无效", 400)
+
+        if not session_file.is_file():
+            return error_response("Session 不存在", 404)
+
+        session_file.unlink()
+        logger.info(f"Session 已删除: {session_id}")
+        return jsonify({"message": "Session 已删除", "id": session_id}), 200
+
+    except FileNotFoundError:
+        return error_response("Session 不存在", 404)
+    except OSError as e:
+        logger.error(f"删除 Session 失败: {session_file}, 错误: {e}")
+        return error_response(f"Session 删除失败: {e}", 500)
+
 # ---- Gateway 调用 ----
 
 def _call_gateway(messages: list[dict]) -> dict:

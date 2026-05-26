@@ -286,6 +286,40 @@ def read_file():
     return send_file(target, mimetype=mimetypes.guess_type(target.name)[0] or "text/plain")
 
 
+@app.route("/v1/files/download", methods=["GET"])
+@require_token
+def download_file():
+    """GET /v1/files/download?path=<relative-path> — 下载文件。
+
+    与 /read 不同，此端点：
+    - 设置 Content-Disposition: attachment 头，触发浏览器下载而非内联显示
+    - 对大文件流式传输（超过 10MB 也允许，不限制上限）
+    """
+    path_arg = request.args.get("path", "")
+    try:
+        target = _resolve_path(path_arg)
+    except (ValueError, OSError) as e:
+        return error_response(f"路径解析失败: {e}", 400)
+
+    ok, msg = _check_read_access(target)
+    if not ok:
+        return error_response(msg, 403)
+
+    if not target.is_file():
+        return error_response("路径不是文件", 400)
+
+    mime, _ = mimetypes.guess_type(target.name)
+    if not mime:
+        mime = "application/octet-stream"
+
+    return send_file(
+        target,
+        mimetype=mime,
+        as_attachment=True,
+        download_name=target.name,
+    )
+
+
 @app.route("/v1/files/write", methods=["POST"])
 @require_token
 def write_file():

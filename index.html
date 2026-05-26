@@ -215,6 +215,39 @@
       0%, 80%, 100% { transform: translateY(0); }
       40% { transform: translateY(-8px); }
     }
+    /* Tab 导航 */
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      padding: 0 24px;
+    }
+    .tab-btn {
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      outline: none;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      font-weight: 600;
+    }
+    .tab-content { display: none; flex-direction: column; flex: 1; min-height: 0; }
+    .tab-content.active { display: flex; }
+    #tab-files {
+      padding: 24px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
     .empty-state {
       flex: 1;
       display: flex;
@@ -287,18 +320,31 @@
       <h1>AI Chat</h1>
       <span class="model-badge" id="modelBadge">DeepSeek V4 Pro</span>
     </div>
-    <div class="messages" id="messages">
-      <div class="empty-state">
-        <div class="icon">💬</div>
-        <p>输入 Token 后点击连接</p>
+    <div class="tab-bar" id="tabBar">
+      <button class="tab-btn active" data-tab="chat" onclick="switchTab('chat')">💬 聊天</button>
+      <button class="tab-btn" data-tab="files" onclick="switchTab('files')">📁 文件管理器</button>
+    </div>
+    <div class="tab-content active" id="tab-chat">
+      <div class="messages" id="messages">
+        <div class="empty-state">
+          <div class="icon">💬</div>
+          <p>输入 Token 后点击连接</p>
+        </div>
+      </div>
+      <div class="input-area">
+        <textarea id="input" placeholder="输入消息..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,160)+'px';"
+        ></textarea>
+        <button id="sendBtn" onclick="sendMessage()" disabled>发送</button>
       </div>
     </div>
-    <div class="input-area">
-      <textarea id="input" placeholder="输入消息..." rows="1"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
-        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,160)+'px';"
-      ></textarea>
-      <button id="sendBtn" onclick="sendMessage()" disabled>发送</button>
+    <div class="tab-content" id="tab-files">
+      <div class="empty-state">
+        <div class="icon">📁</div>
+        <p>文件浏览器</p>
+        <p style="font-size:13px;margin-top:4px">选择文件后可在此查看内容</p>
+      </div>
     </div>
   </div>
 
@@ -316,6 +362,13 @@
       if (saved.token) document.getElementById('token').value = saved.token;
       if (saved.agentId) document.getElementById('agentId').value = saved.agentId;
     };
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + tabName).classList.add('active');
+    }
 
     function showToast(msg) {
       const t = document.getElementById('toast');

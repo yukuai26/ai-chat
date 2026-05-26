@@ -1800,13 +1800,53 @@
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    /** 创建 viewer-header HTML（含编辑按钮，非 markdown/binary 时显示） */
-    function viewerHeaderHtml(filename, lang, showEdit) {
+    /** 下载文件：通过 /v1/files/download 获取内容，触发浏览器下载 */
+    async function downloadFile(filePath, filename) {
+      try {
+        showToast('下载中: ' + filename + '...', 'info', 2000);
+        const url = (apiUrl || '') + '/v1/files/download?path=' + encodeURIComponent(filePath);
+        const resp = await fetch(url, {
+          headers: { 'Authorization': 'Bearer ' + (token || '') }
+        });
+        if (!resp.ok) {
+          const body = await resp.text();
+          let msg = 'HTTP ' + resp.status;
+          try { msg = JSON.parse(body).message || msg; } catch(e) {}
+          throw new Error(msg);
+        }
+        const blob = await resp.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(objectUrl);
+        showToast(filename + ' 下载完成 ✅', 'success');
+      } catch (err) {
+        showToast('下载失败: ' + err.message, 'error');
+      }
+    }
+
+    /** 创建 viewer-header HTML（含编辑按钮和下载按钮） */
+    function viewerHeaderHtml(filename, lang, showEdit, fullPath) {
+      var downloadBtn = '';
+      if (fullPath) {
+        downloadBtn = '<button class="viewer-toolbar-btn" onclick="downloadFile(\'' + escapeHtmlAttr(fullPath) + '\', \'' + escapeHtmlAttr(filename) + '\')" title="下载文件">📥 下载</button>';
+      }
       return '<div class="viewer-header">' +
         '<span class="file-name"><span class="f-icon">' + getFileIcon(filename) + '</span>' + escapeHtmlSafe(filename) + '</span>' +
         '<span class="file-lang">' + lang + '</span>' +
-        (showEdit ? '<div class="viewer-toolbar"><button class="btn-edit" onclick="enterEditMode()">✏️ 编辑</button></div>' : '') +
+        '<div class="viewer-toolbar">' +
+          downloadBtn +
+          (showEdit ? '<button class="btn-edit" onclick="enterEditMode()">✏️ 编辑</button>' : '') +
+        '</div>' +
         '</div>';
+    }
+
+    function escapeHtmlAttr(str) {
+      return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     // ==================== Viewer State (Phase 2) ====================
@@ -1856,13 +1896,13 @@
 
       // Image file — fetch as blob and display <img>
       if (isImageByExtension(filename)) {
-        viewer.innerHTML = viewerHeaderHtml(filename, 'image', false) +
+        viewer.innerHTML = viewerHeaderHtml(filename, 'image', false, fullPath) +
           '<div class="viewer-loading"><div class="spinner spinner-lg"></div><span>加载图片...</span></div>';
 
         try {
           const blob = await apiReadBlob(fullPath);
           const objectUrl = URL.createObjectURL(blob);
-          viewer.innerHTML = viewerHeaderHtml(filename, 'image', false) +
+          viewer.innerHTML = viewerHeaderHtml(filename, 'image', false, fullPath) +
             '<div class="image-preview-container">' +
               '<img src="' + objectUrl + '" alt="' + escapeHtmlSafe(filename) + '" class="image-preview-img">' +
               '<div class="image-info">' + formatFileSize(blob.size) + '</div>' +
@@ -1870,7 +1910,7 @@
           // Revoke object URL when navigating away or closing tab
           imgObjectUrls[fullPath] = objectUrl;
         } catch (err) {
-          viewer.innerHTML = viewerHeaderHtml(filename, 'image', false) +
+          viewer.innerHTML = viewerHeaderHtml(filename, 'image', false, fullPath) +
             '<div class="viewer-error"><span style="font-size:32px;">⚠️</span><span>图片加载失败: ' + escapeHtmlSafe(err.message) + '</span></div>';
           showToast('图片加载失败: ' + err.message, 'error');
         }
@@ -1884,6 +1924,9 @@
           <div class="viewer-header">
             <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
             <span class="file-lang">binary</span>
+            <div class="viewer-toolbar">
+              <button class="viewer-toolbar-btn" onclick="downloadFile('${escapeHtmlAttr(fullPath)}', '${escapeHtmlAttr(filename)}')" title="下载文件">📥 下载</button>
+            </div>
           </div>
           <div class="viewer-error">
             <span style="font-size:32px;">📦</span>
@@ -1905,7 +1948,7 @@
       }
 
       // Loading state
-      viewer.innerHTML = viewerHeaderHtml(filename, lang, false) +
+      viewer.innerHTML = viewerHeaderHtml(filename, lang, false, fullPath) +
         '<div class="viewer-loading"><div class="spinner spinner-lg"></div><span>加载中...</span></div>';
 
       try {
@@ -1923,6 +1966,9 @@
             <div class="viewer-header">
               <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
               <span class="file-lang">binary</span>
+              <div class="viewer-toolbar">
+                <button class="viewer-toolbar-btn" onclick="downloadFile('${escapeHtmlAttr(fullPath)}', '${escapeHtmlAttr(filename)}')" title="下载文件">📥 下载</button>
+              </div>
             </div>
             <div class="viewer-error">
               <span style="font-size:32px;">📦</span>
@@ -1941,7 +1987,7 @@
         }
       } catch (err) {
         resetViewerState();
-        viewer.innerHTML = viewerHeaderHtml(filename, lang, false) +
+        viewer.innerHTML = viewerHeaderHtml(filename, lang, false, fullPath) +
           '<div class="viewer-error"><span style="font-size:32px;">⚠️</span><span>' + escapeHtmlSafe(err.message) + '</span></div>';
         showToast('文件加载失败: ' + err.message, 'error');
       }
@@ -1957,7 +2003,7 @@
         ? '<div class="truncate-notice">⚠️ 文件过大（' + formatFileSize(viewerState.originalContent.length) + '），仅显示前 ' + formatFileSize(MAX_PREVIEW_SIZE) + ' 的内容</div>'
         : '';
 
-      viewer.innerHTML = viewerHeaderHtml(filename, 'preview', true) + truncatedNotice +
+      viewer.innerHTML = viewerHeaderHtml(filename, 'preview', true, fullPath) + truncatedNotice +
         '<div class="markdown-body">' + mdHtml + '</div>';
 
       viewer.querySelectorAll('.markdown-body pre code').forEach(block => {
@@ -1981,7 +2027,7 @@
         ? '<div class="truncate-notice">⚠️ 文件过大（' + formatFileSize(viewerState.originalContent.length) + '），仅显示前 ' + formatFileSize(MAX_PREVIEW_SIZE) + '（' + lines.length + ' 行）</div>'
         : '';
 
-      viewer.innerHTML = viewerHeaderHtml(filename, lang, true) + truncatedNotice +
+      viewer.innerHTML = viewerHeaderHtml(filename, lang, true, fullPath) + truncatedNotice +
         '<div class="viewer-body" id="viewerBodyMain" ondblclick="enterEditMode()">' +
           '<div class="code-with-lines">' +
             '<div class="line-numbers">' + lineNumbers + '</div>' +
@@ -2006,6 +2052,7 @@
         '<span class="file-name"><span class="f-icon">' + getFileIcon(viewerState.filename) + '</span>' + escapeHtmlSafe(viewerState.filename) + '</span>' +
         '<span class="file-lang">editing</span>' +
         '<div class="viewer-toolbar">' +
+          '<button class="viewer-toolbar-btn" onclick="downloadFile(\'' + escapeHtmlAttr(viewerState.path) + '\', \'' + escapeHtmlAttr(viewerState.filename) + '\')" title="下载文件">📥 下载</button>' +
           '<button class="btn-save" onclick="handleSaveEdit()" title="Ctrl+S">💾 保存</button>' +
           '<button class="btn-cancel" onclick="handleCancelEdit()" title="Escape">✕ 取消</button>' +
         '</div>';

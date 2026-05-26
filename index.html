@@ -27,29 +27,72 @@
       height: 100vh;
       display: flex;
     }
-    .sidebar {
-      width: 320px;
-      min-width: 320px;
+    /* ==================== 三栏布局 ==================== */
+    /* 左栏 — 会话列表 */
+    .conv-panel {
+      width: 260px;
+      min-width: 260px;
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+      transition: width 0.28s ease, min-width 0.28s ease;
+    }
+    .conv-panel.collapsed {
+      width: 0;
+      min-width: 0;
+      border-right: none;
+      overflow: hidden;
+    }
+    .conv-panel .conv-section {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 12px 12px;
+    }
+    /* 中栏 — 消息区 */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    /* 右栏 — 设置面板 */
+    .settings-panel {
+      width: 280px;
+      min-width: 280px;
       background: var(--sidebar-bg);
       padding: 24px;
       display: flex;
       flex-direction: column;
       gap: 16px;
-      border-right: 1px solid var(--border);
+      border-left: 1px solid var(--border);
       overflow-y: auto;
+      transition: width 0.28s ease, min-width 0.28s ease, padding 0.28s ease;
     }
-    .sidebar h2 {
-      font-size: 18px;
+    .settings-panel.collapsed {
+      width: 0;
+      min-width: 0;
+      padding: 0;
+      border-left: none;
+      overflow: hidden;
+    }
+    .settings-panel h2 {
+      font-size: 16px;
       font-weight: 600;
       color: var(--accent);
+      white-space: nowrap;
     }
-    .sidebar label {
+    .settings-panel label {
       font-size: 13px;
       color: var(--text-secondary);
       display: block;
       margin-bottom: 4px;
+      white-space: nowrap;
     }
-    .sidebar input, .sidebar select {
+    .settings-panel input, .settings-panel select {
       width: 100%;
       padding: 10px 12px;
       border-radius: 8px;
@@ -60,13 +103,13 @@
       outline: none;
       transition: border-color 0.2s;
     }
-    .sidebar input:focus, .sidebar select:focus { border-color: var(--accent); }
-    .sidebar .hint {
+    .settings-panel input:focus, .settings-panel select:focus { border-color: var(--accent); }
+    .settings-panel .hint {
       font-size: 12px;
       color: var(--text-secondary);
       line-height: 1.4;
     }
-    .sidebar button {
+    .settings-panel button {
       padding: 10px;
       border-radius: 8px;
       border: none;
@@ -75,17 +118,35 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    .sidebar .btn-connect {
+    .settings-panel .btn-connect {
       background: var(--accent);
       color: white;
     }
-    .sidebar .btn-connect:hover { background: var(--accent-hover); }
-    .sidebar .status {
+    .settings-panel .btn-connect:hover { background: var(--accent-hover); }
+    .settings-panel .status {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 13px;
     }
+    /* 面板折叠切换按钮 */
+    .panel-toggle {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      line-height: 1;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .panel-toggle:hover {
+      color: var(--accent);
+      background: rgba(233, 69, 96, 0.1);
+    }
+    .panel-toggle.active { color: var(--accent); }
     .status-dot {
       width: 8px;
       height: 8px;
@@ -898,8 +959,11 @@
     .loading-overlay .spinner { margin-bottom: 4px; }
     @media (max-width: 768px) {
       body { flex-direction: column; }
-      .sidebar { width: 100%; min-width: auto; max-height: 35vh; }
-      .main { height: 65vh; }
+      .conv-panel { width: 100%; min-width: auto; max-height: 30vh; }
+      .conv-panel.collapsed { width: 0; min-width: 0; max-height: 0; }
+      .settings-panel { width: 100%; min-width: auto; max-height: 35vh; }
+      .settings-panel.collapsed { width: 0; min-width: 0; max-height: 0; }
+      .main { height: 100vh; min-height: 60vh; }
 
       /* 显示目录树切换按钮 */
       .tree-toggle-btn { display: inline-flex; align-items: center; justify-content: center; }
@@ -1233,9 +1297,6 @@
       flex-direction: column;
       flex: 1;
       min-height: 0;
-      border-top: 1px solid var(--border);
-      padding-top: 14px;
-      margin-top: 2px;
     }
     .conv-header {
       display: flex;
@@ -1367,34 +1428,8 @@
   </style>
 </head>
 <body>
-  <div class="sidebar">
-    <h2>⚙️ 设置</h2>
-    <div>
-      <label>API 地址</label>
-      <input type="text" id="apiUrl" placeholder="https://xxx.trycloudflare.com" value="https://named-travelers-extraction-attractions.trycloudflare.com" />
-    </div>
-    <div>
-      <label>Token</label>
-      <input type="password" id="token" placeholder="输入你的 token" />
-    </div>
-    <div>
-      <label>Agent</label>
-      <select id="agentId">
-        <option value="assistant">assistant</option>
-        <option value="main">main</option>
-        <option value="dev-cat">dev-cat</option>
-        <option value="pm-cat">pm-cat</option>
-        <option value="domain-cat">domain-cat</option>
-      </select>
-    </div>
-    <div class="status">
-      <span class="status-dot" id="statusDot"></span>
-      <span id="statusText">未连接</span>
-    </div>
-    <button class="btn-connect" id="btnConnect" onclick="connect()">连接</button>
-    <div class="hint">
-      💡 Token 保存在你浏览器本地，不会上传。
-    </div>
+  <!-- 左栏 — 会话列表 -->
+  <div class="conv-panel" id="convPanel">
     <div class="conv-section">
       <div class="conv-header">
         <h3>📋 会话</h3>
@@ -1408,8 +1443,10 @@
 
   <div class="main">
     <div class="chat-header">
+      <button class="panel-toggle" id="toggleConvPanel" onclick="togglePanelLeft()" title="切换会话列表">☰</button>
       <h1>AI Chat</h1>
       <span class="model-badge" id="modelBadge">DeepSeek V4 Pro</span>
+      <button class="panel-toggle" id="toggleSettingsPanel" onclick="togglePanelRight()" title="切换设置面板">⚙️</button>
     </div>
     <div class="tab-bar" id="tabBar">
       <button class="tab-btn active" data-tab="chat" onclick="switchTab('chat')">💬 聊天</button>
@@ -1474,6 +1511,37 @@
     </div>
   </div>
 
+  <!-- 右栏 — 设置面板 -->
+  <div class="settings-panel" id="settingsPanel">
+    <h2>⚙️ 设置</h2>
+    <div>
+      <label>API 地址</label>
+      <input type="text" id="apiUrl" placeholder="https://xxx.trycloudflare.com" value="https://named-travelers-extraction-attractions.trycloudflare.com" />
+    </div>
+    <div>
+      <label>Token</label>
+      <input type="password" id="token" placeholder="输入你的 token" />
+    </div>
+    <div>
+      <label>Agent</label>
+      <select id="agentId">
+        <option value="assistant">assistant</option>
+        <option value="main">main</option>
+        <option value="dev-cat">dev-cat</option>
+        <option value="pm-cat">pm-cat</option>
+        <option value="domain-cat">domain-cat</option>
+      </select>
+    </div>
+    <div class="status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">未连接</span>
+    </div>
+    <button class="btn-connect" id="btnConnect" onclick="connect()">连接</button>
+    <div class="hint">
+      💡 Token 保存在你浏览器本地，不会上传。
+    </div>
+  </div>
+
   <div class="modal-backdrop hidden" id="confirmModal" onclick="if(event.target===this)dismissConfirm()">
     <div class="modal-dialog">
       <h3 id="confirmTitle">确认操作</h3>
@@ -1523,6 +1591,11 @@
       if (saved.apiUrl) document.getElementById('apiUrl').value = saved.apiUrl;
       if (saved.token) document.getElementById('token').value = saved.token;
       if (saved.agentId) document.getElementById('agentId').value = saved.agentId;
+
+      // 恢复面板折叠状态
+      const panelState = JSON.parse(localStorage.getItem('aichat_panels') || '{}');
+      if (panelState.convCollapsed) togglePanelLeft(false);
+      if (panelState.settingsCollapsed) togglePanelRight(false);
     };
 
     function switchTab(tabName) {
@@ -1530,6 +1603,29 @@
       document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.getElementById('tab-' + tabName).classList.add('active');
+    }
+
+    /* ==================== 面板折叠/展开 ==================== */
+    function togglePanelLeft(save = true) {
+      const panel = document.getElementById('convPanel');
+      const btn = document.getElementById('toggleConvPanel');
+      panel.classList.toggle('collapsed');
+      btn.classList.toggle('active', !panel.classList.contains('collapsed'));
+      if (save) savePanelState();
+    }
+
+    function togglePanelRight(save = true) {
+      const panel = document.getElementById('settingsPanel');
+      const btn = document.getElementById('toggleSettingsPanel');
+      panel.classList.toggle('collapsed');
+      btn.classList.toggle('active', !panel.classList.contains('collapsed'));
+      if (save) savePanelState();
+    }
+
+    function savePanelState() {
+      const convCollapsed = document.getElementById('convPanel').classList.contains('collapsed');
+      const settingsCollapsed = document.getElementById('settingsPanel').classList.contains('collapsed');
+      localStorage.setItem('aichat_panels', JSON.stringify({ convCollapsed, settingsCollapsed }));
     }
 
     // ==================== Toast 通知系统 ====================

@@ -17,20 +17,44 @@ app = Flask(__name__)
 
 # ---- 配置 ----
 WHITELIST = [
-    "/home/ubuntu/.openclaw",
-    "/home/ubuntu/workspace",
-    "/tmp",
+    "/home/ubuntu/.openclaw/workspace-assistant",
+    "/home/ubuntu/.openclaw/workspace-build-cat",
 ]
 API_TOKEN = os.environ.get("FILESERVER_TOKEN", "dev-token-placeholder")
 
 # ---- 工具函数 ----
 
 def _resolve_path(rel_path: str) -> Path:
-    """将请求路径解析为绝对路径（phase 1 占位，B2 完善安全校验）。"""
-    base = WHITELIST[0]
-    clean = Path(rel_path.strip("/"))
-    resolved = (Path(base) / clean).resolve()
-    return resolved
+    """将请求路径解析为绝对路径，并进行安全校验（白名单 + 防路径穿越）。
+    
+    安全策略：
+    1. 请求路径必须相对于白名单中的某个根目录
+    2. 解析后的绝对路径必须在白名单根目录之内（含子目录）
+    3. 拒绝 .. 路径穿越、拒绝符号链接逃逸
+    """
+    # 1. 清洗输入：去掉首尾斜杠
+    clean = rel_path.strip("/")
+    
+    # 2. 拒绝显式路径穿越（.. 作为独立路径段）
+    if ".." in clean.split("/"):
+        raise ValueError("路径穿越被拒绝")
+    
+    # 3. 遍历白名单，尝试解析
+    for base in WHITELIST:
+        base_path = Path(base).resolve()
+        try:
+            # 构建候选路径并解析（resolve 会消解 .. 和符号链接）
+            candidate = (base_path / clean).resolve()
+            candidate_str = str(candidate)
+            base_str = str(base_path)
+            
+            # 4. 围栏检查：候选路径必须在白名单根目录之内
+            if candidate_str == base_str or candidate_str.startswith(base_str + os.sep):
+                return candidate
+        except (ValueError, OSError):
+            continue
+    
+    raise ValueError("路径不在白名单范围内或路径穿越被拒绝")
 
 
 def _check_read_access(target: Path) -> tuple[bool, str]:

@@ -1110,6 +1110,28 @@
       transition: background 0.15s;
     }
     .file-picker-header .close-btn:hover { background: var(--border); }
+    .file-picker-search {
+      padding: 10px 24px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .file-picker-search input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+    .file-picker-search input:focus {
+      border-color: var(--accent);
+    }
+    .file-picker-search input::placeholder {
+      color: var(--text-secondary);
+    }
     .file-picker-body {
       flex: 1;
       overflow-y: auto;
@@ -1465,6 +1487,9 @@
         <h3>📎 选择文件</h3>
         <button class="close-btn" onclick="closeFilePicker()" aria-label="关闭">×</button>
       </div>
+      <div class="file-picker-search">
+        <input type="text" id="filePickerSearch" placeholder="🔍 按文件名筛选..." oninput="filterFilePickerFiles()" autocomplete="off">
+      </div>
       <div class="file-picker-body" id="filePickerBody">
         <div class="file-picker-loading">
           <div class="spinner"></div>
@@ -1797,6 +1822,8 @@
      */
     /** 当前选中的文件列表 */
     let selectedFiles = [];
+    /** 文件选择器中加载的完整文件列表（用于搜索过滤） */
+    let filePickerAllFiles = [];
 
     function toggleFilePicker() {
       const picker = document.getElementById('filePicker');
@@ -1813,6 +1840,9 @@
     function closeFilePicker() {
       const picker = document.getElementById('filePicker');
       if (picker) picker.classList.add('hidden');
+      // 关闭时清空搜索框
+      const searchInput = document.getElementById('filePickerSearch');
+      if (searchInput) searchInput.value = '';
     }
 
     async function loadFilePickerFiles() {
@@ -1820,32 +1850,57 @@
       body.innerHTML = '<div class="file-picker-loading"><div class="spinner"></div><span>加载中...</span></div>';
       const countEl = document.getElementById('filePickerCount');
       countEl.textContent = '已选 0 个文件';
+      // 清空搜索框
+      const searchInput = document.getElementById('filePickerSearch');
+      if (searchInput) searchInput.value = '';
       try {
         const entries = await apiLs('/user-files');
-        const files = entries.filter(e => e.type === 'file');
-        if (files.length === 0) {
-          body.innerHTML = '<div class="file-picker-empty"><span style="font-size:32px;">📂</span><p>user-files 目录为空</p></div>';
-          return;
-        }
-        let html = '';
-        files.forEach((f, i) => {
-          const isSelected = selectedFiles.some(sf => sf.path === '/user-files/' + f.name);
-          const icon = getFileIcon(f.name);
-          const sizeStr = f.size ? formatFileSize(f.size) : '';
-          html += `<div class="file-picker-item${isSelected ? ' selected' : ''}" onclick="toggleFilePickerItem(this)" data-path="/user-files/${escapeHtmlAttr(f.name)}" data-name="${escapeHtmlAttr(f.name)}">
-            <div class="fp-checkbox">✓</div>
-            <span class="fp-icon">${icon}</span>
-            <div class="fp-info">
-              <div class="fp-name">${escapeHtml(f.name)}</div>
-              <div class="fp-meta">${sizeStr}</div>
-            </div>
-          </div>`;
-        });
-        body.innerHTML = html;
-        updateFilePickerCount();
+        filePickerAllFiles = entries.filter(e => e.type === 'file');
+        renderFilePickerItems(filePickerAllFiles);
       } catch (err) {
         body.innerHTML = '<div class="file-picker-empty"><span style="font-size:32px;">⚠️</span><p>加载失败: ' + escapeHtml(err.message) + '</p></div>';
       }
+    }
+
+    /** 渲染文件选择器列表（支持过滤） */
+    function renderFilePickerItems(files) {
+      const body = document.getElementById('filePickerBody');
+      if (!body) return;
+      if (files.length === 0) {
+        body.innerHTML = '<div class="file-picker-empty"><span style="font-size:32px;">🔍</span><p>无匹配文件</p></div>';
+        updateFilePickerCount();
+        return;
+      }
+      let html = '';
+      files.forEach((f, i) => {
+        const filePath = '/user-files/' + f.name;
+        const isSelected = selectedFiles.some(sf => sf.path === filePath);
+        const icon = getFileIcon(f.name);
+        const sizeStr = f.size ? formatFileSize(f.size) : '';
+        html += `<div class="file-picker-item${isSelected ? ' selected' : ''}" onclick="toggleFilePickerItem(this)" data-path="/user-files/${escapeHtmlAttr(f.name)}" data-name="${escapeHtmlAttr(f.name)}">
+          <div class="fp-checkbox">✓</div>
+          <span class="fp-icon">${icon}</span>
+          <div class="fp-info">
+            <div class="fp-name">${escapeHtml(f.name)}</div>
+            <div class="fp-meta">${sizeStr}</div>
+          </div>
+        </div>`;
+      });
+      body.innerHTML = html;
+      updateFilePickerCount();
+    }
+
+    /** F31 — 文件选择器搜索/过滤（按文件名筛选） */
+    function filterFilePickerFiles() {
+      const input = document.getElementById('filePickerSearch');
+      if (!input) return;
+      const query = input.value.trim().toLowerCase();
+      if (!query) {
+        renderFilePickerItems(filePickerAllFiles);
+        return;
+      }
+      const filtered = filePickerAllFiles.filter(f => f.name.toLowerCase().includes(query));
+      renderFilePickerItems(filtered);
     }
 
     function toggleFilePickerItem(el) {
@@ -1854,10 +1909,21 @@
     }
 
     function updateFilePickerSelections() {
-      const items = document.querySelectorAll('#filePickerBody .file-picker-item');
-      selectedFiles = [];
-      items.forEach(el => {
-        if (el.classList.contains('selected')) {
+      const visibleItems = document.querySelectorAll('#filePickerBody .file-picker-item');
+      // 移除已在当前可见列表中但被取消选择的文件
+      const visiblePaths = new Set();
+      visibleItems.forEach(el => {
+        if (el.classList.contains('selected')) visiblePaths.add(el.dataset.path);
+      });
+      selectedFiles = selectedFiles.filter(sf => {
+        // 保留不在可见列表中的（被过滤器隐藏的）选中项
+        const isVisible = Array.from(visibleItems).some(el => el.dataset.path === sf.path);
+        if (!isVisible) return true;
+        return visiblePaths.has(sf.path);
+      });
+      // 添加新选中的可见项
+      visibleItems.forEach(el => {
+        if (el.classList.contains('selected') && !selectedFiles.some(sf => sf.path === el.dataset.path)) {
           selectedFiles.push({ path: el.dataset.path, name: el.dataset.name });
         }
       });

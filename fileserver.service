@@ -13,9 +13,12 @@ ExecStart=/usr/bin/python3 /home/ubuntu/.openclaw/workspace-build-cat/repo/files
 Environment=PORT=5050
 Environment=FLASK_DEBUG=0
 
-# 自动重启策略
+# 自动重启策略：进程 crash（非零退出码、信号终止）后自动重启
+# RestartSec 重启前等待秒数，避免快速循环重启
 Restart=on-failure
 RestartSec=5
+# 可选：启用 systemd 主动健康检查（需应用支持 sd_notify）
+# WatchdogSec=30
 
 # 退出后等待时间
 TimeoutStopSec=10

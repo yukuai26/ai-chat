@@ -279,9 +279,12 @@ def read_file():
     if not target.is_file():
         return error_response("路径不是文件", 400)
 
-    # 大文件限制：最大 10MB
-    if target.stat().st_size > 10 * 1024 * 1024:
-        return error_response("文件过大（>10MB），请使用 download 接口", 413)
+    # 大文件策略：
+    # - 有 Range 请求头：允许任意大小（流式读取，只传输请求的范围）
+    # - 无 Range 请求头：限制 10MB（避免全量读取超大文件阻塞服务）
+    has_range = "Range" in request.headers
+    if not has_range and target.stat().st_size > 10 * 1024 * 1024:
+        return error_response("文件过大（>10MB），请使用 Range 请求或 download 接口", 413)
 
     return send_file(target, mimetype=mimetypes.guess_type(target.name)[0] or "text/plain")
 

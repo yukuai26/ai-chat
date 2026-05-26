@@ -10,6 +10,8 @@ import json
 import stat
 import logging
 import mimetypes
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from functools import wraps
 from flask import Flask, request, jsonify, send_file
@@ -63,6 +65,11 @@ def _load_token():
     return "dev-token-placeholder"
 
 API_TOKEN = _load_token()
+
+# ---- Session 存储配置 ----
+SESSION_DIR = "/home/ubuntu/.openclaw/user-sessions"
+USER_FILES_DIR = "/home/ubuntu/.openclaw/user-files"
+
 logger.info(f"fileserver 启动，白名单目录: {WHITELIST}")
 
 
@@ -322,6 +329,55 @@ def download_file():
         download_name=target.name,
     )
 
+
+# ---- Session 管理 (Phase 5) ----
+
+@app.route("/v1/sessions/new", methods=["POST"])
+@require_token
+def create_session():
+    """POST /v1/sessions/new — 创建新 Session，自动生成标题。
+
+    请求体 JSON（可选）: {"title": "可选标题"}
+    返回 201: {"id": "sess_...", "title": "...", "created": "...", "updated": "...", "messages": []}
+
+    会话文件存储在 SESSION_DIR/{id}.json，目录不存在时自动创建。
+    """
+    tz = ZoneInfo("Asia/Shanghai")
+    now = datetime.now(tz)
+    session_id = f"sess_{now.strftime('%Y%m%d_%H%M%S')}"
+
+    data = request.get_json(silent=True) or {}
+    title = data.get("title", "").strip()
+    if not title:
+        title = f"新对话 {now.strftime('%m月%d日 %H:%M')}"
+
+    session_dir = Path(SESSION_DIR)
+    try:
+        session_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        logger.error(f"创建 Session 目录失败: {SESSION_DIR}, 错误: {e}")
+        return error_response("创建 Session 存储目录失败", 500)
+
+    session = {
+        "id": session_id,
+        "title": title,
+        "created": now.isoformat(),
+        "updated": now.isoformat(),
+        "messages": [],
+    }
+
+    session_file = session_dir / f"{session_id}.json"
+    try:
+        with open(session_file, "w", encoding="utf-8") as f:
+            json.dump(session, f, ensure_ascii=False, indent=2)
+        logger.info(f"Session 创建成功: {session_id} ({title})")
+        return jsonify(session), 201
+    except OSError as e:
+        logger.error(f"Session 写入失败: {session_file}, 错误: {e}")
+        return error_response("Session 创建失败", 500)
+
+
+# ---- 文件写入 ----
 
 @app.route("/v1/files/write", methods=["POST"])
 @require_token

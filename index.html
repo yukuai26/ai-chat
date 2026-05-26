@@ -1444,11 +1444,45 @@
       container.innerHTML = html;
     }
 
-    function selectConversation(sessionId) {
+    async function selectConversation(sessionId) {
       activeConversationId = sessionId;
       document.querySelectorAll('.conv-item').forEach(el => {
         el.classList.toggle('active', el.dataset.sid === sessionId);
       });
+
+      // 切换到聊天 Tab
+      switchTab('chat');
+
+      // 清空消息区，显示加载中
+      const msgs = document.getElementById('messages');
+      msgs.innerHTML = '<div class="loading-overlay"><div class="spinner spinner-lg"></div><span>加载历史消息...</span></div>';
+
+      try {
+        const resp = await fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(sessionId), {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) {
+          if (resp.status === 404) throw new Error('会话不存在（可能已被删除）');
+          const body = await resp.text();
+          let msg = 'HTTP ' + resp.status;
+          try { msg = JSON.parse(body).message || msg; } catch(e) {}
+          throw new Error(msg);
+        }
+        const data = await resp.json();
+        const messages = data.messages || [];
+        msgs.innerHTML = '';
+
+        if (messages.length === 0) {
+          msgs.innerHTML = '<div class="empty-state"><div class="icon">💬</div><p>暂无消息，开始对话吧</p></div>';
+        } else {
+          messages.forEach(function(m) {
+            addMessage(m.role || 'user', m.content || '');
+          });
+        }
+      } catch (e) {
+        msgs.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>加载失败: ' + escapeHtmlSafe(e.message) + '</p></div>';
+        showToast('加载历史消息失败: ' + e.message, 'error');
+      }
     }
 
     async function newConversation() {

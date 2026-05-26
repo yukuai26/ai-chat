@@ -220,6 +220,54 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    /* 选中文件标签展示（F30） */
+    .file-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 24px 0;
+      min-height: 0;
+    }
+    .file-tags:empty { display: none; }
+    .file-tags .file-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(233, 69, 96, 0.12);
+      border: 1px solid rgba(233, 69, 96, 0.25);
+      font-size: 12px;
+      color: var(--text);
+    }
+    .file-tag .tag-icon { font-size: 12px; }
+    .file-tag .tag-name {
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-tag .tag-remove {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: var(--text-secondary);
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      padding: 0;
+      margin-left: 2px;
+      flex-shrink: 0;
+    }
+    .file-tag .tag-remove:hover {
+      background: var(--accent);
+      color: white;
+    }
     .input-area {
       padding: 16px 24px;
       border-top: 1px solid var(--border);
@@ -1352,6 +1400,7 @@
           <p>输入 Token 后点击连接</p>
         </div>
       </div>
+      <div class="file-tags" id="fileTags"></div>
       <div class="input-area">
         <button class="attach-btn" id="attachBtn" title="选择文件" onclick="toggleFilePicker()">📎</button>
         <textarea id="input" placeholder="输入消息..." rows="1"
@@ -1823,9 +1872,34 @@
     function confirmFileSelection() {
       updateFilePickerSelections();
       closeFilePicker();
+      renderSelectedFileTags();
       if (selectedFiles.length > 0) {
         showToast('已选择 ' + selectedFiles.length + ' 个文件', 'success', 2500);
       }
+    }
+
+    /** F30 — 渲染选中文件标签（输入框上方展示，支持删除单个） */
+    function renderSelectedFileTags() {
+      const container = document.getElementById('fileTags');
+      if (!container) return;
+      if (selectedFiles.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      container.innerHTML = selectedFiles.map(function(f, i) {
+        return '<span class="file-tag">' +
+          '<span class="tag-icon">📎</span>' +
+          '<span class="tag-name" title="' + escapeHtmlAttr(f.path) + '">' + escapeHtml(f.name) + '</span>' +
+          '<button class="tag-remove" onclick="event.stopPropagation();removeSelectedFile(' + i + ')" title="移除">×</button>' +
+          '</span>';
+      }).join('');
+    }
+
+    /** F30 — 从选中列表中移除单个文件 */
+    function removeSelectedFile(index) {
+      selectedFiles.splice(index, 1);
+      renderSelectedFileTags();
+      updateFilePickerCount();
     }
 
     async function sendMessage() {

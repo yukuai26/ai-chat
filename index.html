@@ -957,13 +957,110 @@
       flex: 1;
     }
     .loading-overlay .spinner { margin-bottom: 4px; }
+    /* 面板抽屉头部（默认隐藏，移动端显示） */
+    .conv-drawer-header, .settings-drawer-header { display: none; }
+    /* 面板遮罩层（默认隐藏，移动端显示） */
+    .panel-backdrop { display: none; }
     @media (max-width: 768px) {
       body { flex-direction: column; }
-      .conv-panel { width: 100%; min-width: auto; max-height: 30vh; }
-      .conv-panel.collapsed { width: 0; min-width: 0; max-height: 0; }
-      .settings-panel { width: 100%; min-width: auto; max-height: 35vh; }
-      .settings-panel.collapsed { width: 0; min-width: 0; max-height: 0; }
+
       .main { height: 100vh; min-height: 60vh; }
+
+      /* 桌面端 toggle 按钮始终显示（移动端用来打开抽屉） */
+      .panel-toggle { display: inline-flex; align-items: center; justify-content: center; }
+
+      /* === 会话面板 — 左侧抽屉 === */
+      .conv-panel {
+        position: fixed;
+        top: 0; left: 0;
+        width: 280px;
+        max-width: 85vw;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 100;
+        transform: translateX(-100%);
+        transition: transform 0.28s ease;
+        border-right: 1px solid var(--border);
+        box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+      }
+      .conv-panel.open { transform: translateX(0); }
+      /* 覆盖 collapsed 的桌面行为：移动端始终用抽屉方式 */
+      .conv-panel.collapsed { width: 280px; max-width: 85vw; transform: translateX(-100%); }
+
+      /* 抽屉头部（会话面板） */
+      .conv-drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .conv-drawer-header span { font-size: 13px; font-weight: 600; color: var(--text); }
+      .conv-drawer-close {
+        background: none; border: none;
+        color: var(--text-secondary); font-size: 20px;
+        cursor: pointer; padding: 2px 6px; border-radius: 4px;
+        line-height: 1;
+      }
+      .conv-drawer-close:hover { background: rgba(233,69,96,0.12); color: var(--accent); }
+
+      /* === 设置面板 — 右侧抽屉 === */
+      .settings-panel {
+        position: fixed;
+        top: 0; right: 0;
+        width: 280px;
+        max-width: 85vw;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 100;
+        transform: translateX(100%);
+        transition: transform 0.28s ease;
+        border-left: 1px solid var(--border);
+        box-shadow: -4px 0 24px rgba(0,0,0,0.4);
+        padding: 0;
+        overflow-y: auto;
+      }
+      .settings-panel.open { transform: translateX(0); }
+      .settings-panel.collapsed { width: 280px; max-width: 85vw; transform: translateX(100%); }
+
+      /* 抽屉头部（设置面板） */
+      .settings-drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .settings-drawer-header span { font-size: 13px; font-weight: 600; color: var(--text); }
+      .settings-drawer-close {
+        background: none; border: none;
+        color: var(--text-secondary); font-size: 20px;
+        cursor: pointer; padding: 2px 6px; border-radius: 4px;
+        line-height: 1;
+      }
+      .settings-drawer-close:hover { background: rgba(233,69,96,0.12); color: var(--accent); }
+
+      /* 设置面板内容需要 padding（已在头部外面） */
+      .settings-panel > :not(.settings-drawer-header) {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+      .settings-panel > h2:first-of-type { padding-top: 12px; }
+      .settings-panel > .hint { padding-bottom: 16px; }
+
+      /* === 面板遮罩层 === */
+      .panel-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.55);
+        z-index: 99;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      .panel-backdrop.show { display: block; opacity: 1; }
 
       /* 显示目录树切换按钮 */
       .tree-toggle-btn { display: inline-flex; align-items: center; justify-content: center; }
@@ -1430,6 +1527,10 @@
 <body>
   <!-- 左栏 — 会话列表 -->
   <div class="conv-panel" id="convPanel">
+    <div class="conv-drawer-header">
+      <span>📋 会话</span>
+      <button class="conv-drawer-close" onclick="togglePanelLeft()" aria-label="关闭">×</button>
+    </div>
     <div class="conv-section">
       <div class="conv-header">
         <h3>📋 会话</h3>
@@ -1476,6 +1577,7 @@
       </div>
       <div class="file-browser">
         <div class="tree-backdrop" id="treeBackdrop" onclick="toggleFileTree()"></div>
+        <div class="panel-backdrop" id="panelBackdrop" onclick="closePanelDrawers()"></div>
         <div class="file-tree" id="fileTree">
           <div class="tree-drawer-header">
             <span>📂 目录</span>
@@ -1513,6 +1615,10 @@
 
   <!-- 右栏 — 设置面板 -->
   <div class="settings-panel" id="settingsPanel">
+    <div class="settings-drawer-header">
+      <span>⚙️ 设置</span>
+      <button class="settings-drawer-close" onclick="togglePanelRight()" aria-label="关闭">×</button>
+    </div>
     <h2>⚙️ 设置</h2>
     <div>
       <label>API 地址</label>
@@ -1592,10 +1698,12 @@
       if (saved.token) document.getElementById('token').value = saved.token;
       if (saved.agentId) document.getElementById('agentId').value = saved.agentId;
 
-      // 恢复面板折叠状态
-      const panelState = JSON.parse(localStorage.getItem('aichat_panels') || '{}');
-      if (panelState.convCollapsed) togglePanelLeft(false);
-      if (panelState.settingsCollapsed) togglePanelRight(false);
+      // 恢复面板折叠状态（仅桌面端）
+      if (!isMobileView()) {
+        const panelState = JSON.parse(localStorage.getItem('aichat_panels') || '{}');
+        if (panelState.convCollapsed) togglePanelLeft(false);
+        if (panelState.settingsCollapsed) togglePanelRight(false);
+      }
     };
 
     function switchTab(tabName) {
@@ -1605,24 +1713,92 @@
       document.getElementById('tab-' + tabName).classList.add('active');
     }
 
-    /* ==================== 面板折叠/展开 ==================== */
+    /* ==================== 面板折叠/展开（桌面） / 抽屉切换（移动端） ==================== */
+
+    /** 当前是否为移动端视口 */
+    function isMobileView() { return window.innerWidth <= 768; }
+
     function togglePanelLeft(save = true) {
       const panel = document.getElementById('convPanel');
       const btn = document.getElementById('toggleConvPanel');
-      panel.classList.toggle('collapsed');
-      btn.classList.toggle('active', !panel.classList.contains('collapsed'));
-      if (save) savePanelState();
+
+      if (isMobileView()) {
+        // 移动端：抽屉模式
+        const isOpen = panel.classList.contains('open');
+        if (isOpen) {
+          closePanelDrawers();
+          return;
+        }
+        // 关闭另一个抽屉
+        closeSettingsDrawer();
+        // 打开会话抽屉
+        panel.classList.add('open');
+        panel.classList.remove('collapsed');
+        document.getElementById('panelBackdrop').classList.add('show');
+        btn.classList.add('active');
+      } else {
+        // 桌面端：侧栏折叠模式
+        panel.classList.toggle('collapsed');
+        btn.classList.toggle('active', !panel.classList.contains('collapsed'));
+        if (save) savePanelState();
+      }
     }
 
     function togglePanelRight(save = true) {
       const panel = document.getElementById('settingsPanel');
       const btn = document.getElementById('toggleSettingsPanel');
-      panel.classList.toggle('collapsed');
-      btn.classList.toggle('active', !panel.classList.contains('collapsed'));
-      if (save) savePanelState();
+
+      if (isMobileView()) {
+        // 移动端：抽屉模式
+        const isOpen = panel.classList.contains('open');
+        if (isOpen) {
+          closePanelDrawers();
+          return;
+        }
+        // 关闭另一个抽屉
+        closeConvDrawer();
+        // 打开设置抽屉
+        panel.classList.add('open');
+        panel.classList.remove('collapsed');
+        document.getElementById('panelBackdrop').classList.add('show');
+        btn.classList.add('active');
+      } else {
+        // 桌面端：侧栏折叠模式
+        panel.classList.toggle('collapsed');
+        btn.classList.toggle('active', !panel.classList.contains('collapsed'));
+        if (save) savePanelState();
+      }
+    }
+
+    /** 关闭所有面板抽屉 + 遮罩 */
+    function closePanelDrawers() {
+      const convPanel = document.getElementById('convPanel');
+      const settingsPanel = document.getElementById('settingsPanel');
+      const backdrop = document.getElementById('panelBackdrop');
+      const convBtn = document.getElementById('toggleConvPanel');
+      const settingsBtn = document.getElementById('toggleSettingsPanel');
+
+      convPanel.classList.remove('open');
+      settingsPanel.classList.remove('open');
+      if (backdrop) backdrop.classList.remove('show');
+      if (convBtn) convBtn.classList.remove('active');
+      if (settingsBtn) settingsBtn.classList.remove('active');
+    }
+
+    function closeConvDrawer() {
+      const panel = document.getElementById('convPanel');
+      panel.classList.remove('open');
+      document.getElementById('toggleConvPanel').classList.remove('active');
+    }
+
+    function closeSettingsDrawer() {
+      const panel = document.getElementById('settingsPanel');
+      panel.classList.remove('open');
+      document.getElementById('toggleSettingsPanel').classList.remove('active');
     }
 
     function savePanelState() {
+      if (isMobileView()) return; // 移动端不持久化
       const convCollapsed = document.getElementById('convPanel').classList.contains('collapsed');
       const settingsCollapsed = document.getElementById('settingsPanel').classList.contains('collapsed');
       localStorage.setItem('aichat_panels', JSON.stringify({ convCollapsed, settingsCollapsed }));
@@ -2234,6 +2410,9 @@
 
       // 切换到聊天 Tab
       switchTab('chat');
+
+      // 移动端选择会话后关闭抽屉
+      closePanelDrawers();
 
       // 清空消息区，显示加载中
       const msgs = document.getElementById('messages');
@@ -3609,9 +3788,23 @@
       if (window.innerWidth <= 768 && treeVisible) toggleFileTree();
     }
 
-    // 窗口变大到桌面宽度时自动关闭抽屉
+    // 窗口尺寸变化时：桌面→移动端自动清理抽屉状态，移动端→桌面端恢复折叠状态
+    let wasMobile = isMobileView();
     window.addEventListener('resize', function() {
       if (window.innerWidth > 768 && treeVisible) toggleFileTree();
+      const nowMobile = isMobileView();
+      if (wasMobile && !nowMobile) {
+        // 从移动端切换到桌面端：关闭所有抽屉，恢复面板折叠状态
+        closePanelDrawers();
+      }
+      if (!wasMobile && nowMobile) {
+        // 从桌面端切换到移动端：确保无抽屉残留状态
+        const convPanel = document.getElementById('convPanel');
+        const settingsPanel = document.getElementById('settingsPanel');
+        convPanel.classList.remove('open');
+        settingsPanel.classList.remove('open');
+      }
+      wasMobile = nowMobile;
     });
 
   </script>

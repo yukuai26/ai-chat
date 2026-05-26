@@ -1040,6 +1040,42 @@
       white-space: nowrap;
     }
     .tree-toolbar-btn .icon { font-size: 13px; }
+    /* ==================== 会话右键菜单 ==================== */
+    .conv-context-menu {
+      position: fixed;
+      background: var(--sidebar-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.55);
+      z-index: 3000;
+      min-width: 130px;
+      opacity: 0;
+      transform: scale(0.92);
+      transition: opacity 0.12s, transform 0.12s;
+      pointer-events: none;
+    }
+    .conv-context-menu.show {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+    .conv-context-menu-item {
+      padding: 9px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 6px;
+      color: var(--text);
+      transition: background 0.12s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .conv-context-menu-item:hover { background: rgba(233,69,96,0.12); }
+    .conv-context-menu-item.danger { color: var(--accent); }
+    .conv-context-menu-item.danger:hover { background: rgba(233,69,96,0.2); }
+    .conv-context-menu-item .menu-icon { font-size: 14px; width: 18px; text-align: center; }
   </style>
 </head>
 <body>
@@ -1156,6 +1192,11 @@
     </div>
   </div>
   <div class="toast-container" id="toastContainer"></div>
+  <div class="conv-context-menu" id="convContextMenu">
+    <div class="conv-context-menu-item danger" onclick="handleDeleteConversation()">
+      <span class="menu-icon">🗑️</span> 删除对话
+    </div>
+  </div>
 
   <script>
     let connected = false;
@@ -1560,6 +1601,160 @@
         renderConversationList([]);
       }
     }
+
+    // ==================== 会话右键菜单 & 删除 (F24) ====================
+
+    let contextMenuSessionId = null;
+    let contextMenuSessionTitle = null;
+    let longPressTimer = null;
+    let longPressTriggered = false;
+    const LONG_PRESS_DURATION = 600; // ms
+
+    /**
+     * 显示会话右键菜单
+     */
+    function showConvContextMenu(event, sessionId, sessionTitle) {
+      event.preventDefault();
+      event.stopPropagation();
+      hideContextMenu();
+
+      contextMenuSessionId = sessionId;
+      contextMenuSessionTitle = sessionTitle;
+
+      const menu = document.getElementById('convContextMenu');
+      if (!menu) return;
+
+      // 调整菜单位置确保不超出视口
+      let x = event.clientX || event.touches?.[0]?.clientX || 0;
+      let y = event.clientY || event.touches?.[0]?.clientY || 0;
+
+      // 先显示才能测量尺寸
+      menu.classList.add('show');
+
+      requestAnimationFrame(() => {
+        const rect = menu.getBoundingClientRect();
+        if (x + rect.width > window.innerWidth - 8) x = window.innerWidth - rect.width - 8;
+        if (y + rect.height > window.innerHeight - 8) y = window.innerHeight - rect.height - 8;
+        if (x < 4) x = 4;
+        if (y < 4) y = 4;
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+      });
+    }
+
+    /**
+     * 隐藏右键菜单
+     */
+    function hideContextMenu() {
+      const menu = document.getElementById('convContextMenu');
+      if (menu) menu.classList.remove('show');
+      contextMenuSessionId = null;
+      contextMenuSessionTitle = null;
+      longPressTriggered = false;
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }
+
+    /**
+     * 执行删除会话
+     */
+    async function handleDeleteConversation() {
+      const sid = contextMenuSessionId;
+      const title = contextMenuSessionTitle || '新会话';
+      hideContextMenu();
+      if (!sid) return;
+
+      // 确认弹窗
+      const confirmed = await showConfirm(
+        '删除会话',
+        '确定要删除「<strong>' + escapeHtmlSafe(title) + '</strong>」吗？<br><small style="color:var(--text-secondary);">此操作不可撤销，消息历史将被永久删除。</small>'
+      );
+      if (!confirmed) return;
+
+      try {
+        showToast('删除中...', 'info', 2000);
+        const resp = await fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(sid), {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) {
+          if (resp.status === 404) throw new Error('会话不存在（可能已被删除）');
+          const body = await resp.text();
+          let msg = 'HTTP ' + resp.status;
+          try { msg = JSON.parse(body).message || msg; } catch(e) {}
+          throw new Error(msg);
+        }
+        showToast('会话已删除 ✅', 'success');
+
+        // 如果删除的是当前活跃会话，清空消息区
+        if (sid === activeConversationId) {
+          activeConversationId = null;
+          const msgs = document.getElementById('messages');
+          msgs.innerHTML = '<div class="empty-state"><div class="icon">💬</div><p>选择一个会话开始聊天</p></div>';
+        }
+
+        // 刷新列表
+        await loadConversations();
+      } catch (e) {
+        showToast('删除失败: ' + e.message, 'error');
+      }
+    }
+
+    // 全局点击关闭右键菜单
+    document.addEventListener('click', hideContextMenu);
+    document.addEventListener('scroll', hideContextMenu, true);
+
+    // 在会话列表上使用事件委托处理右键和长按
+    (function setupConvEventDelegation() {
+      const groups = document.getElementById('convGroups');
+      if (!groups) return;
+
+      // 右键事件
+      groups.addEventListener('contextmenu', function(e) {
+        const item = e.target.closest('.conv-item');
+        if (!item) { hideContextMenu(); return; }
+        const sid = item.dataset.sid;
+        const title = item.querySelector('.conv-item-title')?.textContent || '新会话';
+        showConvContextMenu(e, sid, title);
+      });
+
+      // 触摸长按事件（移动端）
+      groups.addEventListener('touchstart', function(e) {
+        const item = e.target.closest('.conv-item');
+        if (!item) return;
+        const sid = item.dataset.sid;
+        const title = item.querySelector('.conv-item-title')?.textContent || '新会话';
+        longPressTriggered = false;
+
+        longPressTimer = setTimeout(function() {
+          longPressTriggered = true;
+          hideContextMenu();
+          showConvContextMenu(e, sid, title);
+        }, LONG_PRESS_DURATION);
+      }, { passive: false });
+
+      groups.addEventListener('touchend', function(e) {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+        // 长按触发了菜单后，阻止紧随的 click（selectConversation）
+        if (longPressTriggered) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      });
+
+      groups.addEventListener('touchmove', function(e) {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+      });
+
+      // 点击拦截：长按触发后，阻止一次 click
+      groups.addEventListener('click', function(e) {
+        if (longPressTriggered) {
+          longPressTriggered = false;
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }, true);
+    })();
 
     // ==================== 文件浏览器 API ====================
 

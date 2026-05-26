@@ -10,6 +10,7 @@ import json
 import stat
 import logging
 import mimetypes
+import requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
@@ -65,6 +66,12 @@ def _load_token():
     return "dev-token-placeholder"
 
 API_TOKEN = _load_token()
+
+# ---- Gateway 配置 ----
+GATEWAY_URL = "http://127.0.0.1:18789/v1/chat/completions"
+GATEWAY_TOKEN = API_TOKEN  # 复用同一 Token
+DEFAULT_MODEL = "deepseek/deepseek-v4-pro"
+CHAT_TIMEOUT = 120  # Gateway 调用超时（秒）
 
 # ---- Session 存储配置 ----
 SESSION_DIR = "/home/ubuntu/.openclaw/user-sessions"
@@ -446,6 +453,237 @@ def get_session(session_id):
     except (json.JSONDecodeError, OSError) as e:
         logger.error(f"读取 Session 失败: {session_file}, 错误: {e}")
         return error_response(f"Session 读取失败: {e}", 500)
+
+
+# ---- Gateway 调用 ----
+
+def _call_gateway(messages: list[dict]) -> dict:
+    """调用 Gateway API，发送消息并获取回复。
+
+    Args:
+        messages: OpenAI 格式的 messages 数组
+
+    Returns:
+        {"role": "assistant", "content": "...", "time": "..."}
+
+    Raises:
+        RuntimeError: Gateway 调用失败、超时、或返回异常
+    """
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {GATEWAY_TOKEN}",
+    }
+    payload = {
+        "model": DEFAULT_MODEL,
+        "messages": messages,
+    }
+
+    try:
+        logger.info(f"调用 Gateway: {len(messages)} 条消息, model={DEFAULT_MODEL}")
+        resp = requests.post(GATEWAY_URL, json=payload, headers=headers, timeout=CHAT_TIMEOUT)
+        resp.raise_for_status()
+        result = resp.json()
+
+        if "choices" not in result or not result["choices"]:
+            logger.error(f"Gateway 返回空 choices: {json.dumps(result, ensure_ascii=False)[:500]}")
+            raise RuntimeError("Gateway 返回空响应")
+
+        choice = result["choices"][0]
+        content = choice.get("message", {}).get("content", "")
+        finish_reason = choice.get("finish_reason", "unknown")
+        if not content:
+            logger.error(f"Gateway 返回空内容, finish_reason={finish_reason}")
+            raise RuntimeError("Gateway 返回空内容")
+
+        logger.info(f"Gateway 返回成功, 内容长度: {len(content)}, finish_reason={finish_reason}")
+
+        tz = ZoneInfo("Asia/Shanghai")
+        return {
+            "role": "assistant",
+            "content": content,
+            "time": datetime.now(tz).isoformat(),
+        }
+
+    except requests.exceptions.Timeout:
+        logger.error(f"Gateway 调用超时 ({CHAT_TIMEOUT}s)")
+        raise RuntimeError("Gateway 响应超时，请稍后重试")
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Gateway 连接失败: {e}")
+        raise RuntimeError("无法连接到 Gateway 服务")
+    except requests.exceptions.HTTPError as e:
+        body = ""
+        try:
+            body = e.response.text[:500]
+        except Exception:
+            pass
+        logger.error(f"Gateway HTTP 错误 {e.response.status_code if e.response else 'N/A'}: {body}")
+        raise RuntimeError(f"Gateway 返回错误 (HTTP {e.response.status_code if e.response else 'N/A'})")
+    except (json.JSONDecodeError, KeyError) as e:
+        logger.error(f"Gateway 响应解析失败: {e}")
+        raise RuntimeError("Gateway 响应格式异常")
+
+
+def _build_gateway_messages(
+    session_messages: list[dict],
+    new_message: str,
+    new_files: list[str] = None,
+) -> list[dict]:
+    """将 Session 消息历史 + 新消息拼接为 Gateway 所需的 messages 数组。
+
+    历史消息中的文件附件会以系统消息形式注入上下文，
+    让 Gateway（小助手）知道用户曾选择了哪些文件。
+
+    Args:
+        session_messages: Session 中已有的消息历史（不含本次新消息）
+        new_message: 用户新发送的消息文本
+        new_files: 用户本次选择的文件路径列表（可选）
+
+    Returns:
+        Gateway API 所需的 messages 数组（OpenAI 格式）
+    """
+    messages = []
+
+    for msg in session_messages:
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+
+        if role == "user":
+            files = msg.get("files", [])
+            if files:
+                file_names = [Path(f).name for f in files]
+                messages.append({
+                    "role": "system",
+                    "content": f"[历史消息] 用户当时选择了文件: {', '.join(file_names)}",
+                })
+            messages.append({"role": "user", "content": content})
+
+        elif role == "assistant":
+            messages.append({"role": "assistant", "content": content})
+
+    # 新消息的文件附件
+    if new_files:
+        new_file_names = [Path(f).name for f in new_files]
+        messages.append({
+            "role": "system",
+            "content": f"用户选择了以下文件: {', '.join(new_file_names)}",
+        })
+
+    messages.append({"role": "user", "content": new_message})
+
+    return messages
+
+
+@app.route("/v1/sessions/<session_id>/chat", methods=["POST"])
+@require_token
+def session_chat(session_id):
+    """POST /v1/sessions/{id}/chat — 发送消息到对话，调用 Gateway 获取 AI 回复。
+
+    请求体 JSON:
+      {"message": "用户消息", "files": ["可选文件路径列表"]}
+
+    流程:
+      1. 解析请求参数
+      2. 加载 Session 文件
+      3. 拼装上下文消息（历史对话 + 文件附件）→ 调用 Gateway
+      4. 保存用户消息 + AI 回复到 Session
+      5. 返回更新后的完整 Session
+
+    返回 200: 完整的 Session JSON（含新增消息）
+    错误:
+      400: 参数无效
+      404: Session 不存在
+      502: Gateway 调用失败
+    """
+    # 安全校验：拒绝路径穿越和空 ID
+    if not session_id or not session_id.strip():
+        return error_response("Session ID 不能为空", 400)
+    if "/" in session_id or "\\" in session_id or ".." in session_id:
+        return error_response("Session ID 格式无效", 400)
+
+    # 解析请求体
+    data = request.get_json(silent=True)
+    if not data or "message" not in data:
+        return error_response("缺少必填参数", 400, "请求体需包含 message 字段")
+
+    message = data["message"]
+    if not isinstance(message, str) or not message.strip():
+        return error_response("消息内容不能为空", 400)
+
+    files = data.get("files", [])
+    if files is not None and not isinstance(files, list):
+        return error_response("files 必须是数组", 400)
+
+    # 加载 Session
+    session_dir = Path(SESSION_DIR)
+    session_file = session_dir / f"{session_id}.json"
+
+    # 路径安全校验
+    try:
+        session_resolved = session_file.resolve()
+        session_dir_resolved = session_dir.resolve()
+        if not (
+            str(session_resolved).startswith(str(session_dir_resolved) + os.sep)
+            or session_resolved == session_dir_resolved
+        ):
+            logger.warning(f"Session 路径校验失败: {session_id} 解析到 {session_resolved}")
+            return error_response("Session ID 无效", 400)
+    except (ValueError, OSError) as e:
+        logger.warning(f"Session 路径解析失败: {session_id}, 错误: {e}")
+        return error_response("Session ID 无效", 400)
+
+    try:
+        with open(session_file, "r", encoding="utf-8") as f:
+            session = json.load(f)
+    except FileNotFoundError:
+        return error_response("Session 不存在", 404)
+    except (json.JSONDecodeError, OSError) as e:
+        logger.error(f"读取 Session 失败: {session_file}, 错误: {e}")
+        return error_response("Session 读取失败", 500)
+
+    tz = ZoneInfo("Asia/Shanghai")
+    now = datetime.now(tz)
+
+    # 拼装上下文并调用 Gateway（先不写 Session，调用失败时保持数据完整）
+    existing_messages = session.get("messages", [])
+    gateway_messages = _build_gateway_messages(
+        existing_messages,
+        message.strip(),
+        files or None,
+    )
+
+    try:
+        assistant_msg = _call_gateway(gateway_messages)
+    except RuntimeError as e:
+        logger.error(f"Session chat Gateway 调用失败: {session_id}, 错误: {e}")
+        return error_response(f"消息发送失败: {e}", 502)
+
+    # Gateway 成功 → 追加用户消息 + AI 回复
+    user_msg = {
+        "role": "user",
+        "content": message.strip(),
+        "time": now.isoformat(),
+    }
+    if files:
+        user_msg["files"] = files
+
+    session["messages"].append(user_msg)
+    session["messages"].append(assistant_msg)
+    session["updated"] = datetime.now(tz).isoformat()
+
+    # 保存 Session
+    try:
+        with open(session_file, "w", encoding="utf-8") as f:
+            json.dump(session, f, ensure_ascii=False, indent=2)
+    except OSError as e:
+        logger.error(f"Session 保存失败: {session_file}, 错误: {e}")
+        return error_response("Session 保存失败", 500)
+
+    logger.info(
+        f"Session chat 完成: {session_id}, "
+        f"新消息: {message.strip()[:50]}..., "
+        f"总数: {len(session['messages'])}"
+    )
+    return jsonify(session), 200
 
 
 # ---- 文件写入 ----

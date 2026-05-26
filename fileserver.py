@@ -8,6 +8,7 @@ Phase 1: 只读端点（GET /ls, /read, /health）
 import os
 import json
 import stat
+import logging
 import mimetypes
 from pathlib import Path
 from functools import wraps
@@ -15,12 +16,55 @@ from flask import Flask, request, jsonify, send_file
 
 app = Flask(__name__)
 
+# ---- 日志 ----
+logging.basicConfig(level=logging.INFO, format="[fileserver] %(asctime)s %(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
+
 # ---- 配置 ----
 WHITELIST = [
     "/home/ubuntu/.openclaw/workspace-assistant",
     "/home/ubuntu/.openclaw/workspace-build-cat",
 ]
-API_TOKEN = os.environ.get("FILESERVER_TOKEN", "dev-token-placeholder")
+
+
+def _load_token():
+    """从多个来源加载 API Token（优先级：环境变量 > Gateway 配置文件 > 占位符）。
+    
+    来源：
+    1. FILESERVER_TOKEN 环境变量（最高优先级）
+    2. ~/.openclaw/openclaw.json → gateway.auth.token（Gateway 统一 Token）
+    3. 开发环境占位符（仅本地开发允许）
+    """
+    # 1. 环境变量（最高优先级，运维可手动覆盖）
+    env_token = os.environ.get("FILESERVER_TOKEN")
+    if env_token:
+        logger.info("Token 来源: FILESERVER_TOKEN 环境变量")
+        return env_token
+
+    # 2. 从 Gateway 配置文件读取（与聊天 API 统一 Token）
+    config_paths = [
+        os.path.expanduser("~/.openclaw/openclaw.json"),
+    ]
+    for path in config_paths:
+        try:
+            if os.path.isfile(path):
+                with open(path, "r") as f:
+                    cfg = json.load(f)
+                token = cfg.get("gateway", {}).get("auth", {}).get("token", "")
+                if token:
+                    logger.info(f"Token 来源: Gateway 配置文件 ({path})")
+                    return token
+        except (json.JSONDecodeError, IOError, KeyError) as e:
+            logger.warning(f"读取 {path} 失败: {e}")
+            continue
+
+    # 3. 开发环境占位符（生产环境应配置上述来源之一）
+    logger.warning("Token 未找到（环境变量 / Gateway 配置），使用开发占位符")
+    return "dev-token-placeholder"
+
+API_TOKEN = _load_token()
+logger.info(f"fileserver 启动，白名单目录: {WHITELIST}")
+
 
 # ---- 工具函数 ----
 
@@ -87,15 +131,39 @@ def _list_directory(directory: Path) -> list[dict]:
     return entries
 
 
-# ---- 认证中间件（B3 完善） ----
+# ---- 认证中间件 (B3: 完整实现) ----
 
 def require_token(f):
-    """Token 认证装饰器（占位，B3 实现完整认证）。"""
+    """Token 认证装饰器。
+    
+    从 Authorization 头提取 Bearer Token，
+    与 API_TOKEN（来自环境变量 / Gateway 配置文件）比对。
+    
+    安全特性：
+    - 拒绝空 Token
+    - 拒绝错误 Token
+    - 记录认证失败日志（不含 Token 明文）
+    """
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.headers.get("Authorization", "").removeprefix("Bearer ")
-        if API_TOKEN and token != API_TOKEN:
-            return jsonify({"error": "Unauthorized"}), 401
+        auth_header = request.headers.get("Authorization", "")
+        
+        # 提取 Bearer Token
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+        else:
+            token = ""
+        
+        # 拒绝空 Token
+        if not token:
+            logger.warning(f"认证失败: 空 Token (path={request.path}, ip={request.remote_addr})")
+            return jsonify({"error": "缺少认证 Token", "detail": "请在 Authorization 头中提供 Bearer Token"}), 401
+        
+        # Token 比对
+        if token != API_TOKEN:
+            logger.warning(f"认证失败: Token 不匹配 (path={request.path}, ip={request.remote_addr})")
+            return jsonify({"error": "认证失败", "detail": "Token 无效"}), 401
+        
         return f(*args, **kwargs)
     return decorated
 
@@ -104,8 +172,12 @@ def require_token(f):
 
 @app.route("/v1/files/health", methods=["GET"])
 def health():
-    """健康检查端点。"""
-    return jsonify({"status": "ok", "service": "fileserver"})
+    """健康检查端点（无需认证）。"""
+    return jsonify({
+        "status": "ok",
+        "service": "fileserver",
+        "roots": WHITELIST,
+    })
 
 
 @app.route("/v1/files/ls", methods=["GET"])

@@ -242,7 +242,30 @@
       transition: border-color 0.2s;
     }
     .input-area textarea:focus { border-color: var(--accent); }
-    .input-area button {
+    .input-area .attach-btn {
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text-secondary);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      align-self: flex-end;
+      flex-shrink: 0;
+    }
+    .input-area .attach-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(108, 92, 231, 0.1);
+    }
+    .input-area button[type="submit"],
+    .input-area button:not(.attach-btn) {
       padding: 12px 20px;
       border-radius: 12px;
       border: none;
@@ -1187,6 +1210,7 @@
         </div>
       </div>
       <div class="input-area">
+        <button class="attach-btn" id="attachBtn" title="选择文件" onclick="toggleFilePicker()">📎</button>
         <textarea id="input" placeholder="输入消息..." rows="1"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
           oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,160)+'px';"
@@ -1553,6 +1577,18 @@
       msgs.appendChild(div);
       msgs.scrollTop = msgs.scrollHeight;
       return { container: div, content: contentDiv };
+    }
+
+    /**
+     * F28 — 文件选择按钮：切换文件选择器弹窗（弹窗实现见 F29）
+     */
+    function toggleFilePicker() {
+      const picker = document.getElementById('filePicker');
+      if (picker) {
+        // F29 将实现完整弹窗，当前检查 DOM 是否存在
+        const visible = picker.style.display !== 'none';
+        picker.style.display = visible ? 'none' : 'block';
+      }
     }
 
     async function sendMessage() {

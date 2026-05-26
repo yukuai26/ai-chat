@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 fileserver.py — Flask 文件服务，提供 REST API 管理服务器文件。
-Phase 1: 只读端点（GET /ls, /read, /health）
-后续 Phase 扩展：写操作（/write, /upload, /mkdir）
+Phase 1: GET /ls, /read, /health, POST /mkdir
+后续 Phase 扩展：写操作（/write, /upload）
 """
 
 import os
@@ -107,6 +107,22 @@ def _check_read_access(target: Path) -> tuple[bool, str]:
         return False, "路径不存在"
     if not os.access(target, os.R_OK):
         return False, "无读取权限"
+    return True, "ok"
+
+
+def _check_write_access(target: Path, is_dir: bool = False) -> tuple[bool, str]:
+    """检查是否允许在 target 位置写入。
+    
+    对于目录创建：检查父目录存在且可写，如果目录已存在则报错（避免幂等问题）。
+    对于文件写入：检查父目录存在且可写。
+    """
+    parent = target if is_dir else target.parent
+    if not parent.exists():
+        return False, "父目录不存在"
+    if not os.access(parent, os.W_OK):
+        return False, "父目录无写入权限"
+    if is_dir and target.exists():
+        return False, "目录已存在"
     return True, "ok"
 
 
@@ -252,8 +268,39 @@ def upload_file():
 @app.route("/v1/files/mkdir", methods=["POST"])
 @require_token
 def make_directory():
-    """POST /v1/files/mkdir — 创建目录（后续 Phase 实现）。"""
-    return jsonify({"error": "创建目录未开放（后续 Phase）"}), 405
+    """POST /v1/files/mkdir — 创建目录。
+    
+    请求体 JSON: {"path": "<relative-path>"}
+    安全约束：
+    - 路径必须在白名单范围内
+    - 父目录必须存在且可写
+    - 目录已存在时返回 409 冲突
+    - 支持递归创建（os.makedirs）
+    """
+    data = request.get_json(silent=True)
+    if not data or "path" not in data:
+        return jsonify({"error": "缺少必填参数", "detail": "请求体需包含 path 字段"}), 400
+
+    path_arg = data["path"]
+    try:
+        target = _resolve_path(path_arg)
+    except (ValueError, OSError) as e:
+        return jsonify({"error": f"路径解析失败: {e}"}), 400
+
+    ok, msg = _check_write_access(target, is_dir=True)
+    if not ok:
+        if msg == "目录已存在":
+            return jsonify({"error": msg}), 409
+        return jsonify({"error": msg}), 403
+
+    try:
+        # 递归创建所有不存在的中间目录
+        target.mkdir(parents=True)
+        logger.info(f"目录创建成功: {target}")
+        return jsonify({"ok": True, "path": str(target)})
+    except OSError as e:
+        logger.error(f"目录创建失败: {target}, 错误: {e}")
+        return jsonify({"error": f"目录创建失败: {e}"}), 500
 
 
 # ---- 错误处理 ----

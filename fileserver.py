@@ -566,6 +566,113 @@ def _call_gateway(messages: list[dict]) -> dict:
         raise RuntimeError("Gateway 响应格式异常")
 
 
+# ---- 文件附件解析 ----
+
+# 文本文件扩展名：这些文件的内容将被提取并注入给 Gateway
+TEXT_EXTENSIONS: set[str] = {
+    ".txt", ".md", ".markdown", ".rst",
+    ".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs",
+    ".html", ".htm", ".css", ".scss", ".sass", ".less",
+    ".json", ".yaml", ".yml", ".xml", ".toml", ".ini", ".cfg", ".conf", ".env",
+    ".csv", ".tsv",
+    ".sh", ".bash", ".zsh", ".fish",
+    ".rs", ".go", ".java", ".kt", ".kts", ".scala",
+    ".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".hh",
+    ".rb", ".php", ".sql", ".r", ".swift", ".m", ".mm",
+    ".lua", ".pl", ".pm", ".tcl", ".el", ".clj", ".cljs", ".ex", ".exs",
+    ".dart", ".groovy", ".jl", ".nim", ".v", ".vhdl", ".sv",
+    ".vue", ".svelte",
+    ".tf", ".tfvars", ".hcl",
+}
+MAX_TEXT_EXTRACT_SIZE = 100 * 1024  # 100KB，超过此大小的文本文件跳过内容提取
+MAX_EXTRACT_CONTENT_LENGTH = 4000   # 注入 Gateway 的最大字符数
+
+
+def _parse_file_attachment(file_path_str: str) -> dict:
+    """解析文件附件：自动提取文本内容（txt/md/code）或标注文件类型+路径。
+
+    规则：
+    - 文本文件（扩展名在 TEXT_EXTENSIONS 中 + 大小 ≤ MAX_TEXT_EXTRACT_SIZE）：
+      读取 UTF-8 内容，截断至 MAX_EXTRACT_CONTENT_LENGTH 字符，注入给 Gateway
+    - 非文本文件 / 过大文件 / 解码失败：
+      记录 MIME 类型、文件大小和路径
+
+    Args:
+        file_path_str: 文件路径字符串
+
+    Returns:
+        dict: {
+            "path": 文件完整路径,
+            "name": 文件名,
+            "type": "text" | "binary" | "not_found",
+            "summary": 用于注入给 Gateway 的文本描述
+        }
+    """
+    file_path = Path(file_path_str)
+    result: dict = {
+        "path": str(file_path),
+        "name": file_path.name,
+    }
+
+    # 检查文件是否存在
+    if not file_path.exists():
+        result["type"] = "not_found"
+        result["summary"] = f"⚠️ 文件不存在: {file_path.name}"
+        return result
+
+    if not file_path.is_file():
+        result["type"] = "not_found"
+        result["summary"] = f"⚠️ 路径不是文件: {file_path.name}"
+        return result
+
+    # 获取文件大小
+    try:
+        file_size = file_path.stat().st_size
+    except OSError:
+        result["type"] = "binary"
+        result["summary"] = f"⚠️ 无法读取文件元数据: {file_path.name}"
+        return result
+
+    ext = file_path.suffix.lower()
+
+    # 尝试文本提取
+    if ext in TEXT_EXTENSIONS and file_size <= MAX_TEXT_EXTRACT_SIZE:
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            result["type"] = "text"
+            # 截断过长内容
+            total_len = len(content)
+            if total_len > MAX_EXTRACT_CONTENT_LENGTH:
+                content = (
+                    content[:MAX_EXTRACT_CONTENT_LENGTH]
+                    + f"\n\n... (文件内容已截断，完整 {total_len} 字符)"
+                )
+            result["summary"] = (
+                f"📄 文件: {file_path.name} ({ext} 文本文件)\n"
+                f"```\n{content}\n```"
+            )
+            return result
+        except (UnicodeDecodeError, OSError):
+            # 解码失败 → 降级为 binary 标注
+            pass
+
+    # 非文本文件 / 文件过大 → 仅标注类型和路径
+    mime_type, _ = mimetypes.guess_type(str(file_path))
+    mime_desc = mime_type or "未知类型"
+    if file_size < 1024:
+        size_str = f"{file_size}B"
+    elif file_size < 1024 * 1024:
+        size_str = f"{file_size / 1024:.1f}KB"
+    else:
+        size_str = f"{file_size / (1024 * 1024):.1f}MB"
+
+    result["type"] = "binary"
+    result["summary"] = (
+        f"📎 文件: {file_path.name} | 类型: {mime_desc} | 大小: {size_str} | 路径: {file_path}"
+    )
+    return result
+
+
 def _build_gateway_messages(
     session_messages: list[dict],
     new_message: str,
@@ -593,10 +700,10 @@ def _build_gateway_messages(
         if role == "user":
             files = msg.get("files", [])
             if files:
-                file_names = [Path(f).name for f in files]
+                summaries = [_parse_file_attachment(f)["summary"] for f in files]
                 messages.append({
                     "role": "system",
-                    "content": f"[历史消息] 用户当时选择了文件: {', '.join(file_names)}",
+                    "content": f"[历史消息] 用户当时选择了以下文件:\n\n" + "\n---\n".join(summaries),
                 })
             messages.append({"role": "user", "content": content})
 
@@ -605,10 +712,10 @@ def _build_gateway_messages(
 
     # 新消息的文件附件
     if new_files:
-        new_file_names = [Path(f).name for f in new_files]
+        summaries = [_parse_file_attachment(f)["summary"] for f in new_files]
         messages.append({
             "role": "system",
-            "content": f"用户选择了以下文件: {', '.join(new_file_names)}",
+            "content": "用户选择了以下文件:\n\n" + "\n---\n".join(summaries),
         })
 
     messages.append({"role": "user", "content": new_message})

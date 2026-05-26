@@ -130,6 +130,7 @@
       font-size: 14px;
       white-space: pre-wrap;
       word-break: break-word;
+      position: relative;
     }
     .message.user {
       align-self: flex-end;
@@ -142,11 +143,33 @@
       border: 1px solid var(--border);
       border-bottom-left-radius: 4px;
     }
+    .message .msg-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .message.user .msg-header { flex-direction: row-reverse; }
+    .message .msg-avatar {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .message.user .msg-avatar { background: #2a3a5c; }
+    .message.assistant .msg-avatar { background: #2a3a5c; }
     .message .role {
       font-size: 11px;
       color: var(--text-secondary);
-      margin-bottom: 4px;
       font-weight: 600;
+    }
+    .message .msg-time {
+      font-size: 10px;
+      color: var(--text-secondary);
+      opacity: 0.7;
     }
     .message .content {
       line-height: 1.6;
@@ -168,6 +191,31 @@
       font-size: 13px;
     }
     .message .content pre code { padding: 0; background: none; }
+    /* 附件/文件标签 */
+    .message .attachments {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .message .attachment-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .message .attachment-tag .att-icon { font-size: 12px; }
+    .message .attachment-tag .att-name {
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .input-area {
       padding: 16px 24px;
       border-top: 1px solid var(--border);
@@ -1304,7 +1352,7 @@
         document.getElementById('modelBadge').textContent = 'DeepSeek V4 Pro (' + agentId + ')';
         const msgs = document.getElementById('messages');
         if (msgs.querySelector('.empty-state')) msgs.innerHTML = '';
-        addMessage('assistant', '连接成功！有什么我可以帮助你的？');
+        addMessage('assistant', '连接成功！有什么我可以帮助你的？', new Date().toISOString());
         localStorage.setItem('aichat_config', JSON.stringify({ apiUrl, token, agentId }));
         loadConversations();
         showToast('连接成功', 'success');
@@ -1315,20 +1363,108 @@
       }
     }
 
-    function addMessage(role, content) {
+    /**
+     * 格式化消息时间：今天显示 HH:MM，昨天显示「昨天 HH:MM」，更早显示 MM/DD HH:MM
+     */
+    function formatMessageTime(isoString) {
+      if (!isoString) return '';
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return '';
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+      const hh = String(date.getHours()).padStart(2, '0');
+      const mm = String(date.getMinutes()).padStart(2, '0');
+      const timeStr = hh + ':' + mm;
+      if (date >= todayStart) return timeStr;
+      if (date >= yesterdayStart) return '昨天 ' + timeStr;
+      const md = String(date.getMonth() + 1).padStart(2, '0') + '/' + String(date.getDate()).padStart(2, '0');
+      return md + ' ' + timeStr;
+    }
+
+    /**
+     * 从文件路径中提取文件名
+     */
+    function extractFileName(filePath) {
+      if (!filePath) return '';
+      const parts = filePath.replace(/\\/g, '/').split('/');
+      return parts[parts.length - 1] || filePath;
+    }
+
+    /**
+     * 渲染消息组件 — 支持 role 区分、时间戳、附件标签
+     * @param {string|Object} roleOrMsg — 角色字符串 'user'|'assistant'，或完整消息对象 {role, content, time, files}
+     * @param {string} [content] — 消息内容（role 为字符串时使用）
+     * @param {string} [time] — ISO 时间戳（可选）
+     * @param {string[]} [files] — 附件文件路径列表（可选）
+     */
+    function addMessage(roleOrMsg, content, time, files) {
+      // 兼容两种调用方式：addMessage('user', 'hello') 或 addMessage({role, content, time, files})
+      let role, msgContent, msgTime, msgFiles;
+      if (typeof roleOrMsg === 'object' && roleOrMsg !== null) {
+        role = roleOrMsg.role || 'user';
+        msgContent = roleOrMsg.content || '';
+        msgTime = roleOrMsg.time || '';
+        msgFiles = roleOrMsg.files || [];
+      } else {
+        role = roleOrMsg;
+        msgContent = content || '';
+        msgTime = time || '';
+        msgFiles = files || [];
+      }
+
       const msgs = document.getElementById('messages');
       msgs.querySelector('.empty-state')?.remove();
       msgs.querySelector('.typing-indicator')?.parentElement?.remove();
+
       const div = document.createElement('div');
       div.className = 'message ' + role;
+
+      // 消息头部：头像 + 角色名 + 时间戳
+      const header = document.createElement('div');
+      header.className = 'msg-header';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'msg-avatar';
+      avatar.textContent = role === 'user' ? '👤' : '🤖';
+
       const roleLabel = document.createElement('div');
       roleLabel.className = 'role';
       roleLabel.textContent = role === 'user' ? '你' : 'AI';
+
+      header.appendChild(avatar);
+      header.appendChild(roleLabel);
+
+      // 时间戳
+      if (msgTime) {
+        const timeEl = document.createElement('span');
+        timeEl.className = 'msg-time';
+        timeEl.textContent = formatMessageTime(msgTime);
+        header.appendChild(timeEl);
+      }
+
+      div.appendChild(header);
+
+      // 附件标签（如果有）
+      if (msgFiles && msgFiles.length > 0) {
+        const attDiv = document.createElement('div');
+        attDiv.className = 'attachments';
+        msgFiles.forEach(function(f) {
+          const tag = document.createElement('span');
+          tag.className = 'attachment-tag';
+          const fname = extractFileName(f);
+          tag.innerHTML = '<span class="att-icon">📎</span><span class="att-name" title="' + escapeHtml(f) + '">' + escapeHtml(fname) + '</span>';
+          attDiv.appendChild(tag);
+        });
+        div.appendChild(attDiv);
+      }
+
+      // 消息正文
       const contentDiv = document.createElement('div');
       contentDiv.className = 'content';
-      contentDiv.innerHTML = renderMarkdown(content);
-      div.appendChild(roleLabel);
+      contentDiv.innerHTML = renderMarkdown(msgContent);
       div.appendChild(contentDiv);
+
       msgs.appendChild(div);
       msgs.scrollTop = msgs.scrollHeight;
     }
@@ -1354,13 +1490,26 @@
       msgs.querySelector('.empty-state')?.remove();
       const div = document.createElement('div');
       div.className = 'message assistant';
+
+      // 消息头部：头像 + 角色名
+      const header = document.createElement('div');
+      header.className = 'msg-header';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'msg-avatar';
+      avatar.textContent = '🤖';
+
       const label = document.createElement('div');
       label.className = 'role';
       label.textContent = 'AI';
+
+      header.appendChild(avatar);
+      header.appendChild(label);
+      div.appendChild(header);
+
       const indicator = document.createElement('div');
       indicator.className = 'typing-indicator';
       indicator.innerHTML = '<span></span><span></span><span></span>';
-      div.appendChild(label);
       div.appendChild(indicator);
       msgs.appendChild(div);
       msgs.scrollTop = msgs.scrollHeight;
@@ -1374,7 +1523,8 @@
       if (!text) return;
       input.value = '';
       input.style.height = 'auto';
-      addMessage('user', text);
+      const now = new Date().toISOString();
+      addMessage('user', text, now);
       const sendBtn = document.getElementById('sendBtn');
       sendBtn.disabled = true;
       const typingMsg = showTyping();
@@ -1391,15 +1541,16 @@
           }),
         });
         typingMsg.remove();
+        const replyTime = new Date().toISOString();
         if (!resp.ok) {
-          addMessage('assistant', '错误 HTTP ' + resp.status);
+          addMessage('assistant', '错误 HTTP ' + resp.status, replyTime);
         } else {
           const data = await resp.json();
-          addMessage('assistant', data.choices?.[0]?.message?.content || '(no response)');
+          addMessage('assistant', data.choices?.[0]?.message?.content || '(no response)', replyTime);
         }
       } catch (e) {
         typingMsg.remove();
-        addMessage('assistant', '网络错误: ' + e.message);
+        addMessage('assistant', '网络错误: ' + e.message, new Date().toISOString());
       }
       sendBtn.disabled = false;
       document.getElementById('input').focus();
@@ -1517,7 +1668,7 @@
           msgs.innerHTML = '<div class="empty-state"><div class="icon">💬</div><p>暂无消息，开始对话吧</p></div>';
         } else {
           messages.forEach(function(m) {
-            addMessage(m.role || 'user', m.content || '');
+            addMessage(m);
           });
         }
       } catch (e) {

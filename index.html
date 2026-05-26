@@ -747,6 +747,139 @@
       .viewer-header { padding: 8px 12px; }
       .viewer-header .file-name { font-size: 12px; }
     }
+    /* ==================== 编辑模式 (Phase 2) ==================== */
+    .viewer-toolbar {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .viewer-toolbar button, .tree-toolbar-btn {
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .viewer-toolbar button:hover, .tree-toolbar-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    .viewer-toolbar .btn-save { background: var(--accent); color: white; border-color: var(--accent); }
+    .viewer-toolbar .btn-save:hover { background: var(--accent-hover); }
+    .viewer-toolbar .btn-cancel { color: var(--text-secondary); }
+    .viewer-toolbar .btn-cancel:hover { color: white; }
+    .edit-textarea {
+      flex: 1;
+      min-height: 100%;
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      resize: none;
+      outline: none;
+      tab-size: 4;
+    }
+    .edit-textarea:focus {
+      box-shadow: inset 0 0 0 2px var(--accent);
+    }
+    .edit-status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 16px;
+      background: var(--sidebar-bg);
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .edit-status-bar .dirty-indicator {
+      color: var(--accent);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .dirty-indicator.hidden { visibility: hidden; }
+    /* ==================== 确认对话框 ==================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      transition: opacity 0.2s;
+    }
+    .modal-backdrop.hidden { display: none; opacity: 0; }
+    .modal-dialog {
+      background: var(--sidebar-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .modal-dialog h3 {
+      font-size: 16px;
+      margin: 0 0 12px 0;
+      color: var(--text);
+    }
+    .modal-dialog p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 0 0 20px 0;
+      line-height: 1.5;
+    }
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .modal-buttons button {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .modal-buttons .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+    .modal-buttons .btn-primary:hover { background: var(--accent-hover); }
+    .modal-buttons .btn-secondary { background: var(--bg); color: var(--text); }
+    .modal-buttons .btn-secondary:hover { background: var(--border); }
+    .modal-buttons .btn-danger { background: transparent; color: var(--accent); border-color: var(--accent); }
+    .modal-buttons .btn-danger:hover { background: rgba(233,69,96,0.12); }
+    /* ==================== 目录树工具栏 ==================== */
+    .tree-toolbar {
+      display: flex;
+      gap: 4px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tree-toolbar-btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+    .tree-toolbar-btn .icon { font-size: 13px; }
   </style>
 </head>
 <body>
@@ -817,6 +950,10 @@
             <button class="tree-drawer-close" onclick="toggleFileTree()" aria-label="关闭目录">×</button>
           </div>
           <div class="file-tree-header">📂 目录</div>
+          <div class="tree-toolbar">
+            <button class="tree-toolbar-btn" onclick="promptNewFile()" title="新建文件"><span class="icon">📄</span> 新建文件</button>
+            <button class="tree-toolbar-btn" onclick="promptNewFolder()" title="新建文件夹"><span class="icon">📁</span> 新建文件夹</button>
+          </div>
           <div id="fileTreeContent"></div>
         </div>
         <div class="resize-handle" id="resizeHandle"></div>
@@ -830,6 +967,13 @@
     </div>
   </div>
 
+  <div class="modal-backdrop hidden" id="confirmModal" onclick="if(event.target===this)dismissConfirm()">
+    <div class="modal-dialog">
+      <h3 id="confirmTitle">确认操作</h3>
+      <p id="confirmBody"></p>
+      <div class="modal-buttons" id="confirmButtons"></div>
+    </div>
+  </div>
   <div class="toast-container" id="toastContainer"></div>
 
   <script>
@@ -1048,7 +1192,7 @@
         if (resp.status === 401) throw new Error('认证失败，请先连接');
         const body = await resp.text();
         let msg = 'HTTP ' + resp.status;
-        try { msg = JSON.parse(body).error || msg; } catch(e) {}
+        try { msg = JSON.parse(body).message || msg; } catch(e) {}
         throw new Error(msg);
       }
       const data = await resp.json();
@@ -1059,6 +1203,44 @@
         modified: e.modified || 0,
         mime: e.mime || ''
       }));
+    }
+
+    async function apiWrite(path, content) {
+      const url = (apiUrl || '') + '/v1/files/write';
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + (token || ''),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ path: path, content: content }),
+      });
+      if (!resp.ok) {
+        const body = await resp.text();
+        let msg = 'HTTP ' + resp.status;
+        try { msg = JSON.parse(body).message || msg; } catch(e) {}
+        throw new Error(msg);
+      }
+      return await resp.json();
+    }
+
+    async function apiMkdir(path) {
+      const url = (apiUrl || '') + '/v1/files/mkdir';
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + (token || ''),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ path: path }),
+      });
+      if (!resp.ok) {
+        const body = await resp.text();
+        let msg = 'HTTP ' + resp.status;
+        try { msg = JSON.parse(body).message || msg; } catch(e) {}
+        throw new Error(msg);
+      }
+      return await resp.json();
     }
 
     // ==================== 文件树组件（API 对接） ====================
@@ -1188,10 +1370,16 @@
       // Update breadcrumb
       if (entry.type === 'directory') {
         renderBreadcrumb(fullPath);
+        resetViewerState();
+        const viewer = document.getElementById('fileViewer');
+        viewer.innerHTML = '<div class="placeholder"><div class="icon">📁</div><p>' + escapeHtmlSafe(fullPath) + '</p></div>';
       } else {
         const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
         renderBreadcrumb(dirPath);
-        // 文件：触发查看器
+        // 文件：先检查未保存修改
+        if (checkUnsavedBeforeSwitch(function() {
+          renderFileViewer(fullPath, entry.name);
+        })) return;
         renderFileViewer(fullPath, entry.name);
       }
     }
@@ -1234,6 +1422,13 @@
 
     function navigateBreadcrumb(path) {
       closeTreeOnMobile();
+      // Check unsaved changes before navigating away
+      if (checkUnsavedBeforeSwitch(function() { doNavigateBreadcrumb(path); })) return;
+      doNavigateBreadcrumb(path);
+    }
+
+    function doNavigateBreadcrumb(path) {
+      resetViewerState();
       renderBreadcrumb(path);
       // Reset active item
       if (activeTreeItem) { activeTreeItem.classList.remove('active'); activeTreeItem = null; }
@@ -1324,7 +1519,7 @@
         if (resp.status === 401) throw new Error('认证失败，请先连接');
         const body = await resp.text();
         let msg = 'HTTP ' + resp.status;
-        try { msg = JSON.parse(body).error || msg; } catch(e) {}
+        try { msg = JSON.parse(body).message || msg; } catch(e) {}
         throw new Error(msg);
       }
       return await resp.text();
@@ -1334,12 +1529,55 @@
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    async function renderFileViewer(fullPath, filename) {
+    /** 创建 viewer-header HTML（含编辑按钮，非 markdown/binary 时显示） */
+    function viewerHeaderHtml(filename, lang, showEdit) {
+      return '<div class="viewer-header">' +
+        '<span class="file-name"><span class="f-icon">' + getFileIcon(filename) + '</span>' + escapeHtmlSafe(filename) + '</span>' +
+        '<span class="file-lang">' + lang + '</span>' +
+        (showEdit ? '<div class="viewer-toolbar"><button class="btn-edit" onclick="enterEditMode()">✏️ 编辑</button></div>' : '') +
+        '</div>';
+    }
+
+    // ==================== Viewer State (Phase 2) ====================
+
+    let viewerState = {
+      path: '', filename: '', content: '', originalContent: '',
+      isDirty: false, isEditing: false
+    };
+
+    function resetViewerState() {
+      viewerState.path = ''; viewerState.filename = ''; viewerState.content = '';
+      viewerState.originalContent = ''; viewerState.isDirty = false; viewerState.isEditing = false;
+    }
+
+    function setViewerContent(path, filename, content) {
+      viewerState.path = path; viewerState.filename = filename;
+      viewerState.content = content; viewerState.originalContent = content;
+      viewerState.isDirty = false; viewerState.isEditing = false;
+    }
+
+    function markDirty() {
+      if (!viewerState.isDirty) { viewerState.isDirty = true; updateDirtyIndicator(); }
+    }
+
+    function clearDirty() {
+      viewerState.isDirty = false; viewerState.originalContent = viewerState.content;
+      updateDirtyIndicator();
+    }
+
+    function updateDirtyIndicator() {
+      const el = document.getElementById('dirtyIndicator');
+      if (el) el.classList.toggle('hidden', !viewerState.isDirty || !viewerState.isEditing);
+    }
+
+    async function renderFileViewer(fullPath, filename, preloadedContent) {
       const viewer = document.getElementById('fileViewer');
       const lang = getLanguage(filename);
+      const isMd = lang === 'markdown' || filename.toLowerCase().endsWith('.md');
 
-      // Binary file by extension — don't even try to load
+      // Binary file
       if (isBinaryByExtension(filename)) {
+        resetViewerState();
         viewer.innerHTML = `
           <div class="viewer-header">
             <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
@@ -1353,30 +1591,32 @@
         return;
       }
 
+      // If content preloaded (e.g. after edit), render directly
+      if (preloadedContent !== undefined) {
+        setViewerContent(fullPath, filename, preloadedContent);
+        if (isMd) {
+          renderMarkdownContent(viewer, filename, preloadedContent, fullPath, false);
+        } else {
+          renderCodeContent(viewer, filename, lang, preloadedContent, fullPath, false);
+        }
+        return;
+      }
+
       // Loading state
-      viewer.innerHTML = `
-        <div class="viewer-header">
-          <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
-          <span class="file-lang">${lang}</span>
-        </div>
-        <div class="viewer-loading">
-          <div class="spinner spinner-lg"></div>
-          <span>加载中...</span>
-        </div>`;
+      viewer.innerHTML = viewerHeaderHtml(filename, lang, false) +
+        '<div class="viewer-loading"><div class="spinner spinner-lg"></div><span>加载中...</span></div>';
 
       try {
         let content = await apiRead(fullPath);
         const originalSize = content.length;
         let truncated = false;
-
-        // Large file — truncate and warn
         if (content.length > MAX_PREVIEW_SIZE) {
           content = content.slice(0, MAX_PREVIEW_SIZE);
           truncated = true;
         }
 
-        // Binary content detection (e.g., binary file with wrong/no extension)
         if (isBinaryContent(content)) {
+          resetViewerState();
           viewer.innerHTML = `
             <div class="viewer-header">
               <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
@@ -1390,76 +1630,311 @@
           return;
         }
 
-        let html;
+        setViewerContent(fullPath, filename, content);
 
-        // Markdown 文件：渲染为 HTML 预览
-        if (lang === 'markdown' || filename.toLowerCase().endsWith('.md')) {
-          if (!window._markedConfigured) {
-            marked.use({ breaks: true, gfm: true, langPrefix: 'hljs language-' });
-            window._markedConfigured = true;
-          }
-          const mdHtml = marked.parse(content);
-
-          const truncatedNotice = truncated
-            ? `<div class="truncate-notice">⚠️ 文件过大（${formatFileSize(originalSize)}），仅显示前 ${formatFileSize(MAX_PREVIEW_SIZE)} 的内容</div>`
-            : '';
-
-          viewer.innerHTML = `
-            <div class="viewer-header">
-              <span class="file-name"><span class="f-icon">📝</span>${escapeHtmlSafe(filename)}</span>
-              <span class="file-lang">preview</span>
-            </div>
-            ${truncatedNotice}
-            <div class="markdown-body">${mdHtml}</div>`;
-
-          // 高亮 Markdown 中的代码块
-          viewer.querySelectorAll('.markdown-body pre code').forEach(block => {
-            hljs.highlightElement(block);
-          });
-          return;
-        }
-
-        if (lang === 'plaintext') {
-          // Plain text: just escape and wrap
-          html = escapeHtmlSafe(content);
+        if (isMd) {
+          renderMarkdownContent(viewer, filename, content, fullPath, truncated);
         } else {
-          // Use highlight.js
-          const result = hljs.highlight(content, { language: lang });
-          html = result.value;
+          renderCodeContent(viewer, filename, lang, content, fullPath, truncated);
         }
-
-        const lines = content.split('\n');
-        const lineNumbers = lines.map((_, i) => '<span>' + (i + 1) + '</span>').join('');
-
-        const truncatedNotice = truncated
-          ? `<div class="truncate-notice">⚠️ 文件过大（${formatFileSize(originalSize)}），仅显示前 ${formatFileSize(MAX_PREVIEW_SIZE)}（${lines.length} 行）</div>`
-          : '';
-
-        viewer.innerHTML = `
-          <div class="viewer-header">
-            <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
-            <span class="file-lang">${lang}</span>
-          </div>
-          ${truncatedNotice}
-          <div class="viewer-body">
-            <div class="code-with-lines">
-              <div class="line-numbers">${lineNumbers}</div>
-              <div class="code-content"><pre><code class="hljs language-${lang}">${html}</code></pre></div>
-            </div>
-          </div>`;
       } catch (err) {
-        viewer.innerHTML = `
-          <div class="viewer-header">
-            <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
-            <span class="file-lang">${lang}</span>
-          </div>
-          <div class="viewer-error">
-            <span style="font-size:32px;">⚠️</span>
-            <span>${escapeHtmlSafe(err.message)}</span>
-          </div>`;
+        resetViewerState();
+        viewer.innerHTML = viewerHeaderHtml(filename, lang, false) +
+          '<div class="viewer-error"><span style="font-size:32px;">⚠️</span><span>' + escapeHtmlSafe(err.message) + '</span></div>';
         showToast('文件加载失败: ' + err.message, 'error');
       }
     }
+
+    function renderMarkdownContent(viewer, filename, content, fullPath, truncated) {
+      if (!window._markedConfigured) {
+        marked.use({ breaks: true, gfm: true, langPrefix: 'hljs language-' });
+        window._markedConfigured = true;
+      }
+      const mdHtml = marked.parse(content);
+      const truncatedNotice = truncated
+        ? '<div class="truncate-notice">⚠️ 文件过大（' + formatFileSize(viewerState.originalContent.length) + '），仅显示前 ' + formatFileSize(MAX_PREVIEW_SIZE) + ' 的内容</div>'
+        : '';
+
+      viewer.innerHTML = viewerHeaderHtml(filename, 'preview', true) + truncatedNotice +
+        '<div class="markdown-body">' + mdHtml + '</div>';
+
+      viewer.querySelectorAll('.markdown-body pre code').forEach(block => {
+        hljs.highlightElement(block);
+      });
+    }
+
+    function renderCodeContent(viewer, filename, lang, content, fullPath, truncated) {
+      let highlighted;
+      if (lang === 'plaintext') {
+        highlighted = escapeHtmlSafe(content);
+      } else {
+        const result = hljs.highlight(content, { language: lang });
+        highlighted = result.value;
+      }
+
+      const lines = content.split('\n');
+      const lineNumbers = lines.map((_, i) => '<span>' + (i + 1) + '</span>').join('');
+
+      const truncatedNotice = truncated
+        ? '<div class="truncate-notice">⚠️ 文件过大（' + formatFileSize(viewerState.originalContent.length) + '），仅显示前 ' + formatFileSize(MAX_PREVIEW_SIZE) + '（' + lines.length + ' 行）</div>'
+        : '';
+
+      viewer.innerHTML = viewerHeaderHtml(filename, lang, true) + truncatedNotice +
+        '<div class="viewer-body" id="viewerBodyMain" ondblclick="enterEditMode()">' +
+          '<div class="code-with-lines">' +
+            '<div class="line-numbers">' + lineNumbers + '</div>' +
+            '<div class="code-content"><pre><code class="hljs language-' + lang + '" id="codeBlockMain">' + highlighted + '</code></pre></div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    // ==================== Edit Mode (F10/F11/F12 — Phase 2) ====================
+
+    function enterEditMode() {
+      if (viewerState.isEditing) return;
+      if (!viewerState.path || !viewerState.filename) return;
+
+      viewerState.isEditing = true;
+      const viewer = document.getElementById('fileViewer');
+
+      // Rebuild header with Save/Cancel toolbar
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'viewer-header';
+      headerDiv.innerHTML =
+        '<span class="file-name"><span class="f-icon">' + getFileIcon(viewerState.filename) + '</span>' + escapeHtmlSafe(viewerState.filename) + '</span>' +
+        '<span class="file-lang">editing</span>' +
+        '<div class="viewer-toolbar">' +
+          '<button class="btn-save" onclick="handleSaveEdit()" title="Ctrl+S">💾 保存</button>' +
+          '<button class="btn-cancel" onclick="handleCancelEdit()" title="Escape">✕ 取消</button>' +
+        '</div>';
+
+      const content = viewerState.content;
+      viewer.innerHTML = '';
+      viewer.appendChild(headerDiv);
+      const ta = document.createElement('textarea');
+      ta.className = 'edit-textarea';
+      ta.id = 'editTextarea';
+      ta.spellcheck = false;
+      ta.value = content;
+      viewer.appendChild(ta);
+
+      const statusBar = document.createElement('div');
+      statusBar.className = 'edit-status-bar';
+      statusBar.innerHTML =
+        '<span>编辑模式 · ' + formatFileSize(content.length) + ' · ' + content.split('\n').length + ' 行</span>' +
+        '<span class="dirty-indicator hidden" id="dirtyIndicator">● 已修改</span>';
+      viewer.appendChild(statusBar);
+
+      ta.addEventListener('input', function() {
+        viewerState.content = ta.value;
+        markDirty();
+      });
+
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+
+    async function handleSaveEdit() {
+      if (!viewerState.isEditing) return;
+      const ta = document.getElementById('editTextarea');
+      if (ta) viewerState.content = ta.value;
+
+      try {
+        showToast('保存中...', 'info', 1000);
+        await apiWrite(viewerState.path, viewerState.content);
+        clearDirty();
+        viewerState.isEditing = false;
+        renderFileViewer(viewerState.path, viewerState.filename, viewerState.content);
+        showToast('保存成功 ✅', 'success');
+
+        // Refresh file tree to reflect any size changes
+        refreshCurrentDirectory();
+      } catch (err) {
+        showToast('保存失败: ' + err.message, 'error');
+      }
+    }
+
+    function handleCancelEdit() {
+      if (viewerState.isEditing && viewerState.isDirty) {
+        showConfirmDialog(
+          '放弃修改？',
+          '你对 <strong>' + escapeHtmlSafe(viewerState.filename) + '</strong> 的修改尚未保存，确定要放弃吗？',
+          [
+            { text: '留在编辑', cls: 'btn-secondary', action: function() { dismissConfirm(); } },
+            { text: '放弃修改', cls: 'btn-danger', action: function() {
+              dismissConfirm();
+              viewerState.content = viewerState.originalContent;
+              viewerState.isDirty = false;
+              viewerState.isEditing = false;
+              renderFileViewer(viewerState.path, viewerState.filename, viewerState.content);
+            }},
+          ]
+        );
+        return;
+      }
+      viewerState.isEditing = false;
+      renderFileViewer(viewerState.path, viewerState.filename, viewerState.content);
+    }
+
+    /** Prompt to save unsaved changes before switching files */
+    function checkUnsavedBeforeSwitch(onProceed) {
+      if (viewerState.isDirty && viewerState.isEditing) {
+        showConfirmDialog(
+          '未保存的修改',
+          '你对 <strong>' + escapeHtmlSafe(viewerState.filename) + '</strong> 的修改尚未保存。是否保存后继续？',
+          [
+            { text: '放弃修改', cls: 'btn-danger', action: function() {
+              dismissConfirm();
+              viewerState.isDirty = false;
+              viewerState.isEditing = false;
+              onProceed();
+            }},
+            { text: '保存并继续', cls: 'btn-primary', action: async function() {
+              dismissConfirm();
+              try {
+                await apiWrite(viewerState.path, viewerState.content);
+                clearDirty();
+                viewerState.isEditing = false;
+                showToast('已自动保存', 'success');
+              } catch (err) {
+                showToast('保存失败: ' + err.message, 'error');
+              }
+              onProceed();
+            }},
+            { text: '取消', cls: 'btn-secondary', action: function() { dismissConfirm(); } },
+          ]
+        );
+        return true;
+      }
+      return false;
+    }
+
+    // ==================== Confirm Dialog ====================
+
+    let confirmCallback = null;
+
+    function showConfirmDialog(title, body, buttons) {
+      const modal = document.getElementById('confirmModal');
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmBody').innerHTML = body;
+      const btnContainer = document.getElementById('confirmButtons');
+      btnContainer.innerHTML = '';
+      buttons.forEach(function(b) {
+        const btn = document.createElement('button');
+        btn.className = b.cls;
+        btn.textContent = b.text;
+        btn.onclick = b.action;
+        btnContainer.appendChild(btn);
+      });
+      modal.classList.remove('hidden');
+    }
+
+    function dismissConfirm() {
+      document.getElementById('confirmModal').classList.add('hidden');
+    }
+
+    // ==================== New File / Folder (F16 — Phase 2) ====================
+
+    function getCurrentDirectory() {
+      if (currentBreadcrumbPath) return currentBreadcrumbPath;
+      if (viewerState.path) {
+        const idx = viewerState.path.lastIndexOf('/');
+        return idx > 0 ? viewerState.path.substring(0, idx) : '';
+      }
+      return '';
+    }
+
+    function promptNewFile() {
+      const dirPath = getCurrentDirectory();
+      const name = prompt('输入新文件名：');
+      if (!name || !name.trim()) return;
+      const cleanName = name.trim();
+      const fullPath = dirPath + '/' + cleanName;
+      showToast('创建中...', 'info', 1000);
+      apiWrite(fullPath, '').then(function() {
+        showToast('文件 ' + cleanName + ' 创建成功 ✅', 'success');
+        refreshCurrentDirectory();
+      }).catch(function(err) {
+        showToast('创建文件失败: ' + err.message, 'error');
+      });
+    }
+
+    function promptNewFolder() {
+      const dirPath = getCurrentDirectory();
+      const name = prompt('输入新文件夹名：');
+      if (!name || !name.trim()) return;
+      const cleanName = name.trim();
+      const fullPath = dirPath + '/' + cleanName;
+      showToast('创建中...', 'info', 1000);
+      apiMkdir(fullPath).then(function() {
+        showToast('文件夹 ' + cleanName + ' 创建成功 ✅', 'success');
+        refreshCurrentDirectory();
+      }).catch(function(err) {
+        showToast('创建文件夹失败: ' + err.message, 'error');
+      });
+    }
+
+    function refreshCurrentDirectory() {
+      const dirPath = getCurrentDirectory();
+      const treeContent = document.getElementById('fileTreeContent');
+      // Invalidate loaded flags for the current directory's parent node in tree
+      invalidateTreeCache(dirPath);
+      treeContent.innerHTML = '';
+      treeContent.appendChild(createInlineLoading('刷新目录...'));
+      apiLs(dirPath || '/').then(function(entries) {
+        treeContent.innerHTML = '';
+        renderEntries(entries, treeContent, 0, dirPath || '');
+      }).catch(function(err) {
+        treeContent.innerHTML = '<div class="tree-item" style="padding-left:12px;color:var(--accent);">⚠️ ' + err.message + '</div>';
+        showToast('目录刷新失败: ' + err.message, 'error');
+      });
+    }
+
+    function invalidateTreeCache(dirPath) {
+      // Recursively invalidate loaded flags for subtree
+      const tree = document.getElementById('fileTreeContent');
+      if (!tree) return;
+      const traverse = function(node) {
+        if (node.dataset && node.dataset.path === dirPath) {
+          node.dataset.loaded = 'false';
+          node.dataset.expanded = 'false';
+          // Collapse children
+          const siblings = node.parentNode ? node.parentNode.children : [];
+          for (let i = 0; i < siblings.length; i++) {
+            if (siblings[i].classList && siblings[i].classList.contains('tree-children') &&
+                siblings[i].dataset && siblings[i].dataset.path === dirPath) {
+              siblings[i].classList.add('collapsed');
+            }
+          }
+          return;
+        }
+        if (node.children) {
+          for (let i = 0; i < node.children.length; i++) traverse(node.children[i]);
+        }
+      };
+      traverse(tree);
+    }
+
+    // ==================== Keyboard Shortcuts ====================
+
+    document.addEventListener('keydown', function(e) {
+      // Ctrl+S — save in edit mode
+      if (e.ctrlKey && e.key === 's') {
+        if (viewerState.isEditing) {
+          e.preventDefault();
+          handleSaveEdit();
+        }
+      }
+      // Escape — cancel edit mode
+      if (e.key === 'Escape') {
+        if (viewerState.isEditing) {
+          e.preventDefault();
+          handleCancelEdit();
+          return;
+        }
+        if (treeVisible) toggleFileTree();
+      }
+    });
 
     async function initFileTree() {
       const treeContent = document.getElementById('fileTreeContent');
@@ -1537,11 +2012,6 @@
     function closeTreeOnMobile() {
       if (window.innerWidth <= 768 && treeVisible) toggleFileTree();
     }
-
-    // Escape 关闭
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape' && treeVisible) toggleFileTree();
-    });
 
     // 窗口变大到桌面宽度时自动关闭抽屉
     window.addEventListener('resize', function() {

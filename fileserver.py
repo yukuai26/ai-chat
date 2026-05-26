@@ -126,6 +126,20 @@ def _check_write_access(target: Path, is_dir: bool = False) -> tuple[bool, str]:
     return True, "ok"
 
 
+def error_response(message: str, code: int = 400, detail: str = None):
+    """统一 JSON 错误格式（B9：API 错误处理标准化）。
+    
+    所有 API 端点使用此函数返回错误，确保一致的 JSON 结构：
+    { "error": true, "message": "<人类可读>", "code": <HTTP 状态码>[, "detail": "<技术详情>"] }
+    
+    前端可据此统一解析和处理错误。
+    """
+    body = {"error": True, "message": message, "code": code}
+    if detail:
+        body["detail"] = detail
+    return jsonify(body), code
+
+
 def _list_directory(directory: Path) -> list[dict]:
     """列出目录内容，返回文件/目录信息列表。"""
     entries = []
@@ -173,12 +187,12 @@ def require_token(f):
         # 拒绝空 Token
         if not token:
             logger.warning(f"认证失败: 空 Token (path={request.path}, ip={request.remote_addr})")
-            return jsonify({"error": "缺少认证 Token", "detail": "请在 Authorization 头中提供 Bearer Token"}), 401
+            return error_response("缺少认证 Token", 401, "请在 Authorization 头中提供 Bearer Token")
         
         # Token 比对
         if token != API_TOKEN:
             logger.warning(f"认证失败: Token 不匹配 (path={request.path}, ip={request.remote_addr})")
-            return jsonify({"error": "认证失败", "detail": "Token 无效"}), 401
+            return error_response("认证失败", 401, "Token 无效")
         
         return f(*args, **kwargs)
     return decorated
@@ -225,11 +239,11 @@ def list_files():
     try:
         target = _resolve_path(path_arg)
     except (ValueError, OSError) as e:
-        return jsonify({"error": f"路径解析失败: {e}"}), 400
+        return error_response(f"路径解析失败: {e}", 400)
 
     ok, msg = _check_read_access(target)
     if not ok:
-        return jsonify({"error": msg}), 403
+        return error_response(msg, 403)
 
     if target.is_file():
         # 返回文件信息
@@ -245,7 +259,7 @@ def list_files():
         entries = _list_directory(target)
         return jsonify({"path": str(target), "entries": entries})
 
-    return jsonify({"error": "未知文件类型"}), 500
+    return error_response("未知文件类型", 500)
 
 
 @app.route("/v1/files/read", methods=["GET"])
@@ -256,18 +270,18 @@ def read_file():
     try:
         target = _resolve_path(path_arg)
     except (ValueError, OSError) as e:
-        return jsonify({"error": f"路径解析失败: {e}"}), 400
+        return error_response(f"路径解析失败: {e}", 400)
 
     ok, msg = _check_read_access(target)
     if not ok:
-        return jsonify({"error": msg}), 403
+        return error_response(msg, 403)
 
     if not target.is_file():
-        return jsonify({"error": "路径不是文件"}), 400
+        return error_response("路径不是文件", 400)
 
     # 大文件限制：最大 10MB
     if target.stat().st_size > 10 * 1024 * 1024:
-        return jsonify({"error": "文件过大（>10MB），请使用 download 接口"}), 413
+        return error_response("文件过大（>10MB），请使用 download 接口", 413)
 
     return send_file(target, mimetype=mimetypes.guess_type(target.name)[0] or "text/plain")
 
@@ -275,15 +289,52 @@ def read_file():
 @app.route("/v1/files/write", methods=["POST"])
 @require_token
 def write_file():
-    """POST /v1/files/write — 写入文件内容（后续 Phase 实现）。"""
-    return jsonify({"error": "写操作未开放（Phase 2）"}), 405
+    """POST /v1/files/write — 写入文件内容。
+
+    请求体 JSON: {"path": "<relative-path>", "content": "<文件内容>"}
+
+    安全约束：
+    - 路径必须在白名单范围内
+    - 父目录必须存在且可写
+    - 写入前不做备份（Phase 2 不记录变更日志）
+    """
+    data = request.get_json(silent=True)
+    if not data or "path" not in data:
+        return error_response("缺少必填参数", 400, "请求体需包含 path 和 content 字段")
+    if "content" not in data:
+        return error_response("缺少必填参数", 400, "请求体需包含 content 字段")
+
+    path_arg = data["path"]
+    content = data["content"]
+    if not isinstance(content, str):
+        return error_response("content 必须是字符串", 400)
+
+    try:
+        target = _resolve_path(path_arg)
+    except (ValueError, OSError) as e:
+        return error_response(f"路径解析失败: {e}", 400)
+
+    ok, msg = _check_write_access(target)
+    if not ok:
+        return error_response(msg, 403)
+
+    try:
+        # 确保父目录存在
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with open(target, "w", encoding="utf-8") as f:
+            f.write(content)
+        logger.info(f"文件写入成功: {target}")
+        return jsonify({"ok": True, "path": str(target), "size": target.stat().st_size})
+    except OSError as e:
+        logger.error(f"文件写入失败: {target}, 错误: {e}")
+        return error_response(f"文件写入失败: {e}", 500)
 
 
 @app.route("/v1/files/upload", methods=["POST"])
 @require_token
 def upload_file():
     """POST /v1/files/upload — 上传文件（后续 Phase 实现）。"""
-    return jsonify({"error": "上传未开放（Phase 3）"}), 405
+    return error_response("上传未开放（Phase 3）", 405)
 
 
 @app.route("/v1/files/mkdir", methods=["POST"])
@@ -300,19 +351,19 @@ def make_directory():
     """
     data = request.get_json(silent=True)
     if not data or "path" not in data:
-        return jsonify({"error": "缺少必填参数", "detail": "请求体需包含 path 字段"}), 400
+        return error_response("缺少必填参数", 400, "请求体需包含 path 字段")
 
     path_arg = data["path"]
     try:
         target = _resolve_path(path_arg)
     except (ValueError, OSError) as e:
-        return jsonify({"error": f"路径解析失败: {e}"}), 400
+        return error_response(f"路径解析失败: {e}", 400)
 
     ok, msg = _check_write_access(target, is_dir=True)
     if not ok:
         if msg == "目录已存在":
-            return jsonify({"error": msg}), 409
-        return jsonify({"error": msg}), 403
+            return error_response(msg, 409)
+        return error_response(msg, 403)
 
     try:
         # 递归创建所有不存在的中间目录
@@ -321,19 +372,34 @@ def make_directory():
         return jsonify({"ok": True, "path": str(target)})
     except OSError as e:
         logger.error(f"目录创建失败: {target}, 错误: {e}")
-        return jsonify({"error": f"目录创建失败: {e}"}), 500
+        return error_response(f"目录创建失败: {e}", 500)
 
 
 # ---- 错误处理 ----
 
+@app.errorhandler(400)
+def bad_request(e):
+    return error_response("请求格式错误", 400)
+
+@app.errorhandler(403)
+def forbidden(e):
+    return error_response("禁止访问", 403)
+
 @app.errorhandler(404)
 def not_found(e):
-    return jsonify({"error": "Not found"}), 404
+    return error_response("Not found", 404)
 
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return error_response("方法不允许", 405)
+
+@app.errorhandler(413)
+def too_large(e):
+    return error_response("请求体过大", 413)
 
 @app.errorhandler(500)
 def server_error(e):
-    return jsonify({"error": "Internal server error"}), 500
+    return error_response("服务器内部错误", 500)
 
 
 # ---- 入口 ----

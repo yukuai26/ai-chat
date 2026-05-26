@@ -188,12 +188,33 @@ def require_token(f):
 
 @app.route("/v1/files/health", methods=["GET"])
 def health():
-    """健康检查端点（无需认证）。"""
+    """健康检查端点（无需认证）。
+    
+    检查所有白名单根目录是否存在且可读，返回整体健康状态和各根目录详情。
+    systemd 可通过此端点做 watch dog 触发自动重启。
+    """
+    root_status = {}
+    all_ok = True
+    for root in WHITELIST:
+        rp = Path(root)
+        if not rp.exists():
+            root_status[root] = "missing"
+            all_ok = False
+        elif not rp.is_dir():
+            root_status[root] = "not_a_directory"
+            all_ok = False
+        elif not os.access(rp, os.R_OK):
+            root_status[root] = "unreadable"
+            all_ok = False
+        else:
+            root_status[root] = "ok"
+
+    status_code = 200 if all_ok else 503
     return jsonify({
-        "status": "ok",
+        "status": "ok" if all_ok else "degraded",
         "service": "fileserver",
-        "roots": WHITELIST,
-    })
+        "roots": root_status,
+    }), status_code
 
 
 @app.route("/v1/files/ls", methods=["GET"])

@@ -80,6 +80,27 @@ USER_FILES_DIR = "/home/ubuntu/.openclaw/user-files"
 logger.info(f"fileserver 启动，白名单目录: {WHITELIST}")
 
 
+# ---- 启动初始化 ----
+
+def _ensure_directories():
+    """确保用户文件目录和 Session 目录在启动时存在。
+
+    创建：
+    - /home/ubuntu/.openclaw/user-files/  用户上传/生成的文件
+    - /home/ubuntu/.openclaw/user-sessions/  会话存储目录
+
+    目录不存在时自动创建，已存在则跳过。
+    """
+    dirs = [USER_FILES_DIR, SESSION_DIR]
+    for d in dirs:
+        try:
+            p = Path(d)
+            p.mkdir(parents=True, exist_ok=True)
+            logger.info(f"目录已就绪: {d}")
+        except Exception as e:
+            logger.error(f"创建目录失败: {d}, 错误: {e}")
+
+
 # ---- 工具函数 ----
 
 def _resolve_path(rel_path: str) -> Path:
@@ -1057,6 +1078,7 @@ def server_error(e):
 # ---- 入口 ----
 
 if __name__ == "__main__":
+    _ensure_directories()
     port = int(os.environ.get("PORT", 5050))
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     app.run(host="127.0.0.1", port=port, debug=debug)

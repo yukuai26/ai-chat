@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Chat</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
   <style>
     :root {
       --bg: #1a1a2e;
@@ -349,6 +350,95 @@
       flex-shrink: 0;
     }
     .resize-handle:hover { background: var(--accent); }
+    /* ==================== 文件查看器 ==================== */
+    .viewer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: var(--sidebar-bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .viewer-header .file-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .viewer-header .file-name .f-icon { font-size: 16px; }
+    .viewer-header .file-lang {
+      font-size: 11px;
+      color: var(--text-secondary);
+      background: var(--bg);
+      padding: 2px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+    .viewer-body {
+      flex: 1;
+      overflow: auto;
+      min-height: 0;
+    }
+    .viewer-body pre {
+      margin: 0;
+      padding: 0;
+      border-radius: 0;
+      min-height: 100%;
+    }
+    .viewer-body code {
+      padding: 0;
+      background: none;
+    }
+    .code-with-lines {
+      display: flex;
+      min-height: 100%;
+    }
+    .line-numbers {
+      min-width: 48px;
+      text-align: right;
+      padding: 12px 8px 12px 12px;
+      background: rgba(0,0,0,0.2);
+      user-select: none;
+      font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-secondary);
+    }
+    .line-numbers span {
+      display: block;
+    }
+    .code-content {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 16px;
+      overflow-x: auto;
+      font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .viewer-loading {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    .viewer-error {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--accent);
+      font-size: 14px;
+    }
     .empty-state {
       flex: 1;
       display: flex;
@@ -769,7 +859,105 @@
       }
       row.classList.add('active');
       activeTreeItem = row;
-      // 占位：选中文件后触发查看器（F4/F5 实现）
+      // 文件：触发查看器；目录：不处理（展开/折叠由 toggle 处理）
+      if (entry.type === 'file') {
+        renderFileViewer(fullPath, entry.name);
+      }
+    }
+
+    // ==================== 文件查看器（highlight.js 语法高亮） ====================
+
+    function getLanguage(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      const map = {
+        'py': 'python', 'js': 'javascript', 'ts': 'typescript', 'jsx': 'javascript',
+        'tsx': 'typescript', 'html': 'xml', 'css': 'css', 'scss': 'scss',
+        'json': 'json', 'md': 'markdown', 'yaml': 'yaml', 'yml': 'yaml',
+        'sh': 'bash', 'bash': 'bash', 'zsh': 'bash',
+        'c': 'c', 'cpp': 'cpp', 'h': 'c', 'hpp': 'cpp',
+        'java': 'java', 'go': 'go', 'rs': 'rust', 'rb': 'ruby',
+        'php': 'php', 'sql': 'sql', 'xml': 'xml', 'toml': 'ini',
+        'ini': 'ini', 'cfg': 'ini', 'conf': 'ini',
+        'dockerfile': 'dockerfile', 'makefile': 'makefile',
+        'txt': 'plaintext', 'log': 'plaintext',
+        'service': 'ini',
+      };
+      return map[ext] || 'plaintext';
+    }
+
+    async function apiRead(path) {
+      const url = (apiUrl || '') + '/v1/files/read?path=' + encodeURIComponent(path);
+      const resp = await fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + (token || '') }
+      });
+      if (!resp.ok) {
+        if (resp.status === 401) throw new Error('认证失败，请先连接');
+        const body = await resp.text();
+        let msg = 'HTTP ' + resp.status;
+        try { msg = JSON.parse(body).error || msg; } catch(e) {}
+        throw new Error(msg);
+      }
+      return await resp.text();
+    }
+
+    function escapeHtmlSafe(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    async function renderFileViewer(fullPath, filename) {
+      const viewer = document.getElementById('fileViewer');
+      const lang = getLanguage(filename);
+
+      // Loading state
+      viewer.innerHTML = `
+        <div class="viewer-header">
+          <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
+          <span class="file-lang">${lang}</span>
+        </div>
+        <div class="viewer-loading">
+          <div class="typing-indicator"><span></span><span></span><span></span></div>
+          <span>加载中...</span>
+        </div>`;
+
+      try {
+        const content = await apiRead(fullPath);
+        let html;
+
+        if (lang === 'plaintext') {
+          // Plain text: just escape and wrap
+          html = escapeHtmlSafe(content);
+        } else {
+          // Use highlight.js
+          const result = hljs.highlight(content, { language: lang });
+          html = result.value;
+        }
+
+        const lines = content.split('\n');
+        const lineNumbers = lines.map((_, i) => '<span>' + (i + 1) + '</span>').join('');
+
+        viewer.innerHTML = `
+          <div class="viewer-header">
+            <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
+            <span class="file-lang">${lang}</span>
+          </div>
+          <div class="viewer-body">
+            <div class="code-with-lines">
+              <div class="line-numbers">${lineNumbers}</div>
+              <div class="code-content"><pre><code class="hljs language-${lang}">${html}</code></pre></div>
+            </div>
+          </div>`;
+      } catch (err) {
+        viewer.innerHTML = `
+          <div class="viewer-header">
+            <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
+            <span class="file-lang">${lang}</span>
+          </div>
+          <div class="viewer-error">
+            <span style="font-size:32px;">⚠️</span>
+            <span>${escapeHtmlSafe(err.message)}</span>
+          </div>`;
+        showToast('文件加载失败: ' + err.message);
+      }
     }
 
     async function initFileTree() {
@@ -827,5 +1015,6 @@
     })();
 
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </body>
 </html>

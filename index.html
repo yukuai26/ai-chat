@@ -1451,9 +1451,42 @@
       });
     }
 
-    function newConversation() {
-      // F22 将实现后端对接，目前仅提示
-      showToast('新建会话功能将在下一阶段实现', 'info');
+    async function newConversation() {
+      if (!token) {
+        showToast('请先输入 Token 并连接', 'warning');
+        return;
+      }
+      const btn = document.querySelector('.btn-new-conv');
+      if (btn) btn.disabled = true;
+      try {
+        const resp = await fetch(apiUrl + '/v1/sessions/new', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({})
+        });
+        if (!resp.ok) {
+          if (resp.status === 404) throw new Error('后端不支持会话功能，请更新 fileserver.py');
+          const body = await resp.text();
+          let msg = 'HTTP ' + resp.status;
+          try { msg = JSON.parse(body).message || msg; } catch(e) {}
+          throw new Error(msg);
+        }
+        const data = await resp.json();
+        const newId = data.id;
+        showToast('会话已创建', 'success');
+        await loadConversations();
+        if (newId) selectConversation(newId);
+        // 同时切换到聊天 tab
+        switchTab('chat');
+      } catch (e) {
+        console.error('新建会话失败:', e);
+        showToast('新建会话失败: ' + e.message, 'error');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     }
 
     /**

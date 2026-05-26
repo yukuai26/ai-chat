@@ -377,6 +377,38 @@ def create_session():
         return error_response("Session 创建失败", 500)
 
 
+@app.route("/v1/sessions/list", methods=["GET"])
+@require_token
+def list_sessions():
+    """GET /v1/sessions/list — 返回所有 Session 列表，按更新时间倒序排列。
+
+    返回 200: {"sessions": [{...}, {...}]}
+
+    从 SESSION_DIR 读取所有 {id}.json 文件，按 updated 字段排序。
+    """
+    session_dir = Path(SESSION_DIR)
+    if not session_dir.is_dir():
+        return jsonify({"sessions": []}), 200
+
+    sessions = []
+    try:
+        for f in sorted(session_dir.glob("*.json")):
+            try:
+                with open(f, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                sessions.append(data)
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning(f"跳过无效 Session 文件 {f.name}: {e}")
+                continue
+
+        sessions.sort(key=lambda s: s.get("updated", ""), reverse=True)
+        return jsonify({"sessions": sessions}), 200
+
+    except OSError as e:
+        logger.error(f"读取 Session 列表失败: {e}")
+        return error_response("读取 Session 列表失败", 500)
+
+
 # ---- 文件写入 ----
 
 @app.route("/v1/files/write", methods=["POST"])

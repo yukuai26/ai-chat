@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --sidebar-bg: #16213e;
+      --message-user: #0f3460;
+      --message-assistant: #1a1a2e;
+      --text: #e0e0e0;
+      --text-secondary: #888;
+      --accent: #e94560;
+      --accent-hover: #ff6b81;
+      --border: #2a2a4a;
+      --input-bg: #16213e;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+    }
+    .sidebar {
+      width: 320px;
+      min-width: 320px;
+      background: var(--sidebar-bg);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+    }
+    .sidebar h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .sidebar label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .sidebar input, .sidebar select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .sidebar input:focus, .sidebar select:focus { border-color: var(--accent); }
+    .sidebar .hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    .sidebar button {
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .sidebar .btn-connect {
+      background: var(--accent);
+      color: white;
+    }
+    .sidebar .btn-connect:hover { background: var(--accent-hover); }
+    .sidebar .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #666;
+    }
+    .status-dot.connected { background: #4caf50; }
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .chat-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .chat-header h1 { font-size: 16px; font-weight: 600; }
+    .chat-header .model-badge {
+      font-size: 12px;
+      background: var(--accent);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .message {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.6;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .message.user {
+      align-self: flex-end;
+      background: var(--message-user);
+      border-bottom-right-radius: 4px;
+    }
+    .message.assistant {
+      align-self: flex-start;
+      background: var(--message-assistant);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .message .role {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .message .content {
+      line-height: 1.6;
+    }
+    .message .content p { margin: 0; }
+    .message .content p + p { margin-top: 8px; }
+    .message .content pre {
+      background: #0d0d1a;
+      border-radius: 6px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: 8px 0;
+      font-size: 13px;
+    }
+    .message .content code {
+      background: #0d0d1a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .message .content pre code { padding: 0; background: none; }
+    .input-area {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+    }
+    .input-area textarea {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      min-height: 48px;
+      max-height: 160px;
+      transition: border-color 0.2s;
+    }
+    .input-area textarea:focus { border-color: var(--accent); }
+    .input-area button {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      align-self: flex-end;
+    }
+    .input-area button:hover:not(:disabled) { background: var(--accent-hover); }
+    .input-area button:disabled { background: #555; cursor: not-allowed; }
+    .typing-indicator { display: flex; gap: 4px; padding: 8px 0; }
+    .typing-indicator span {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-8px); }
+    }
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--text-secondary);
+    }
+    .empty-state .icon { font-size: 48px; }
+    .empty-state p { font-size: 15px; }
+    .toast {
+      position: fixed;
+      top: 20px; right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      background: #333;
+      color: white;
+      font-size: 14px;
+      z-index: 100;
+      opacity: 0;
+      animation: fadeInOut 3s ease;
+    }
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(-10px); }
+      10% { opacity: 1; transform: translateY(0); }
+      80% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      .sidebar { width: 100%; min-width: auto; max-height: 40vh; }
+      .main { height: 60vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>⚙️ 设置</h2>
+    <div>
+      <label>API 地址</label>
+      <input type="text" id="apiUrl" placeholder="https://xxx.trycloudflare.com" value="https://named-travelers-extraction-attractions.trycloudflare.com" />
+    </div>
+    <div>
+      <label>Token</label>
+      <input type="password" id="token" placeholder="输入你的 token" />
+    </div>
+    <div>
+      <label>Agent</label>
+      <select id="agentId">
+        <option value="assistant">assistant</option>
+        <option value="main">main</option>
+        <option value="dev-cat">dev-cat</option>
+        <option value="pm-cat">pm-cat</option>
+        <option value="domain-cat">domain-cat</option>
+      </select>
+    </div>
+    <div class="status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">未连接</span>
+    </div>
+    <button class="btn-connect" id="btnConnect" onclick="connect()">连接</button>
+    <div class="hint">
+      💡 Token 保存在你浏览器本地，不会上传。
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="chat-header">
+      <h1>AI Chat</h1>
+      <span class="model-badge" id="modelBadge">DeepSeek V4 Pro</span>
+    </div>
+    <div class="messages" id="messages">
+      <div class="empty-state">
+        <div class="icon">💬</div>
+        <p>输入 Token 后点击连接</p>
+      </div>
+    </div>
+    <div class="input-area">
+      <textarea id="input" placeholder="输入消息..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,160)+'px';"
+      ></textarea>
+      <button id="sendBtn" onclick="sendMessage()" disabled>发送</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let connected = false;
+    let apiUrl = '';
+    let token = '';
+    let agentId = 'assistant';
+
+    window.onload = () => {
+      const saved = JSON.parse(localStorage.getItem('aichat_config') || '{}');
+      if (saved.apiUrl) document.getElementById('apiUrl').value = saved.apiUrl;
+      if (saved.token) document.getElementById('token').value = saved.token;
+      if (saved.agentId) document.getElementById('agentId').value = saved.agentId;
+    };
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.animation = 'none';
+      t.offsetHeight;
+      t.style.animation = 'fadeInOut 3s ease';
+    }
+
+    function setStatus(ok, text) {
+      const dot = document.getElementById('statusDot');
+      const st = document.getElementById('statusText');
+      if (ok) {
+        dot.classList.add('connected');
+        st.textContent = text;
+      } else {
+        dot.classList.remove('connected');
+        st.textContent = text || '未连接';
+      }
+    }
+
+    async function connect() {
+      apiUrl = document.getElementById('apiUrl').value.trim().replace(/\/$/, '');
+      token = document.getElementById('token').value.trim();
+      agentId = document.getElementById('agentId').value;
+      if (!apiUrl || !token) { showToast('请填写 API 地址和 Token'); return; }
+      setStatus(false, '连接中...');
+      try {
+        const resp = await fetch(apiUrl + '/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token,
+          },
+          body: JSON.stringify({
+            model: 'openclaw:' + agentId,
+            messages: [{ role: 'user', content: '你好' }],
+            max_tokens: 10,
+          }),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        connected = true;
+        setStatus(true, '已连接');
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('modelBadge').textContent = 'DeepSeek V4 Pro (' + agentId + ')';
+        const msgs = document.getElementById('messages');
+        if (msgs.querySelector('.empty-state')) msgs.innerHTML = '';
+        addMessage('assistant', '连接成功！有什么我可以帮助你的？');
+        localStorage.setItem('aichat_config', JSON.stringify({ apiUrl, token, agentId }));
+        showToast('✅ 连接成功');
+      } catch (e) {
+        connected = false;
+        setStatus(false, '连接失败');
+        showToast('连接失败: ' + e.message);
+      }
+    }
+
+    function addMessage(role, content) {
+      const msgs = document.getElementById('messages');
+      msgs.querySelector('.empty-state')?.remove();
+      msgs.querySelector('.typing-indicator')?.parentElement?.remove();
+      const div = document.createElement('div');
+      div.className = 'message ' + role;
+      const roleLabel = document.createElement('div');
+      roleLabel.className = 'role';
+      roleLabel.textContent = role === 'user' ? '你' : 'AI';
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'content';
+      contentDiv.innerHTML = renderMarkdown(content);
+      div.appendChild(roleLabel);
+      div.appendChild(contentDiv);
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function renderMarkdown(text) {
+      text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+        '<pre><code>' + escapeHtml(code.trim()) + '</code></pre>');
+      text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      text = text.replace(/\n\n/g, '</p><p>');
+      text = '<p>' + text.replace(/\n/g, '<br>') + '</p>';
+      return text;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function showTyping() {
+      const msgs = document.getElementById('messages');
+      msgs.querySelector('.empty-state')?.remove();
+      const div = document.createElement('div');
+      div.className = 'message assistant';
+      const label = document.createElement('div');
+      label.className = 'role';
+      label.textContent = 'AI';
+      const indicator = document.createElement('div');
+      indicator.className = 'typing-indicator';
+      indicator.innerHTML = '<span></span><span></span><span></span>';
+      div.appendChild(label);
+      div.appendChild(indicator);
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+      return div;
+    }
+
+    async function sendMessage() {
+      if (!connected) return;
+      const input = document.getElementById('input');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      input.style.height = 'auto';
+      addMessage('user', text);
+      const sendBtn = document.getElementById('sendBtn');
+      sendBtn.disabled = true;
+      const typingMsg = showTyping();
+      try {
+        const resp = await fetch(apiUrl + '/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token,
+          },
+          body: JSON.stringify({
+            model: 'openclaw:' + agentId,
+            messages: [{ role: 'user', content: text }],
+          }),
+        });
+        typingMsg.remove();
+        if (!resp.ok) {
+          addMessage('assistant', '错误 HTTP ' + resp.status);
+        } else {
+          const data = await resp.json();
+          addMessage('assistant', data.choices?.[0]?.message?.content || '(no response)');
+        }
+      } catch (e) {
+        typingMsg.remove();
+        addMessage('assistant', '网络错误: ' + e.message);
+      }
+      sendBtn.disabled = false;
+      document.getElementById('input').focus();
+    }
+  </script>
+</body>
+</html>

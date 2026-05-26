@@ -1,0 +1,37 @@
+[Unit]
+Description=BuildCat File Server — Flask REST API for file management
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/.openclaw/workspace-build-cat/repo
+ExecStart=/usr/bin/python3 /home/ubuntu/.openclaw/workspace-build-cat/repo/fileserver.py
+# 环境变量（Gateway Token 从 openclaw.json 读取，此处可覆盖）
+# Environment=FILESERVER_TOKEN=your-token-here
+Environment=PORT=5050
+Environment=FLASK_DEBUG=0
+
+# 自动重启策略
+Restart=on-failure
+RestartSec=5
+
+# 退出后等待时间
+TimeoutStopSec=10
+
+# 日志输出到 journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fileserver
+
+# 安全加固
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/.openclaw/workspace-assistant
+ReadWritePaths=/home/ubuntu/.openclaw/workspace-build-cat
+
+[Install]
+WantedBy=multi-user.target

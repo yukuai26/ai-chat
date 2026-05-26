@@ -325,6 +325,55 @@
     .tree-children.collapsed {
       max-height: 0 !important;
     }
+
+    /* ==================== 拖拽上传区域 (Phase 3) ==================== */
+    .upload-dropzone {
+      margin: 4px 8px;
+      padding: 16px 12px;
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+      transition: all 0.2s;
+      cursor: default;
+      user-select: none;
+    }
+    .upload-dropzone .dz-icon { font-size: 24px; display: block; margin-bottom: 4px; }
+    .upload-dropzone.drag-over {
+      border-color: var(--accent);
+      background: rgba(233, 69, 96, 0.1);
+      color: var(--accent);
+    }
+    .upload-progress {
+      margin: 6px 8px;
+      padding: 6px 10px;
+      background: rgba(233, 69, 96, 0.08);
+      border-radius: 6px;
+      display: none;
+    }
+    .upload-progress.show { display: block; }
+    .upload-progress .up-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .upload-progress .up-bar-bg {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .upload-progress .up-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #f0974c);
+      border-radius: 2px;
+      transition: width 0.15s;
+      width: 0%;
+    }
+
     .file-viewer {
       flex: 1;
       min-width: 0;
@@ -954,6 +1003,18 @@
             <button class="tree-toolbar-btn" onclick="promptNewFile()" title="新建文件"><span class="icon">📄</span> 新建文件</button>
             <button class="tree-toolbar-btn" onclick="promptNewFolder()" title="新建文件夹"><span class="icon">📁</span> 新建文件夹</button>
           </div>
+          <div class="upload-dropzone" id="uploadDropzone">
+            <span class="dz-icon">📤</span>
+            拖拽文件到此处上传
+            <div style="margin-top:4px;font-size:10px;color:var(--text-secondary);">（最大 50MB）</div>
+          </div>
+          <div class="upload-progress" id="uploadProgress">
+            <div class="up-label">
+              <span id="upFilename">上传中...</span>
+              <span id="upPercent">0%</span>
+            </div>
+            <div class="up-bar-bg"><div class="up-bar-fill" id="upBarFill"></div></div>
+          </div>
           <div id="fileTreeContent"></div>
         </div>
         <div class="resize-handle" id="resizeHandle"></div>
@@ -1243,6 +1304,161 @@
       return await resp.json();
     }
 
+    // ==================== 文件上传 (Phase 3) ====================
+
+    let currentUploadDir = '/';
+
+    function setUploadDir(dirPath) {
+      currentUploadDir = dirPath || '/';
+      var dz = document.getElementById('uploadDropzone');
+      if (dz) {
+        var pathLabel = currentUploadDir === '/' ? '/' : currentUploadDir.replace(/^\//,'');
+        dz.querySelector('.dz-icon').textContent = '📤';
+        var hint = dz.querySelector('div') || dz;
+        hint.textContent = '上传到: ' + pathLabel + '（最大 50MB）';
+      }
+    }
+
+    function uploadFileWithProgress(file, dirPath, overwrite) {
+      return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('path', dirPath);
+        if (overwrite) formData.append('overwrite', 'true');
+
+        var progressEl = document.getElementById('uploadProgress');
+        var filenameEl = document.getElementById('upFilename');
+        var percentEl = document.getElementById('upPercent');
+        var barEl = document.getElementById('upBarFill');
+
+        progressEl.classList.add('show');
+        filenameEl.textContent = file.name;
+        percentEl.textContent = '0%';
+        barEl.style.width = '0%';
+
+        xhr.upload.addEventListener('progress', function(e) {
+          if (e.lengthComputable) {
+            var pct = Math.round((e.loaded / e.total) * 100);
+            percentEl.textContent = pct + '%';
+            barEl.style.width = pct + '%';
+          }
+        });
+
+        xhr.addEventListener('load', function() {
+          progressEl.classList.remove('show');
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch (e) {
+              resolve({ ok: true });
+            }
+          } else if (xhr.status === 409) {
+            reject({ conflict: true, message: '文件已存在', file: file, dirPath: dirPath });
+          } else {
+            var msg = 'HTTP ' + xhr.status;
+            try { var body = JSON.parse(xhr.responseText); msg = body.message || msg; } catch(e) {}
+            reject(new Error(msg));
+          }
+        });
+
+        xhr.addEventListener('error', function() {
+          progressEl.classList.remove('show');
+          reject(new Error('网络错误'));
+        });
+
+        xhr.addEventListener('abort', function() {
+          progressEl.classList.remove('show');
+          reject(new Error('上传取消'));
+        });
+
+        var apiBase = (apiUrl || '') + '/v1/files/upload';
+        xhr.open('POST', apiBase);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + (token || ''));
+        xhr.send(formData);
+      });
+    }
+
+    function setupUploadDropzone() {
+      var dropzone = document.getElementById('uploadDropzone');
+      if (!dropzone) return;
+
+      // 阻止浏览器默认拖入行为
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(evt) {
+        document.body.addEventListener(evt, function(e) { e.preventDefault(); e.stopPropagation(); });
+      });
+
+      dropzone.addEventListener('dragover', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        dropzone.classList.add('drag-over');
+      });
+      dropzone.addEventListener('dragleave', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        dropzone.classList.remove('drag-over');
+      });
+      dropzone.addEventListener('drop', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        dropzone.classList.remove('drag-over');
+
+        var files = e.dataTransfer.files;
+        if (!files || files.length === 0) return;
+        handleUploadFiles(files);
+      });
+
+      // 点击也触发文件选择
+      dropzone.addEventListener('click', function() {
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.addEventListener('change', function() {
+          if (input.files.length > 0) handleUploadFiles(input.files);
+        });
+        input.click();
+      });
+    }
+
+    async function handleUploadFiles(files) {
+      var dirPath = currentUploadDir || '/';
+
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        if (file.size > 50 * 1024 * 1024) {
+          showToast(file.name + ' 超过 50MB 限制，已跳过', 'error');
+          continue;
+        }
+        try {
+          var result = await uploadFileWithProgress(file, dirPath, false);
+          showToast(file.name + ' 上传成功 ✅', 'success');
+        } catch (err) {
+          if (err.conflict) {
+            // 文件冲突：弹确认框
+            var overwrite = await showConfirm(
+              '覆盖文件？',
+              '文件 ' + file.name + ' 已存在，是否覆盖？'
+            );
+            if (overwrite) {
+              try {
+                var retryResult = await uploadFileWithProgress(file, dirPath, true);
+                showToast(file.name + ' 已覆盖 ✅', 'success');
+              } catch (e2) {
+                showToast(file.name + ' 覆盖失败: ' + e2.message, 'error');
+                continue;
+              }
+            } else {
+              showToast(file.name + ' 已跳过', 'warning');
+              continue;
+            }
+          } else {
+            showToast(file.name + ' 上传失败: ' + err.message, 'error');
+            continue;
+          }
+        }
+      }
+
+      // 上传完成后刷新目录树
+      await refreshCurrentDirectory();
+    }
+
     // ==================== 文件树组件（API 对接） ====================
 
     function getFileIcon(filename) {
@@ -1371,6 +1587,7 @@
       if (entry.type === 'directory') {
         renderBreadcrumb(fullPath);
         resetViewerState();
+        setUploadDir(fullPath);
         const viewer = document.getElementById('fileViewer');
         viewer.innerHTML = '<div class="placeholder"><div class="icon">📁</div><p>' + escapeHtmlSafe(fullPath) + '</p></div>';
       } else {
@@ -1430,6 +1647,7 @@
     function doNavigateBreadcrumb(path) {
       resetViewerState();
       renderBreadcrumb(path);
+      setUploadDir(path);
       // Reset active item
       if (activeTreeItem) { activeTreeItem.classList.remove('active'); activeTreeItem = null; }
       // Show empty viewer
@@ -1833,6 +2051,15 @@
       document.getElementById('confirmModal').classList.add('hidden');
     }
 
+    function showConfirm(title, body) {
+      return new Promise(function(resolve) {
+        showConfirmDialog(title, body, [
+          { text: '确定', cls: 'btn-connect', action: function() { dismissConfirm(); resolve(true); } },
+          { text: '取消', cls: 'cancel', action: function() { dismissConfirm(); resolve(false); } }
+        ]);
+      });
+    }
+
     // ==================== New File / Folder (F16 — Phase 2) ====================
 
     function getCurrentDirectory() {
@@ -1915,6 +2142,16 @@
       traverse(tree);
     }
 
+    // ==================== Upload Dropzone Init (Phase 3) ====================
+
+    let uploadDropzoneInitialized = false;
+
+    function initUploadDropzone() {
+      if (uploadDropzoneInitialized) return;
+      uploadDropzoneInitialized = true;
+      setupUploadDropzone();
+    }
+
     // ==================== Keyboard Shortcuts ====================
 
     document.addEventListener('keydown', function(e) {
@@ -1957,7 +2194,7 @@
     const origSwitchTab = switchTab;
     switchTab = function(tabName) {
       origSwitchTab(tabName);
-      if (tabName === 'files') initFileTree();
+      if (tabName === 'files') { initFileTree(); initUploadDropzone(); }
     };
 
     // 可拖动分隔条

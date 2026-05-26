@@ -330,11 +330,88 @@ def write_file():
         return error_response(f"文件写入失败: {e}", 500)
 
 
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
+
+
 @app.route("/v1/files/upload", methods=["POST"])
 @require_token
 def upload_file():
-    """POST /v1/files/upload — 上传文件（后续 Phase 实现）。"""
-    return error_response("上传未开放（Phase 3）", 405)
+    """POST /v1/files/upload — 上传文件（multipart/form-data）。
+    
+    请求参数：
+    - path (form field): 目标目录路径（相对于白名单根目录）
+    - file (file field): 上传的文件
+    
+    安全约束：
+    - 路径必须在白名单范围内
+    - 文件大小限制 50MB
+    - 文件名只取 basename（防路径穿越）
+    - 文件已存在时返回 409 冲突，需前端确认后才允许覆盖
+    """
+    path_arg = request.form.get("path", "")
+    overwrite = request.form.get("overwrite", "false").lower() == "true"
+
+    if "file" not in request.files:
+        return error_response("缺少上传文件", 400, "请求需包含 file 字段")
+
+    file = request.files["file"]
+    if not file.filename or file.filename.strip() == "":
+        return error_response("文件名为空", 400)
+
+    # 只取 basename，忽略客户端路径
+    safe_name = Path(file.filename).name
+    if not safe_name:
+        return error_response("无效文件名", 400)
+
+    try:
+        target_dir = _resolve_path(path_arg)
+    except (ValueError, OSError) as e:
+        return error_response(f"目标路径无效: {e}", 400)
+
+    if not target_dir.is_dir():
+        return error_response("目标路径不是目录", 400)
+
+    ok, msg = _check_read_access(target_dir)
+    if not ok:
+        return error_response(msg, 403)
+
+    target_file = target_dir / safe_name
+    # 安全检查：确保解析后仍在白名单内
+    try:
+        target_resolved = target_file.resolve()
+    except (ValueError, OSError):
+        return error_response("文件名无效", 400)
+
+    if not any(
+        str(target_resolved) == str(Path(root).resolve())
+        or str(target_resolved).startswith(str(Path(root).resolve()) + os.sep)
+        for root in WHITELIST
+    ):
+        return error_response("路径不在白名单范围内", 403)
+
+    # 检查写入权限
+    ok, msg = _check_write_access(target_file)
+    if not ok:
+        return error_response(msg, 403)
+
+    # 文件已存在且未允许覆盖
+    if target_file.exists() and not overwrite:
+        return error_response("文件已存在", 409, f"是否覆盖 {safe_name}？上传时设置 overwrite=true 以覆盖")
+
+    # 写入文件（先读到内存检查大小）
+    file_content = file.read()
+    if len(file_content) > MAX_UPLOAD_SIZE:
+        return error_response(f"文件过大，最大 {MAX_UPLOAD_SIZE // (1024*1024)}MB", 413)
+
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        with open(target_file, "wb") as f:
+            f.write(file_content)
+        logger.info(f"文件上传成功: {target_file} ({len(file_content)} bytes)")
+        return jsonify({"ok": True, "name": safe_name, "size": len(file_content), "path": str(target_file)})
+    except OSError as e:
+        logger.error(f"文件上传失败: {target_file}, 错误: {e}")
+        return error_response(f"文件上传失败: {e}", 500)
 
 
 @app.route("/v1/files/mkdir", methods=["POST"])

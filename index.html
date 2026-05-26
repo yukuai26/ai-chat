@@ -439,6 +439,15 @@
       color: var(--accent);
       font-size: 14px;
     }
+    .truncate-notice {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      background: rgba(255,193,7,0.1);
+      border-bottom: 1px solid rgba(255,193,7,0.3);
+      color: #ffc107;
+      font-size: 12px;
+      text-align: center;
+    }
     .empty-state {
       flex: 1;
       display: flex;
@@ -885,12 +894,47 @@
       return map[ext] || 'plaintext';
     }
 
+    const MAX_PREVIEW_SIZE = 1024 * 1024; // 1MB 预览上限
+    const BINARY_EXTS = new Set([
+      'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'svgz',
+      'mp3', 'mp4', 'avi', 'mov', 'mkv', 'wav', 'ogg', 'flac',
+      'zip', 'tar', 'gz', 'bz2', 'xz', '7z', 'rar',
+      'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+      'exe', 'dll', 'so', 'a', 'o', 'class', 'wasm',
+      'bin', 'dat', 'db', 'sqlite', 'sqlite3',
+      'ttf', 'otf', 'woff', 'woff2', 'eot',
+      'pyc', 'pyo', 'whl',
+    ]);
+
+    function isBinaryByExtension(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      return BINARY_EXTS.has(ext);
+    }
+
+    function isBinaryContent(text) {
+      const sample = text.slice(0, 4096);
+      if (sample.indexOf('\x00') >= 0) return true;
+      let nonPrintable = 0;
+      for (let i = 0; i < sample.length; i++) {
+        const c = sample.charCodeAt(i);
+        if (c < 0x20 && c !== 0x09 && c !== 0x0a && c !== 0x0d) nonPrintable++;
+      }
+      return nonPrintable / sample.length > 0.1;
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
     async function apiRead(path) {
       const url = (apiUrl || '') + '/v1/files/read?path=' + encodeURIComponent(path);
       const resp = await fetch(url, {
         headers: { 'Authorization': 'Bearer ' + (token || '') }
       });
       if (!resp.ok) {
+        if (resp.status === 404) throw new Error('文件不存在（404）');
         if (resp.status === 401) throw new Error('认证失败，请先连接');
         const body = await resp.text();
         let msg = 'HTTP ' + resp.status;
@@ -908,6 +952,21 @@
       const viewer = document.getElementById('fileViewer');
       const lang = getLanguage(filename);
 
+      // Binary file by extension — don't even try to load
+      if (isBinaryByExtension(filename)) {
+        viewer.innerHTML = `
+          <div class="viewer-header">
+            <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
+            <span class="file-lang">binary</span>
+          </div>
+          <div class="viewer-error">
+            <span style="font-size:32px;">📦</span>
+            <span>二进制文件，无法预览</span>
+            <span style="font-size:12px;margin-top:4px;">（${escapeHtmlSafe(filename.split('.').pop().toUpperCase())} 格式不支持在线预览）</span>
+          </div>`;
+        return;
+      }
+
       // Loading state
       viewer.innerHTML = `
         <div class="viewer-header">
@@ -920,7 +979,31 @@
         </div>`;
 
       try {
-        const content = await apiRead(fullPath);
+        let content = await apiRead(fullPath);
+        const originalSize = content.length;
+        let truncated = false;
+
+        // Large file — truncate and warn
+        if (content.length > MAX_PREVIEW_SIZE) {
+          content = content.slice(0, MAX_PREVIEW_SIZE);
+          truncated = true;
+        }
+
+        // Binary content detection (e.g., binary file with wrong/no extension)
+        if (isBinaryContent(content)) {
+          viewer.innerHTML = `
+            <div class="viewer-header">
+              <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
+              <span class="file-lang">binary</span>
+            </div>
+            <div class="viewer-error">
+              <span style="font-size:32px;">📦</span>
+              <span>检测到二进制内容，无法预览</span>
+              <span style="font-size:12px;margin-top:4px;">（文件大小：${formatFileSize(originalSize)}）</span>
+            </div>`;
+          return;
+        }
+
         let html;
 
         if (lang === 'plaintext') {
@@ -935,11 +1018,16 @@
         const lines = content.split('\n');
         const lineNumbers = lines.map((_, i) => '<span>' + (i + 1) + '</span>').join('');
 
+        const truncatedNotice = truncated
+          ? `<div class="truncate-notice">⚠️ 文件过大（${formatFileSize(originalSize)}），仅显示前 ${formatFileSize(MAX_PREVIEW_SIZE)}（${lines.length} 行）</div>`
+          : '';
+
         viewer.innerHTML = `
           <div class="viewer-header">
             <span class="file-name"><span class="f-icon">${getFileIcon(filename)}</span>${escapeHtmlSafe(filename)}</span>
             <span class="file-lang">${lang}</span>
           </div>
+          ${truncatedNotice}
           <div class="viewer-body">
             <div class="code-with-lines">
               <div class="line-numbers">${lineNumbers}</div>

@@ -191,6 +191,10 @@
       font-size: 13px;
     }
     .message .content pre code { padding: 0; background: none; }
+    .message .content .error-msg {
+      color: #f87171;
+      font-style: italic;
+    }
     /* 附件/文件标签 */
     .message .attachments {
       display: flex;
@@ -1516,6 +1520,41 @@
       return div;
     }
 
+
+    /**
+     * 创建空的 assistant 消息容器（用于流式输出），返回 { container, content }
+     */
+    function createAssistantMessageElement() {
+      const msgs = document.getElementById('messages');
+      msgs.querySelector('.empty-state')?.remove();
+
+      const div = document.createElement('div');
+      div.className = 'message assistant';
+
+      const header = document.createElement('div');
+      header.className = 'msg-header';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'msg-avatar';
+      avatar.textContent = '🤖';
+
+      const roleLabel = document.createElement('div');
+      roleLabel.className = 'role';
+      roleLabel.textContent = 'AI';
+
+      header.appendChild(avatar);
+      header.appendChild(roleLabel);
+      div.appendChild(header);
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'content';
+      div.appendChild(contentDiv);
+
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+      return { container: div, content: contentDiv };
+    }
+
     async function sendMessage() {
       if (!connected) return;
       const input = document.getElementById('input');
@@ -1527,7 +1566,9 @@
       addMessage('user', text, now);
       const sendBtn = document.getElementById('sendBtn');
       sendBtn.disabled = true;
-      const typingMsg = showTyping();
+      const { container: msgDiv, content: contentDiv } = createAssistantMessageElement();
+      let fullContent = '';
+      const replyTime = new Date().toISOString();
       try {
         const resp = await fetch(apiUrl + '/v1/chat/completions', {
           method: 'POST',
@@ -1538,23 +1579,63 @@
           body: JSON.stringify({
             model: 'openclaw:' + agentId,
             messages: [{ role: 'user', content: text }],
+            stream: true,
           }),
         });
-        typingMsg.remove();
-        const replyTime = new Date().toISOString();
         if (!resp.ok) {
-          addMessage('assistant', '错误 HTTP ' + resp.status, replyTime);
-        } else {
-          const data = await resp.json();
-          addMessage('assistant', data.choices?.[0]?.message?.content || '(no response)', replyTime);
+          const errText = await resp.text();
+          contentDiv.innerHTML = '<span class="error-msg">错误 HTTP ' + resp.status + ': ' + escapeHtml(errText) + '</span>';
+          sendBtn.disabled = false;
+          document.getElementById('input').focus();
+          return;
+        }
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data:')) continue;
+            const data = trimmed.slice(5).trim();
+            if (data === '[DONE]') continue;
+            try {
+              const json = JSON.parse(data);
+              const delta = json.choices?.[0]?.delta?.content;
+              if (delta) {
+                fullContent += delta;
+                contentDiv.innerHTML = renderMarkdown(fullContent);
+              }
+            } catch (e) {
+              // skip unparseable SSE lines
+            }
+          }
+          document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        }
+        if (!fullContent) {
+          contentDiv.innerHTML = '(no response)';
+        }
+        const header = msgDiv.querySelector('.msg-header');
+        if (header) {
+          const timeEl = document.createElement('span');
+          timeEl.className = 'msg-time';
+          timeEl.textContent = formatMessageTime(replyTime);
+          header.appendChild(timeEl);
         }
       } catch (e) {
-        typingMsg.remove();
-        addMessage('assistant', '网络错误: ' + e.message, new Date().toISOString());
+        if (!fullContent) {
+          contentDiv.innerHTML = '<span class="error-msg">网络错误: ' + escapeHtml(e.message) + '</span>';
+        }
+        console.error('sendMessage stream error:', e);
       }
       sendBtn.disabled = false;
       document.getElementById('input').focus();
     }
+
     // ==================== 会话列表组件 (F20) ====================
 
     let activeConversationId = null;

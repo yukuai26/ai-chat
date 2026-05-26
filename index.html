@@ -624,43 +624,31 @@
       sendBtn.disabled = false;
       document.getElementById('input').focus();
     }
-    // ==================== 文件浏览器 ====================
+    // ==================== 文件浏览器 API ====================
 
-    const demoFileTree = [
-      {
-        name: 'memory',
-        type: 'directory',
-        children: [
-          { name: '2026-05-26.md', type: 'file' },
-          { name: '2026-05-25.md', type: 'file' },
-          { name: 'MEMORY.md', type: 'file' },
-        ]
-      },
-      {
-        name: 'projects',
-        type: 'directory',
-        children: [
-          {
-            name: 'ac',
-            type: 'directory',
-            children: [
-              { name: 'ac-file-browser-design-V1.0-ACTIVE.md', type: 'file' },
-              { name: 'ac-buildcat-system-design-V1.0-ACTIVE.md', type: 'file' },
-            ]
-          }
-        ]
-      },
-      {
-        name: 'sops',
-        type: 'directory',
-        children: []
-      },
-      { name: 'SOUL.md', type: 'file' },
-      { name: 'AGENTS.md', type: 'file' },
-      { name: 'TOOLS.md', type: 'file' },
-      { name: 'USER.md', type: 'file' },
-      { name: 'README.md', type: 'file' },
-    ];
+    async function apiLs(path) {
+      const url = (apiUrl || '') + '/v1/files/ls?path=' + encodeURIComponent(path);
+      const resp = await fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + (token || '') }
+      });
+      if (!resp.ok) {
+        if (resp.status === 401) throw new Error('认证失败，请先连接');
+        const body = await resp.text();
+        let msg = 'HTTP ' + resp.status;
+        try { msg = JSON.parse(body).error || msg; } catch(e) {}
+        throw new Error(msg);
+      }
+      const data = await resp.json();
+      return (data.entries || []).map(e => ({
+        name: e.name,
+        type: e.type,
+        size: e.size || 0,
+        modified: e.modified || 0,
+        mime: e.mime || ''
+      }));
+    }
+
+    // ==================== 文件树组件（API 对接） ====================
 
     function getFileIcon(filename) {
       const ext = filename.split('.').pop().toLowerCase();
@@ -676,61 +664,75 @@
 
     function getFolderIcon(name) {
       return name === 'memory' ? '🧠' : name === 'projects' ? '📦' :
-             name === 'sops' ? '📋' : name === 'ac' ? '⚙️' : '📁';
+             name === 'sops' ? '📋' : name === 'ac' ? '⚙️' :
+             name === 'deploy' ? '🚀' : '📁';
     }
 
     let activeTreeItem = null;
+    let fileTreeInitialized = false;
 
-    function renderTree(items, container, level) {
-      level = level || 0;
-      items.forEach(item => {
-        const isDir = item.type === 'directory';
-        const hasChildren = isDir && item.children && item.children.length > 0;
+    function renderEntries(entries, container, level, parentPath) {
+      container.innerHTML = '';
+      if (!entries.length) {
+        const empty = document.createElement('div');
+        empty.className = 'tree-item';
+        empty.style.cssText = 'padding-left:' + (12 + level * 16) + 'px;color:var(--text-secondary);font-size:12px;';
+        empty.textContent = '(空)';
+        container.appendChild(empty);
+        return;
+      }
+      entries.forEach(entry => {
+        const fullPath = parentPath + '/' + entry.name;
+        const isDir = entry.type === 'directory';
 
         const row = document.createElement('div');
         row.className = 'tree-item';
         row.style.paddingLeft = (12 + level * 16) + 'px';
-        row.dataset.name = item.name;
-        row.dataset.type = item.type;
-        if (hasChildren) row.dataset.expanded = 'true';
+        row.dataset.path = fullPath;
+        row.dataset.type = entry.type;
+        row.dataset.name = entry.name;
+        if (isDir) {
+          row.dataset.expanded = 'false';
+          row.dataset.loaded = 'false';
+        }
+
         row.onclick = function(e) {
           if (e.target.classList.contains('tree-toggle')) {
-            toggleFolder(this, item);
+            toggleApiFolder(this, fullPath, level);
             return;
           }
-          selectTreeItem(this, item);
+          selectTreeItem(this, entry, fullPath);
         };
 
         const toggle = document.createElement('span');
-        toggle.className = 'tree-toggle' + (hasChildren ? ' expanded' : ' empty');
-        toggle.textContent = '▶';
+        toggle.className = 'tree-toggle' + (isDir ? '' : ' empty');
+        toggle.textContent = isDir ? '▶' : '';
 
         const icon = document.createElement('span');
         icon.className = 'tree-icon';
-        icon.textContent = isDir ? getFolderIcon(item.name) : getFileIcon(item.name);
+        icon.textContent = isDir ? getFolderIcon(entry.name) : getFileIcon(entry.name);
 
         const name = document.createElement('span');
         name.className = 'tree-name';
-        name.textContent = item.name;
+        name.textContent = entry.name;
 
         row.appendChild(toggle);
         row.appendChild(icon);
         row.appendChild(name);
         container.appendChild(row);
 
-        if (isDir && item.children) {
+        if (isDir) {
           const children = document.createElement('div');
-          children.className = 'tree-children';
-          renderTree(item.children, children, level + 1);
+          children.className = 'tree-children collapsed';
+          children.dataset.path = fullPath;
           container.appendChild(children);
-          if (!hasChildren) children.classList.add('collapsed');
         }
       });
     }
 
-    function toggleFolder(row, item) {
+    async function toggleApiFolder(row, fullPath, level) {
       const toggle = row.querySelector('.tree-toggle');
-      if (toggle.classList.contains('empty')) return;
+      if (!toggle || toggle.classList.contains('empty')) return;
 
       const children = row.nextElementSibling;
       if (!children || !children.classList.contains('tree-children')) return;
@@ -740,24 +742,57 @@
         children.classList.add('collapsed');
         toggle.classList.remove('expanded');
         row.dataset.expanded = 'false';
-      } else {
-        children.classList.remove('collapsed');
-        toggle.classList.add('expanded');
-        row.dataset.expanded = 'true';
+        return;
+      }
+
+      // Expand — show loading, then fetch if not loaded
+      toggle.classList.add('expanded');
+      row.dataset.expanded = 'true';
+      children.classList.remove('collapsed');
+
+      if (row.dataset.loaded !== 'true') {
+        children.innerHTML = '<div class="tree-item" style="padding-left:' + (12 + (level+1) * 16) + 'px;color:var(--text-secondary);">⏳ 加载中...</div>';
+        try {
+          const entries = await apiLs(fullPath);
+          row.dataset.loaded = 'true';
+          renderEntries(entries, children, level + 1, fullPath);
+        } catch (err) {
+          children.innerHTML = '<div class="tree-item" style="padding-left:' + (12 + (level+1) * 16) + 'px;color:var(--accent);">⚠️ ' + err.message + '</div>';
+          showToast('目录加载失败: ' + err.message);
+        }
       }
     }
 
-    function selectTreeItem(row, item) {
+    function selectTreeItem(row, entry, fullPath) {
       if (activeTreeItem) {
         activeTreeItem.classList.remove('active');
       }
       row.classList.add('active');
       activeTreeItem = row;
+      // 占位：选中文件后触发查看器（F4/F5 实现）
     }
 
-    // 初始化目录树
-    const treeContent = document.getElementById('fileTreeContent');
-    renderTree(demoFileTree, treeContent);
+    async function initFileTree() {
+      const treeContent = document.getElementById('fileTreeContent');
+      if (fileTreeInitialized) return;
+      fileTreeInitialized = true;
+
+      treeContent.innerHTML = '<div class="tree-item" style="padding-left:12px;color:var(--text-secondary);">⏳ 加载目录...</div>';
+      try {
+        const entries = await apiLs('/');
+        renderEntries(entries, treeContent, 0, '');
+      } catch (err) {
+        treeContent.innerHTML = '<div class="tree-item" style="padding-left:12px;color:var(--accent);">⚠️ ' + err.message + '</div>';
+        showToast('文件目录加载失败: ' + err.message);
+      }
+    }
+
+    // 切换到文件 Tab 时懒加载目录树
+    const origSwitchTab = switchTab;
+    switchTab = function(tabName) {
+      origSwitchTab(tabName);
+      if (tabName === 'files') initFileTree();
+    };
 
     // 可拖动分隔条
     (function() {

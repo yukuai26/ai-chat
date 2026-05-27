@@ -1031,6 +1031,78 @@
       min-width: 24px;
       text-align: right;
     }
+    /* DF22: 数据编辑弹窗 */
+    .data-edit-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 601;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .data-edit-dialog {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      width: 90%;
+      max-width: 360px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .data-edit-dialog h3 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      color: var(--text);
+    }
+    .data-edit-old {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+    .data-edit-old-value {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .data-edit-dialog input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      box-sizing: border-box;
+      margin-bottom: 14px;
+    }
+    .data-edit-dialog input:focus {
+      border-color: var(--accent);
+    }
+    .data-edit-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .btn-data-cancel {
+      padding: 6px 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-data-save {
+      padding: 6px 16px;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
     /* DF13: NewsCard 展开模式 */
     .card-body .news-expanded {
       padding: 12px 16px;
@@ -6083,37 +6155,70 @@
       }
     }
 
+    /** DF22: 数据编辑弹窗 */
     async function editDataField(fieldKey, el) {
-      if (el.classList.contains('editing')) return;
-      const currentValue = el.textContent.trim();
-      el.classList.add('editing');
-      el.innerHTML = '<input type="text" value="' + escapeHtmlAttr(currentValue === '—' ? '' : currentValue) + '" onblur="saveDataField(\'' + fieldKey + '\', this)" onkeydown="if(event.key===\'Enter\') this.blur(); if(event.key===\'Escape\') cancelDataField(\'' + fieldKey + '\', this, \'' + escapeHtmlAttr(currentValue) + '\')">';
-      const inp = el.querySelector('input');
-      if (inp) { inp.focus(); inp.select(); }
+      const field = DATA_FIELDS_META.find(f => f.key === fieldKey);
+      if (!field) return;
+
+      const oldValue = el.textContent.trim();
+      const existing = document.getElementById('dataEditOverlay');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.className = 'data-edit-overlay';
+      overlay.id = 'dataEditOverlay';
+      overlay.onclick = function(e) { if (e.target === overlay) closeDataEdit(); };
+
+      overlay.innerHTML =
+        '<div class="data-edit-dialog">' +
+          '<h3>' + field.icon + ' ' + field.label + ' (👤 ' + dataActivePerson + ')</h3>' +
+          '<div class="data-edit-old">旧值: <span class="data-edit-old-value">' + escapeHtml(oldValue) + (field.unit ? ' ' + field.unit : '') + '</span></div>' +
+          '<input type="text" id="dataEditInput" placeholder="输入新值..." value="">' +
+          '<div class="data-edit-actions">' +
+            '<button class="btn-data-cancel" onclick="closeDataEdit()">取消</button>' +
+            '<button class="btn-data-save" onclick="saveDataEdit(\'' + fieldKey + '\')">✅ 确认</button>' +
+          '</div>' +
+        '</div>';
+
+      document.body.appendChild(overlay);
+      const inp = document.getElementById('dataEditInput');
+      if (inp) inp.focus();
     }
 
-    async function saveDataField(fieldKey, input) {
+    function closeDataEdit() {
+      const overlay = document.getElementById('dataEditOverlay');
+      if (overlay) overlay.remove();
+    }
+
+    /** DF22: 保存数据编辑（弹窗版本） */
+    async function saveDataEdit(fieldKey) {
+      const input = document.getElementById('dataEditInput');
+      if (!input) return;
       const value = input.value.trim();
+      if (!value) { showCommandToast('⚠️ 请输入新值', 'error'); return; }
+
       const person = dataActivePerson;
       const token = document.getElementById('token').value;
-      if (!token) return;
+      if (!token) { closeDataEdit(); return; }
 
       try {
-        const body = { person: person };
-        // 根据字段类型构造 payload
+        const payload = {};
         const field = DATA_FIELDS_META.find(f => f.key === fieldKey);
-        if (fieldKey === 'weight') body.value = parseFloat(value) || 0;
-        else if (fieldKey === 'water') { body.cups = parseInt(value, 10) || 0; body.total_ml = (parseInt(value, 10) || 0) * 250; }
-        else if (fieldKey === 'sleep') body.hours = parseFloat(value) || 0;
-        else if (fieldKey === 'exercise') body.duration = value + ' min';
-        else body.value = value;
+        if (fieldKey === 'weight') payload[fieldKey] = { value: parseFloat(value) || 0 };
+        else if (fieldKey === 'water') { payload[fieldKey] = { cups: parseInt(value, 10) || 0, total_ml: (parseInt(value, 10) || 0) * 250 }; }
+        else if (fieldKey === 'sleep') payload[fieldKey] = { hours: parseFloat(value) || 0 };
+        else if (fieldKey === 'exercise') payload[fieldKey] = { duration: value + ' min' };
+        else payload[fieldKey] = { value: value };
 
         const resp = await fetch('/v1/api/daily/data/' + encodeURIComponent(person), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify({ [fieldKey]: body })
+          body: JSON.stringify(payload)
         });
-        if (resp.ok) {
+        const result = await resp.json();
+
+        if (resp.ok && result.ok) {
+          closeDataEdit();
           cachedDataSummary = null;
           const card = document.querySelector('[data-card-id="data"]');
           if (card) {
@@ -6125,19 +6230,12 @@
           }
           showCommandToast('✅ ' + (field ? field.label : fieldKey) + ' 已更新', 'success');
         } else {
-          const result = await resp.json();
-          showCommandToast('⚠️ ' + (result.error || '保存失败'), 'error');
+          showCommandToast('⚠️ ' + ((result && result.error) || '保存失败'), 'error');
         }
       } catch (e) {
         console.error('保存数据失败:', e);
         showCommandToast('⚠️ 网络错误', 'error');
       }
-    }
-
-    function cancelDataField(fieldKey, input, original) {
-      const el = input.parentElement;
-      el.innerHTML = original || '—';
-      el.classList.remove('editing');
     }
 
 

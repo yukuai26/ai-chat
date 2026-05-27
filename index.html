@@ -288,20 +288,25 @@
     .message .content p { margin: 0; }
     .message .content p + p { margin-top: 12px; }
     .message .content pre {
-      background: #0d0d1a;
-      border-radius: 6px;
-      padding: 12px;
+      background: var(--bg-input);
+      border-left: 3px solid var(--border);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 10px 14px;
       overflow-x: auto;
       margin: 12px 0;
       font-size: 13px;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
     }
     .message .content code {
-      background: #0d0d1a;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 13px;
+      background: var(--bg-input);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
     }
-    .message .content pre code { padding: 0; background: none; }
+    .message .content pre code { padding: 0; background: none; border: none; }
     .message .content .error-msg {
       color: var(--danger);
       font-style: italic;

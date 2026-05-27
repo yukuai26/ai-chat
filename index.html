@@ -3933,14 +3933,13 @@
     }
 
     function initExistingApp() {
-      // BUG16: Use current server URL, not hardcoded localhost
-      token = authJwt;
+      // BUG18: API Token from localStorage, NOT user JWT
       apiUrl = window.location.origin;
       // Auto-connect using saved config
       const saved = JSON.parse(localStorage.getItem('aichat_config') || '{}');
       if (saved.agentId) agentId = saved.agentId;
-      // Pre-fill token from saved config if available (for API calls)
-      if (saved.token) token = saved.token;
+      // CRITICAL: Gateway chat needs the API Token, not the user JWT
+      token = saved.token || '';
       // Directly set connected state (JWT already verified)
       connected = true;
       setStatus(true, '已连接');

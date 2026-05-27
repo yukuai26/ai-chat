@@ -579,6 +579,134 @@
       color: var(--text-secondary);
       font-size: 14px;
     }
+    /* 添加卡片按钮 */
+    .dashboard-grid .card-add {
+      background: var(--bg-secondary);
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      min-height: 120px;
+      color: var(--text-secondary);
+      font-size: 14px;
+      gap: 8px;
+    }
+    .dashboard-grid .card-add:hover {
+      border-color: var(--accent);
+      background: var(--bg-hover, rgba(255,255,255,0.04));
+    }
+    .dashboard-grid .card-add .add-icon {
+      font-size: 24px;
+      font-weight: 300;
+    }
+    /* 卡片选择弹窗 */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal-dialog {
+      background: var(--bg-secondary, #1e1e2e);
+      border: 1px solid var(--border, #333);
+      border-radius: 16px;
+      width: 480px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      animation: modalIn 0.2s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 12px;
+      border-bottom: 1px solid var(--border, #333);
+    }
+    .modal-header h3 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--text);
+    }
+    .modal-close {
+      font-size: 22px;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-body {
+      padding: 16px 24px 24px;
+    }
+    .modal-card-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border, #333);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .modal-card-item:hover {
+      border-color: var(--accent);
+      background: var(--bg-hover, rgba(255,255,255,0.04));
+    }
+    .modal-card-item .card-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+    .modal-card-item .card-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .modal-card-item .card-info-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .modal-card-item .card-info-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .modal-card-item .card-add-btn {
+      font-size: 13px;
+      padding: 4px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .modal-card-item .card-add-btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+    .modal-empty {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
     .file-browser {
       display: flex;
       flex: 1;
@@ -1758,6 +1886,20 @@
     <div class="tab-content" id="tab-daily">
       <div class="dashboard-grid" id="dashboardGrid">
         <div class="dashboard-loading">加载中...</div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <!-- 卡片选择弹窗 -->
+  <div class="modal-backdrop" id="addCardModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>➕ 添加卡片</h3>
+        <button class="modal-close" onclick="closeAddCardModal()">✕</button>
+      </div>
+      <div class="modal-body" id="addCardModalBody">
+        <div class="modal-empty">加载中...</div>
       </div>
     </div>
   </div>
@@ -3991,7 +4133,10 @@
     function renderDashboardGrid() {
       const grid = document.getElementById('dashboardGrid');
       if (!dashboardCards.length) {
-        grid.innerHTML = '<div class="dashboard-loading">暂无卡片，请先添加卡片</div>';
+        grid.innerHTML = '<div class="dashboard-loading">暂无卡片，请先添加卡片</div>' +
+          '<div class="card-add" onclick="showAddCardModal()" style="margin-top:12px">' +
+            '<span class="add-icon">+</span><span>添加卡片</span>' +
+          '</div>';
         return;
       }
 
@@ -4034,8 +4179,100 @@
           '</div>' +
         '</div>';
       }
+      // 添加卡片按钮（末尾）
+      html += '<div class="card-add" onclick="showAddCardModal()">' +
+        '<span class="add-icon">+</span><span>添加卡片</span>' +
+      '</div>';
       grid.innerHTML = html;
     }
+
+    /** 加载卡片注册表元数据（供弹窗使用） */
+    let cardRegistry = [];
+
+    /** 显示添加卡片弹窗 */
+    async function showAddCardModal() {
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      // 加载注册表（如果尚未加载）
+      if (!cardRegistry.length) {
+        try {
+          const resp = await fetch('/v1/api/daily/registry', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            cardRegistry = data.cards || [];
+          }
+        } catch (e) {
+          console.error('加载卡片注册表失败:', e);
+        }
+      }
+
+      renderAddCardModalBody();
+      document.getElementById('addCardModal').classList.add('show');
+    }
+
+    /** 关闭弹窗 */
+    function closeAddCardModal() {
+      document.getElementById('addCardModal').classList.remove('show');
+    }
+
+    /** 渲染弹窗内的可选卡片列表 */
+    function renderAddCardModalBody() {
+      const body = document.getElementById('addCardModalBody');
+      // 当前已添加的卡片 ID 集合
+      const currentIds = new Set(dashboardCards.map(c => c.id));
+      const available = cardRegistry.filter(c => !currentIds.has(c.id));
+
+      if (!available.length) {
+        body.innerHTML = '<div class="modal-empty">✅ 所有卡片已添加</div>';
+        return;
+      }
+
+      let html = '';
+      for (const card of available) {
+        html += '<div class="modal-card-item" onclick="addSelectedCard(\'' + card.id + '\')">' +
+          '<span class="card-icon">' + (card.icon || '📦') + '</span>' +
+          '<div class="card-info">' +
+            '<div class="card-info-name">' + card.name + '</div>' +
+            '<div class="card-info-desc">' + (card.description || '暂无描述') + '</div>' +
+          '</div>' +
+          '<button class="card-add-btn">+ 添加</button>' +
+        '</div>';
+      }
+      body.innerHTML = html;
+    }
+
+    /** 添加选中卡片到面板 */
+    async function addSelectedCard(cardId) {
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      try {
+        const resp = await fetch('/v1/api/daily/config/cards/' + cardId, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ enabled: true })
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+        // 重新加载面板
+        await loadDashboard();
+        // 更新弹窗内容
+        renderAddCardModalBody();
+      } catch (e) {
+        console.error('添加卡片失败:', e);
+      }
+    }
+
+    // 点击弹窗背景关闭
+    document.addEventListener('click', function(e) {
+      if (e.target.id === 'addCardModal') closeAddCardModal();
+    });
 
     /** 获取卡片摘要信息 */
     function getCardSummary(card) {

@@ -7045,8 +7045,9 @@
         const text = note.text || '';
         const preview = text.length > 50 ? text.slice(0, 50) + '...' : text;
         const time = (note.created || '').slice(0, 16).replace('T', ' ');
+        const imgCount = (note.images && note.images.length) ? ' 📸' + note.images.length : '';
         html += '<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
-        html += mood + ' ' + escapeHtml(preview) + ' <span style="font-size:10px;color:var(--text-tertiary);">' + time + '</span>';
+        html += mood + ' ' + escapeHtml(preview) + imgCount + ' <span style="font-size:10px;color:var(--text-tertiary);">' + time + '</span>';
         html += '</div>';
       }
 
@@ -7109,6 +7110,14 @@
           html += '</div>';
           html += '</div>';
           html += '<div style="font-size:13px;color:var(--text-primary);line-height:1.6;">' + displayText + '</div>';
+          // 图片缩略
+          if (note.images && note.images.length) {
+            html += '<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">';
+            for (const img of note.images) {
+              html += '<img src="' + img + '" alt="图片" style="max-height:80px;max-width:120px;border-radius:var(--radius-sm);border:1px solid var(--border);object-fit:cover;cursor:pointer;" onclick="viewNotesImage(\'' + img + '\')">';
+            }
+            html += '</div>';
+          }
           if (tags) {
             html += '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;">' + tags + '</div>';
           }
@@ -7255,6 +7264,19 @@
         console.error('删除随手记失败:', e);
         alert('删除失败: ' + e.message);
       }
+    }
+
+    function viewNotesImage(src) {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+      overlay.onclick = function() { overlay.remove(); };
+
+      const img = document.createElement('img');
+      img.src = src;
+      img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.3);';
+
+      overlay.appendChild(img);
+      document.body.appendChild(overlay);
     }
 
     /* ===== DF27: 图表组件 ===== */

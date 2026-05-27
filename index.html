@@ -252,27 +252,30 @@
     .message .msg-header {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
+      gap: 4px;
+      margin-bottom: 4px;
     }
     .message.user .msg-header { flex-direction: row-reverse; }
     .message .msg-avatar {
-      width: 20px; height: 20px;
+      width: 14px; height: 14px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 8px;
       flex-shrink: 0;
       background: none;
-      opacity: 0.5;
+      color: var(--text-tertiary);
+      opacity: 0.6;
     }
-    .message.user .msg-avatar { opacity: 0.4; }
-    .message.assistant .msg-avatar { opacity: 0.4; }
+    .message.user .msg-avatar { color: var(--text-secondary); }
+    .message.assistant .msg-avatar { color: var(--text-tertiary); }
     .message .role {
       font-size: 11px;
       color: var(--text-tertiary);
       font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .message .msg-time {
       font-size: 10px;
@@ -3450,11 +3453,11 @@
 
       const avatar = document.createElement('div');
       avatar.className = 'msg-avatar';
-      avatar.textContent = role === 'user' ? '👤' : '🤖';
+      avatar.textContent = role === 'user' ? '●' : '○';
 
       const roleLabel = document.createElement('div');
       roleLabel.className = 'role';
-      roleLabel.textContent = role === 'user' ? '你' : 'AI';
+      roleLabel.textContent = role === 'user' ? 'You' : 'AI';
 
       header.appendChild(avatar);
       header.appendChild(roleLabel);

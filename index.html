@@ -7077,6 +7077,11 @@
       }
 
       let html = '<div>';
+      // New bookmark button
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+      html += '<strong style="font-size:12px;color:var(--text-secondary);">🔗 收藏夹</strong>';
+      html += '<button onclick="showAddBookmarkModal()" style="padding:4px 10px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:11px;cursor:pointer;">+ 新增</button>';
+      html += '</div>';
       // Tag filter bar
       html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">';
       html += '<span onclick="filterBookmarks(\'\')" style="font-size:11px;padding:2px 8px;border-radius:10px;cursor:pointer;' + (!bookmarksTagFilter ? 'background:var(--accent);color:#fff;' : 'border:1px solid var(--border);color:var(--text-secondary);') + '">全部</span>';
@@ -7165,7 +7170,69 @@
       filterBookmarks(null);
     }
 
-    
+    async function showAddBookmarkModal() {
+      const existing = document.getElementById('bookmarkAddModal');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'bookmarkAddModal';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9998;display:flex;align-items:center;justify-content:center;';
+      overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+
+      overlay.innerHTML =
+        '<div style="background:var(--bg-card);border-radius:var(--radius-md);padding:24px;width:400px;max-width:90vw;box-shadow:0 4px 24px rgba(0,0,0,0.12);">' +
+          '<h3 style="margin:0 0 16px 0;font-size:15px;font-weight:500;">🔗 新增收藏</h3>' +
+          '<input type="url" id="bookmarkUrlInput" placeholder="https://..." style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--bg-card);color:var(--text-primary);margin-bottom:12px;box-sizing:border-box;font-family:inherit;">' +
+          '<div id="bookmarkFetchPreview" style="font-size:11px;color:var(--text-tertiary);margin-bottom:12px;min-height:20px;"></div>' +
+          '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+            '<button onclick="document.getElementById(\'bookmarkAddModal\').remove()" style="padding:6px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;cursor:pointer;font-size:13px;">取消</button>' +
+            '<button onclick="addBookmark()" style="padding:6px 16px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;cursor:pointer;font-size:13px;">收藏</button>' +
+          '</div>' +
+        '</div>';
+
+      document.body.appendChild(overlay);
+      const input = document.getElementById('bookmarkUrlInput');
+      input.focus();
+      input.addEventListener('input', function() { fetchBookmarkPreview(input.value.trim()); });
+    }
+
+    async function fetchBookmarkPreview(url) {
+      const preview = document.getElementById('bookmarkFetchPreview');
+      if (!preview || !url) return;
+      const token = document.getElementById('token').value;
+      if (!token) return;
+      try {
+        const resp = await fetch('/v1/api/daily/bookmarks/fetch', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: url })
+        });
+        if (resp.ok) {
+          const d = await resp.json();
+          if (d.ok && d.data) preview.textContent = '📄 ' + (d.data.title || '');
+        }
+      } catch (e) { /* silent */ }
+    }
+
+    async function addBookmark() {
+      const url = document.getElementById('bookmarkUrlInput').value.trim();
+      if (!url) return;
+      const token = document.getElementById('token').value;
+      if (!token) return;
+      const resp = await fetch('/v1/api/daily/bookmarks', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url })
+      });
+      if (resp.ok) {
+        document.getElementById('bookmarkAddModal').remove();
+        filterBookmarks(null);
+      } else {
+        const err = await resp.json();
+        alert('添加失败: ' + (err.error || ''));
+      }
+    }
+
     async function loadNotesCard(cardEl) {
       if (!cardEl) return;
       const summary = cardEl.querySelector('.card-summary');

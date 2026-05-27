@@ -3292,6 +3292,8 @@
       .calendar-detail { max-height: 50vh; }
     }
 
+  
+    .conv-delete-btn:hover { opacity: 0.8 !important; }
   </style>
 </head>
 <body>
@@ -9337,6 +9339,127 @@
         loadCalDetail(calSelectedDate); renderCalendar();
       } catch(e) {}
     }
+
+
+    /* ===== UX1-UX6: 体验优化 ===== */
+
+    // UX1: 新建对话不调 API
+    var origNewConversation = newConversation;
+    newConversation = function() {
+      // Don't create session yet — just clear the message area
+      var msgs = document.getElementById('messages');
+      msgs.innerHTML = '<div class="empty-state">新对话 · 输入你的第一条消息</div>';
+      currentSessionId = null;
+    };
+
+    // UX3: Auto-title after first message sent
+    var origSendMessage = sendMessage;
+    sendMessage = function() {
+      var isNewSession = !currentSessionId;
+      origSendMessage();
+      // After sending first message in a new session, generate title
+      if (isNewSession && currentSessionId) {
+        setTimeout(function() {
+          authFetch('/v1/sessions/' + currentSessionId + '/title', { method: 'POST' }).then(function(r) {
+            return r.json();
+          }).then(function(d) {
+            if (d.ok) loadConversations();
+          }).catch(function(){});
+        }, 3000);
+      }
+    };
+
+    // UX4: 双击编辑标题
+    // Hook into loadConversations to add dblclick handler
+    var origLoadConv = loadConversations;
+    loadConversations = function() {
+      origLoadConv();
+      setTimeout(function() {
+        document.querySelectorAll('.conv-item-name').forEach(function(el) {
+          el.onclick = null; // remove old
+          el.ondblclick = function(e) {
+            e.stopPropagation();
+            var sessionId = el.closest('.conv-item').dataset.sid;
+            editConvTitle(sessionId, el);
+          };
+        });
+      }, 200);
+    };
+
+    function editConvTitle(sid, el) {
+      var oldTitle = el.textContent.trim();
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.value = oldTitle;
+      input.style.cssText = 'width:100%;padding:2px 4px;font-size:13px;border:1px solid var(--accent);border-radius:2px;background:var(--bg-page);color:var(--text-primary);';
+      input.onblur = function() { saveConvTitle(sid, input.value.trim(), el, input); };
+      input.onkeydown = function(e) {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') { el.textContent = oldTitle; input.replaceWith(el); }
+      };
+      el.replaceWith(input);
+      input.focus(); input.select();
+    }
+
+    async function saveConvTitle(sid, newTitle, el, input) {
+      if (!newTitle || newTitle === el.textContent.trim()) { input.replaceWith(el); return; }
+      el.textContent = newTitle;
+      input.replaceWith(el);
+      try {
+        await authFetch('/v1/sessions/' + sid, {
+          method: 'PATCH', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({title: newTitle})
+        });
+      } catch(e) {}
+    }
+
+    // UX6: 软删除对话
+    async function softDeleteSession(sid) {
+      if (!confirm('隐藏此对话？')) return;
+      try {
+        await authFetch('/v1/sessions/' + sid, {
+          method: 'PATCH', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({deleted: true})
+        });
+        loadConversations();
+        if (currentSessionId === sid) {
+          document.getElementById('messages').innerHTML = '';
+          currentSessionId = null;
+        }
+        showToast('已隐藏');
+      } catch(e) { showToast('删除失败', 'error'); }
+    }
+
+    // Hook into existing loadConv to add delete button
+    var origLoadConv2 = loadConversations;
+    loadConversations = function() {
+      origLoadConv2();
+      setTimeout(function() {
+        // Add delete button to each conv item
+        document.querySelectorAll('.conv-item').forEach(function(item) {
+          if (item.querySelector('.conv-delete-btn')) return;
+          var btn = document.createElement('span');
+          btn.className = 'conv-delete-btn';
+          btn.textContent = '🗑️';
+          btn.style.cssText = 'cursor:pointer;font-size:12px;opacity:0.4;margin-left:auto;padding:2px;flex-shrink:0;';
+          btn.title = '隐藏对话';
+          btn.onclick = function(e) {
+            e.stopPropagation();
+            softDeleteSession(item.dataset.sid);
+          };
+          item.appendChild(btn);
+        });
+
+        // Add dblclick handler
+        document.querySelectorAll('.conv-item-name').forEach(function(el) {
+          el.ondblclick = function(e) {
+            e.stopPropagation();
+            var sessionId = el.closest('.conv-item').dataset.sid;
+            editConvTitle(sessionId, el);
+          };
+        });
+      }, 200);
+    };
 
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>

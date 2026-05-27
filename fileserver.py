@@ -693,6 +693,40 @@ def create_session():
         return error_response("Session 创建失败", 500)
 
 
+# UX3: AI 自动生成标题
+@app.route("/v1/sessions/<session_id>/title", methods=["POST"])
+@require_token
+def generate_session_title(session_id):
+    """POST /v1/sessions/{id}/title - 从第一条消息内容自动生成标题"""
+    session_dir = Path(SESSION_DIR)
+    session_file = session_dir / f"{session_id}.json"
+    try:
+        with open(session_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return error_response("Session 不存在", 404)
+
+    messages = data.get("messages", [])
+    if not messages:
+        return jsonify({"ok": True, "title": data.get("title", "")})
+
+    # 取第一条用户消息作为标题基础
+    first_msg = messages[0].get("content", "")
+    if isinstance(first_msg, list):
+        first_msg = " ".join(str(c.get("text", "")) for c in first_msg if isinstance(c, dict))
+    title = first_msg[:20].strip()
+    if len(first_msg) > 20:
+        title += "…"
+    if not title:
+        title = "新对话"
+
+    data["title"] = title
+    data["updated"] = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
+    with open(session_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return jsonify({"ok": True, "title": title})
+
+
 @app.route("/v1/sessions/list", methods=["GET"])
 @require_token
 def list_sessions():
@@ -712,7 +746,9 @@ def list_sessions():
             try:
                 with open(f, "r", encoding="utf-8") as fh:
                     data = json.load(fh)
-                sessions.append(data)
+                # UX5: 过滤已软删除的 session
+                if not data.get("deleted"):
+                    sessions.append(data)
             except (json.JSONDecodeError, OSError) as e:
                 logger.warning(f"跳过无效 Session 文件 {f.name}: {e}")
                 continue
@@ -725,7 +761,7 @@ def list_sessions():
         return error_response("读取 Session 列表失败", 500)
 
 
-@app.route("/v1/sessions/<session_id>", methods=["GET"])
+@app.route("/v1/sessions/<session_id>", methods=["GET", "PATCH"])
 @require_token
 def get_session(session_id):
     """GET /v1/sessions/{id} - 返回指定 Session 的完整消息历史。
@@ -753,6 +789,22 @@ def get_session(session_id):
             logger.info(f"Session 详情请求: {session_id}")
             with open(session_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
+
+            # UX2: PATCH 更新 title 或 deleted 标记
+            if request.method == "PATCH":
+                body = request.get_json(silent=True)
+                if not body:
+                    return error_response("缺少请求体", 400)
+                if "title" in body:
+                    data["title"] = body["title"]
+                if "deleted" in body:
+                    data["deleted"] = body["deleted"]
+                data["updated"] = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
+                with open(session_file, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                logger.info(f"Session 更新: {session_id}")
+                return jsonify({"ok": True, "id": session_id, "title": data.get("title", "")}), 200
+
             return jsonify(data), 200
         else:
             logger.warning(f"Session 路径校验失败: {session_id} 解析到 {session_resolved}")

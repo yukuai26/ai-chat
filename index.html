@@ -1103,6 +1103,40 @@
       font-size: 13px;
       cursor: pointer;
     }
+    /* DF23: RecipeCard 缩略模式 */
+    .card-body .recipe-collapsed {
+      padding: 12px 16px;
+    }
+    .recipe-collapsed .recipe-day {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .recipe-collapsed .recipe-meal {
+      font-size: 12px;
+      color: var(--text-secondary);
+      padding: 2px 0;
+    }
+    .recipe-collapsed .recipe-meal-icon {
+      margin-right: 4px;
+    }
+    .recipe-collapsed .recipe-empty {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+      padding: 8px 0;
+    }
+    .recipe-collapsed .recipe-expand-hint {
+      font-size: 11px;
+      color: var(--accent);
+      cursor: pointer;
+      text-align: center;
+      margin-top: 6px;
+    }
+    .recipe-collapsed .recipe-expand-hint:hover {
+      text-decoration: underline;
+    }
     /* DF13: NewsCard 展开模式 */
     .card-body .news-expanded {
       padding: 12px 16px;
@@ -4963,6 +4997,8 @@
         if (todoCard) loadTodoCard(todoCard);
         const dataCard = document.querySelector('[data-card-id="data"]');
         if (dataCard) loadDataCard(dataCard);
+        const recipeCard = document.querySelector('[data-card-id="recipe"]');
+        if (recipeCard) loadRecipeCard(recipeCard);
         dashboardLoaded = true;
       } catch (e) {
         console.error('加载 Dashboard 失败:', e);
@@ -5380,7 +5416,7 @@
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -6236,6 +6272,68 @@
         console.error('保存数据失败:', e);
         showCommandToast('⚠️ 网络错误', 'error');
       }
+    }
+
+
+    /* ===== DF23: RecipeCard ===== */
+    let cachedRecipeData = null;
+
+    async function loadRecipeCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+
+      const token = document.getElementById('token').value;
+      if (!token) {
+        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
+        return;
+      }
+
+      try {
+        if (!cachedRecipeData) {
+          const resp = await fetch('/v1/api/daily/recipe/today', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          cachedRecipeData = await resp.json();
+        }
+
+        renderRecipeCardCollapsed(summary, body, cachedRecipeData);
+      } catch (e) {
+        console.error('加载食谱失败:', e);
+        body.innerHTML = '<div class="card-body-placeholder">⚠️ 食谱加载失败</div>';
+      }
+    }
+
+    function renderRecipeCardCollapsed(summaryEl, bodyEl, data) {
+      if (!data || !data.hasRecipe) {
+        if (summaryEl) summaryEl.innerHTML = '<div class="recipe-collapsed"><div class="recipe-empty">📋 今日食谱未设置</div></div>';
+        bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
+        return;
+      }
+
+      const dayName = data.dayName || '';
+      const recipe = data.recipe || {};
+      const meals = [];
+      if (recipe.breakfast) meals.push({ icon: '🌅', label: '早餐', text: recipe.breakfast });
+      if (recipe.lunch) meals.push({ icon: '☀️', label: '午餐', text: recipe.lunch });
+      if (recipe.dinner) meals.push({ icon: '🌙', label: '晚餐', text: recipe.dinner });
+
+      let html = '<div class="recipe-collapsed">';
+      html += '<div class="recipe-day">📅 ' + escapeHtml(dayName) + '</div>';
+      if (!meals.length) {
+        html += '<div class="recipe-empty">📋 今日食谱未设置</div>';
+      } else {
+        for (const m of meals) {
+          html += '<div class="recipe-meal"><span class="recipe-meal-icon">' + m.icon + '</span><strong>' + m.label + ':</strong> ' + escapeHtml(m.text) + '</div>';
+        }
+      }
+      html += '<div class="recipe-expand-hint" onclick="toggleCard(\'recipe\', event)">展开查看整周食谱 ▼</div>';
+      html += '</div>';
+
+      if (summaryEl) summaryEl.innerHTML = html;
+      bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
     }
 
 

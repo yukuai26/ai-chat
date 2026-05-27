@@ -1955,6 +1955,87 @@ def todos_item(todo_id):
         return jsonify({"ok": True, "todo": found, "message": f"已更新 Todo #{todo_id}"})
 
 
+@app.route("/v1/api/daily/todos/summary", methods=["GET"])
+@require_token
+def todos_summary():
+    """GET /v1/api/daily/todos/summary - 双人 Todo 统计摘要。
+
+    返回各人员的每日/每周待办数。用于面板卡片摘要显示。
+
+    返回:
+      {"ok":true, "persons":
+        {"管理员": {"daily": {"total":3,"done":1,"pending":2}, "weekly": {...}},
+         "伴侣":   {...}}}
+    """
+    todos = _load_todos()
+    persons = {}
+
+    for person in KNOWN_PERSONS:
+        data = todos.get(person, {})
+        persons[person] = {}
+        for cat in ("daily", "weekly"):
+            items = data.get(cat, [])
+            total = len(items)
+            done = sum(1 for i in items if i.get("done"))
+            persons[person][cat] = {
+                "total": total,
+                "done": done,
+                "pending": total - done,
+            }
+
+    # 全局统计
+    all_total = sum(p[cat]["total"] for p in persons.values() for cat in ("daily", "weekly"))
+    all_done = sum(p[cat]["done"] for p in persons.values() for cat in ("daily", "weekly"))
+
+    return jsonify({
+        "ok": True,
+        "persons": persons,
+        "total": all_total,
+        "done": all_done,
+        "pending": all_total - all_done,
+    })
+
+
+@app.route("/v1/api/daily/todos/person/<person>", methods=["GET"])
+@require_token
+def todos_by_person(person):
+    """GET /v1/api/daily/todos/person/<person> - 按人员查询 Todo。
+
+    支持路径参数指定人员，方便前端直接请求某人 Todo。
+
+    查询参数:
+      - type: daily|weekly（可选）
+      - done: true|false|any（可选）
+
+    返回:
+      {"ok":true, "person":"管理员", "todos": {...}, "total": N}
+    """
+    if person not in KNOWN_PERSONS:
+        return error_response(f"未知用户: {person}，可用: {KNOWN_PERSONS}", 400)
+
+    todos = _load_todos()
+    data = todos.get(person, {})
+    todo_type = request.args.get("type", "").strip()
+    done_filter = request.args.get("done", "any").strip()
+
+    result = {}
+    for cat, items in data.items():
+        if todo_type and cat != todo_type:
+            continue
+        if done_filter in ("true", "false"):
+            want_done = (done_filter == "true")
+            items = [i for i in items if i.get("done", False) == want_done]
+        result[cat] = items
+
+    total = sum(len(v) for v in result.values())
+    return jsonify({
+        "ok": True,
+        "person": person,
+        "todos": result,
+        "total": total,
+    })
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

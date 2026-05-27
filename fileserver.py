@@ -103,15 +103,6 @@ JWT_REMEMBER_HOURS = 168  # 7 days
 
 # ---- 用户数据 ----
 def _load_users() -> dict:
-
-
-def _get_person() -> str:
-    """根据认证上下文返回当前用户标识（数据隔离）。
-    JWT 认证 → 用 request.user.username，旧 Token → 用 person 参数。
-    """
-    if hasattr(request, 'user') and request.user.get('username'):
-        return request.user['username']
-    return request.args.get('person', '管理员').strip()
     try:
         if os.path.isfile(USERS_FILE) and os.path.getsize(USERS_FILE) > 0:
             with open(USERS_FILE, "r", encoding="utf-8") as f:
@@ -124,6 +115,15 @@ def _save_users(data: dict):
     os.makedirs(os.path.dirname(USERS_FILE), exist_ok=True)
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _get_person() -> str:
+    """根据认证上下文返回当前用户标识（数据隔离）。
+    JWT 认证 → 用 request.user.username，旧 Token → 用 person 参数。
+    """
+    if hasattr(request, 'user') and request.user.get('username'):
+        return request.user['username']
+    return request.args.get('person', '管理员').strip()
 
 
 def make_token(user: dict, remember: bool = False) -> str:

@@ -1256,6 +1256,41 @@
       font-size: 13px;
       cursor: pointer;
     }
+    /* DF25: WishesCard 缩略模式 */
+    .card-body .wishes-collapsed {
+      padding: 12px 16px;
+    }
+    .wishes-collapsed .wishes-total {
+      font-size: 13px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .wishes-collapsed .wishes-status-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .wishes-collapsed .wishes-status-tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--bg-hover);
+      color: var(--text-secondary);
+    }
+    .wishes-collapsed .wishes-status-tag .count {
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .wishes-collapsed .wishes-expand-hint {
+      font-size: 11px;
+      color: var(--accent);
+      cursor: pointer;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .wishes-collapsed .wishes-expand-hint:hover {
+      text-decoration: underline;
+    }
     /* DF13: NewsCard 展开模式 */
     .card-body .news-expanded {
       padding: 12px 16px;
@@ -5118,6 +5153,8 @@
         if (dataCard) loadDataCard(dataCard);
         const recipeCard = document.querySelector('[data-card-id="recipe"]');
         if (recipeCard) loadRecipeCard(recipeCard);
+        const wishesCard = document.querySelector('[data-card-id="wishes"]');
+        if (wishesCard) loadWishesCard(wishesCard);
         dashboardLoaded = true;
       } catch (e) {
         console.error('加载 Dashboard 失败:', e);
@@ -5535,7 +5572,7 @@
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -6570,6 +6607,83 @@
         console.error('上传食谱失败:', e);
         showCommandToast('⚠️ 网络错误', 'error');
       }
+    }
+
+
+    /* ===== DF25: WishesCard ===== */
+    let cachedWishesData = null;
+
+    const WISH_STATUS_LABELS = {
+      'idea': '💡 想法',
+      'discussing': '💬 讨论中',
+      'designing': '📐 设计中',
+      'implementing': '🔨 实现中',
+      'done': '✅ 完成',
+      'archived': '📦 归档'
+    };
+
+    async function loadWishesCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+
+      const token = document.getElementById('token').value;
+      if (!token) {
+        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
+        return;
+      }
+
+      try {
+        if (!cachedWishesData) {
+          const resp = await fetch('/v1/api/daily/wishes', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          cachedWishesData = await resp.json();
+        }
+
+        renderWishesCardCollapsed(summary, body, cachedWishesData);
+      } catch (e) {
+        console.error('加载心愿失败:', e);
+        body.innerHTML = '<div class="card-body-placeholder">⚠️ 心愿加载失败</div>';
+      }
+    }
+
+    function renderWishesCardCollapsed(summaryEl, bodyEl, data) {
+      const wishes = data && data.wishes ? data.wishes : [];
+      const total = data && data.total != null ? data.total : wishes.length;
+
+      if (!total) {
+        if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">💡 暂无心愿</div></div>';
+        bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
+        return;
+      }
+
+      // 统计各状态数量
+      const statusCounts = {};
+      for (const w of wishes) {
+        const s = w.status || 'idea';
+        statusCounts[s] = (statusCounts[s] || 0) + 1;
+      }
+
+      let html = '<div class="wishes-collapsed">';
+      html += '<div class="wishes-total">💡 共 <strong>' + total + '</strong> 个心愿</div>';
+      html += '<div class="wishes-status-list">';
+
+      const order = ['idea', 'discussing', 'designing', 'implementing', 'done', 'archived'];
+      for (const status of order) {
+        if (statusCounts[status]) {
+          const label = WISH_STATUS_LABELS[status] || status;
+          html += '<span class="wishes-status-tag">' + label + ' <span class="count">' + statusCounts[status] + '</span></span>';
+        }
+      }
+      html += '</div>';
+      html += '<div class="wishes-expand-hint" onclick="toggleCard(\'wishes\', event)">展开查看详情 ▼</div>';
+      html += '</div>';
+
+      if (summaryEl) summaryEl.innerHTML = html;
+      bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
     }
 
 

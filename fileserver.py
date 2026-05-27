@@ -2450,6 +2450,49 @@ def upload_recipe():
     })
 
 
+
+
+@app.route("/v1/api/daily/recipe/today", methods=["GET"])
+@require_token
+def get_today_recipe():
+    """GET /v1/api/daily/recipe/today - 查询今日食谱。
+
+    根据当前星期几，从 recipe.json 中读取今日午/晚餐。
+
+    查询参数:
+      - day: 覆盖星期几（1-7，Monday=1）
+
+    返回:
+      {"ok":true, "day":3, "dayName":"周三",
+       "recipe": {"lunch":"沙拉","dinner":"鱼","breakfast":""}}
+    """
+    day_str = request.args.get("day", "")
+    if day_str.isdigit():
+        day_num = int(day_str)
+        if day_num < 1 or day_num > 7:
+            return error_response("day 参数必须为 1-7", 400)
+    else:
+        tz = ZoneInfo("Asia/Shanghai")
+        day_num = datetime.now(tz).isoweekday()  # 1=Mon, 7=Sun
+
+    day_names = ["", "周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    recipe_data = _load_recipe()
+    today_recipe = recipe_data.get(str(day_num), {})
+
+    return jsonify({
+        "ok": True,
+        "day": day_num,
+        "dayName": day_names[day_num],
+        "recipe": {
+            "breakfast": today_recipe.get("breakfast", ""),
+            "lunch": today_recipe.get("lunch", ""),
+            "dinner": today_recipe.get("dinner", ""),
+        },
+        "hasRecipe": any(v for v in today_recipe.values() if v),
+    })
+
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

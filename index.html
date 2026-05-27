@@ -2475,7 +2475,7 @@
         transition: transform 0.15s ease;
         border-left: 1px solid var(--border);
         box-shadow: -4px 0 24px rgba(0,0,0,0.08);
-      .settings-panel.collapsed { width: 280px; max-width: 85vw; transform: translateX(100%); }
+      .settings-panel.collapsed { display: none; }
 
       /* 抽屉头部（设置面板） */
       .settings-drawer-header {
@@ -3407,6 +3407,10 @@
       .login-logo { font-size: 20px; }
     }
 
+      #settingsModalBackdrop {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.4); display: none;
+    }
   </style>
 </head>
 <body>
@@ -3486,7 +3490,7 @@
       <button class="panel-toggle" id="toggleConvPanel" onclick="togglePanelLeft()" title="切换会话列表">☰</button>
       <h1>AI Chat</h1>
       <span class="model-badge" id="modelBadge">DeepSeek V4 Pro</span>
-      <button class="panel-toggle" id="toggleSettingsPanel" onclick="togglePanelRight()" title="切换设置面板">⚙️</button>
+      <button class="panel-toggle" id="toggleSettingsPanel" onclick="openSettingsModal()" title="设置">⚙️</button>
       <button class="search-trigger" onclick="openSearch()" title="全局搜索 (⌘K)" style="background:none;border:none;cursor:pointer;font-size:13px;padding:4px 8px;color:var(--text-secondary);display:flex;align-items:center;gap:4px;">🔍 <span style="font-size:11px;">搜索</span></button>
       <div class="user-info" id="userInfo" style="display:none;margin-left:auto;display:none;align-items:center;gap:6px;padding:0 8px;cursor:pointer;" onclick="toggleUserMenu(event)">
         <span class="user-avatar" id="userAvatar" style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;"></span>
@@ -3620,10 +3624,11 @@
   </div>
 
   <!-- 右栏 — 设置面板 -->
+  <div class="settings-modal-backdrop" id="settingsModalBackdrop" onclick="closeSettingsModal()"></div>
   <div class="settings-panel" id="settingsPanel">
     <div class="settings-drawer-header">
       <span>⚙️ 设置</span>
-      <button class="settings-drawer-close" onclick="togglePanelRight()" aria-label="关闭">×</button>
+      <button class="settings-drawer-close" onclick="closeSettingsModal()" aria-label="关闭">×</button>
     </div>
     <h2>⚙️ 设置</h2>
     <div class="status">
@@ -3832,6 +3837,15 @@
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('registerOverlay').style.display = 'flex';
     }
+    function openSettingsModal() {
+      document.getElementById('settingsPanel').style.display = 'flex';
+      document.getElementById('settingsModalBackdrop').style.display = 'block';
+    }
+    function closeSettingsModal() {
+      document.getElementById('settingsPanel').style.display = 'none';
+      document.getElementById('settingsModalBackdrop').style.display = 'none';
+    }
+
     function showLoginOverlay() {
       // BUG15: 隐藏所有 UI 元素，只显示干净登录卡片
       document.getElementById('registerOverlay').style.display = 'none';
@@ -3919,12 +3933,14 @@
     }
 
     function initExistingApp() {
-      // Skip old token connect flow — JWT auth handles it
+      // BUG16: Use current server URL, not hardcoded localhost
       token = authJwt;
-      apiUrl = 'http://localhost:11451';
+      apiUrl = window.location.origin;
       // Auto-connect using saved config
       const saved = JSON.parse(localStorage.getItem('aichat_config') || '{}');
       if (saved.agentId) agentId = saved.agentId;
+      // Pre-fill token from saved config if available (for API calls)
+      if (saved.token) token = saved.token;
       // Directly set connected state (JWT already verified)
       connected = true;
       setStatus(true, '已连接');

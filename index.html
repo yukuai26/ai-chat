@@ -954,6 +954,83 @@
     .data-collapsed .data-expand-hint:hover {
       text-decoration: underline;
     }
+    /* DF21: DataCard 展开模式 */
+    .card-body .data-expanded {
+      padding: 12px 16px;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    .data-expanded .data-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    .data-expanded .data-tab {
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+    .data-expanded .data-tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .data-field-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .data-field-item:last-child {
+      border-bottom: none;
+    }
+    .data-field-icon {
+      font-size: 18px;
+      width: 24px;
+      text-align: center;
+    }
+    .data-field-label {
+      color: var(--text);
+      min-width: 40px;
+    }
+    .data-field-value {
+      flex: 1;
+      color: var(--accent);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+    .data-field-value:hover {
+      background: var(--bg-hover);
+    }
+    .data-field-value.editing {
+      background: var(--bg-hover);
+      padding: 0;
+    }
+    .data-field-value input {
+      width: 100%;
+      padding: 2px 6px;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+    }
+    .data-field-unit {
+      color: var(--text-secondary);
+      font-size: 11px;
+      min-width: 24px;
+      text-align: right;
+    }
     /* DF13: NewsCard 展开模式 */
     .card-body .news-expanded {
       padding: 12px 16px;
@@ -5935,7 +6012,132 @@
       html += '</div>';
 
       if (summaryEl) summaryEl.innerHTML = html;
-      bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
+      // 展开模式
+      renderDataCardExpanded(bodyEl, data);
+    }
+
+
+    /** DF21: DataCard 展开模式 */
+    let dataActivePerson = '管理员';
+
+    const DATA_FIELDS_META = [
+      { key: 'weight',     icon: '⚖️', label: '体重', unit: 'kg' },
+      { key: 'water',      icon: '💧', label: '喝水', unit: '杯' },
+      { key: 'sleep',      icon: '😴', label: '睡眠', unit: 'h' },
+      { key: 'exercise',   icon: '🏃', label: '运动', unit: 'kcal' },
+      { key: 'journal',    icon: '📝', label: '日记', unit: '' },
+      { key: 'fitness',    icon: '💪', label: '健身', unit: 'kcal' },
+      { key: 'finance',    icon: '💰', label: '财务', unit: '¥' }
+    ];
+
+    function renderDataCardExpanded(bodyEl, data) {
+      const persons = Object.keys(data.persons || {});
+      if (!persons.length) {
+        bodyEl.innerHTML = '<div class="card-body-placeholder">📊 暂无数据</div>';
+        return;
+      }
+      if (!persons.includes(dataActivePerson)) dataActivePerson = persons[0];
+
+      let html = '<div class="data-expanded">';
+
+      // Person tabs
+      html += '<div class="data-tabs">';
+      for (const p of persons) {
+        const active = p === dataActivePerson ? ' active' : '';
+        html += '<button class="data-tab' + active + '" onclick="switchDataPerson(\'' + escapeHtml(p) + '\')">👤 ' + escapeHtml(p) + '</button>';
+      }
+      html += '</div>';
+
+      // Field list
+      const personData = data.persons[dataActivePerson] || {};
+      for (const field of DATA_FIELDS_META) {
+        const fieldData = personData[field.key] || [];
+        let value = '—';
+        if (fieldData.length > 0) {
+          const entry = fieldData[fieldData.length - 1];
+          if (field.key === 'weight') value = (entry.value != null ? entry.value : '—');
+          else if (field.key === 'water') value = (entry.cups != null ? entry.cups : '—');
+          else if (field.key === 'sleep') value = (entry.hours != null ? entry.hours : '—');
+          else if (field.key === 'exercise') value = (entry.duration != null ? entry.duration + 'min ' + (entry.calories || '') : '—');
+          else if (field.key === 'fitness') value = (entry.duration || entry.calories || '—');
+          else value = (entry.value != null ? entry.value : (entry.text || '—'));
+        }
+        html += '<div class="data-field-item">';
+        html += '<span class="data-field-icon">' + field.icon + '</span>';
+        html += '<span class="data-field-label">' + field.label + '</span>';
+        html += '<span class="data-field-value" onclick="editDataField(\'' + field.key + '\', this)" data-key="' + field.key + '">' + escapeHtml(String(value)) + '</span>';
+        html += '<span class="data-field-unit">' + field.unit + '</span>';
+        html += '</div>';
+      }
+
+      html += '</div>';
+      bodyEl.innerHTML = html;
+    }
+
+    function switchDataPerson(person) {
+      dataActivePerson = person;
+      const card = document.querySelector('[data-card-id="data"]');
+      if (card && cachedDataSummary) {
+        const body = card.querySelector('.card-body');
+        if (body) renderDataCardExpanded(body, cachedDataSummary);
+      }
+    }
+
+    async function editDataField(fieldKey, el) {
+      if (el.classList.contains('editing')) return;
+      const currentValue = el.textContent.trim();
+      el.classList.add('editing');
+      el.innerHTML = '<input type="text" value="' + escapeHtmlAttr(currentValue === '—' ? '' : currentValue) + '" onblur="saveDataField(\'' + fieldKey + '\', this)" onkeydown="if(event.key===\'Enter\') this.blur(); if(event.key===\'Escape\') cancelDataField(\'' + fieldKey + '\', this, \'' + escapeHtmlAttr(currentValue) + '\')">';
+      const inp = el.querySelector('input');
+      if (inp) { inp.focus(); inp.select(); }
+    }
+
+    async function saveDataField(fieldKey, input) {
+      const value = input.value.trim();
+      const person = dataActivePerson;
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      try {
+        const body = { person: person };
+        // 根据字段类型构造 payload
+        const field = DATA_FIELDS_META.find(f => f.key === fieldKey);
+        if (fieldKey === 'weight') body.value = parseFloat(value) || 0;
+        else if (fieldKey === 'water') { body.cups = parseInt(value, 10) || 0; body.total_ml = (parseInt(value, 10) || 0) * 250; }
+        else if (fieldKey === 'sleep') body.hours = parseFloat(value) || 0;
+        else if (fieldKey === 'exercise') body.duration = value + ' min';
+        else body.value = value;
+
+        const resp = await fetch('/v1/api/daily/data/' + encodeURIComponent(person), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ [fieldKey]: body })
+        });
+        if (resp.ok) {
+          cachedDataSummary = null;
+          const card = document.querySelector('[data-card-id="data"]');
+          if (card) {
+            await loadDataCard(card);
+            const bodyEl = card.querySelector('.card-body');
+            if (bodyEl && card.classList.contains('expanded')) {
+              renderDataCardExpanded(bodyEl, cachedDataSummary);
+            }
+          }
+          showCommandToast('✅ ' + (field ? field.label : fieldKey) + ' 已更新', 'success');
+        } else {
+          const result = await resp.json();
+          showCommandToast('⚠️ ' + (result.error || '保存失败'), 'error');
+        }
+      } catch (e) {
+        console.error('保存数据失败:', e);
+        showCommandToast('⚠️ 网络错误', 'error');
+      }
+    }
+
+    function cancelDataField(fieldKey, input, original) {
+      const el = input.parentElement;
+      el.innerHTML = original || '—';
+      el.classList.remove('editing');
     }
 
 

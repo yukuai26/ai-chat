@@ -864,6 +864,40 @@
       font-size: 12px;
       padding: 16px 0;
     }
+    /* DF18: Todo 添加输入框 */
+    .todo-add-bar {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .todo-add-bar input {
+      flex: 1;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+    }
+    .todo-add-bar input:focus {
+      border-color: var(--accent);
+    }
+    .todo-add-bar .todo-add-btn {
+      padding: 4px 14px;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .todo-add-bar .todo-add-btn:hover {
+      opacity: 0.85;
+    }
     /* DF13: NewsCard 展开模式 */
     .card-body .news-expanded {
       padding: 12px 16px;
@@ -5579,6 +5613,12 @@
       html += '<div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">⏳ 加载中...</div>';
       html += '</div>';
 
+      // 底部添加输入框
+      html += '<div class="todo-add-bar">';
+      html += '<input type="text" id="todoAddInput" placeholder="输入新待办..." onkeydown="if(event.key===\'Enter\') addTodoItem()">';
+      html += '<button class="todo-add-btn" onclick="addTodoItem()">+ 添加</button>';
+      html += '</div>';
+
       html += '</div>';
       bodyEl.innerHTML = html;
 
@@ -5692,6 +5732,54 @@
         }
       } catch (e) {
         console.error('Delete todo failed:', e);
+      }
+    }
+
+    /** DF18: 添加 Todo */
+    async function addTodoItem() {
+      const input = document.getElementById('todoAddInput');
+      if (!input) return;
+      const text = input.value.trim();
+      if (text.length < 2) {
+        showCommandToast('⚠️ 待办内容至少 2 个字符', 'error');
+        return;
+      }
+
+      const token = document.getElementById('token').value;
+      if (!token) {
+        showCommandToast('⚠️ 请先连接 API Token', 'error');
+        return;
+      }
+
+      try {
+        const resp = await fetch('/v1/api/daily/todos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({
+            person: todoActivePerson,
+            type: todoActiveView === 'weekly' ? 'weekly' : 'daily',
+            text: text
+          })
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          input.value = '';
+          cachedTodoData = null;
+          const todoCard = document.querySelector('[data-card-id="todo"]');
+          if (todoCard) {
+            await loadTodoCard(todoCard);
+            const body = todoCard.querySelector('.card-body');
+            if (body && todoCard.classList.contains('expanded')) {
+              renderTodoCardExpanded(body, cachedTodoData);
+            }
+          }
+          showCommandToast('✅ 已添加: ' + text, 'success');
+        } else {
+          showCommandToast('⚠️ ' + (result.error || '添加失败'), 'error');
+        }
+      } catch (e) {
+        console.error('添加 Todo 失败:', e);
+        showCommandToast('⚠️ 网络错误', 'error');
       }
     }
 

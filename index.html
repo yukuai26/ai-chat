@@ -1137,6 +1137,125 @@
     .recipe-collapsed .recipe-expand-hint:hover {
       text-decoration: underline;
     }
+    /* DF24: RecipeCard 展开模式 */
+    .card-body .recipe-expanded {
+      padding: 12px 16px;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    .recipe-expanded .recipe-upload-bar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+    .recipe-expanded .recipe-upload-btn {
+      padding: 3px 12px;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--accent);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .recipe-expanded .recipe-upload-btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+    .recipe-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .recipe-table th {
+      text-align: left;
+      padding: 4px 8px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    .recipe-table td {
+      padding: 4px 8px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+    }
+    .recipe-table td.recipe-day-name {
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .recipe-table td.recipe-empty-cell {
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+    /* DF24: 食谱上传弹窗 */
+    .recipe-upload-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 602;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .recipe-upload-dialog {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .recipe-upload-dialog h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      color: var(--text);
+    }
+    .recipe-upload-dialog textarea {
+      width: 100%;
+      height: 120px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+    .recipe-upload-dialog textarea:focus {
+      border-color: var(--accent);
+    }
+    .recipe-upload-hint {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin: 6px 0 12px 0;
+    }
+    .recipe-upload-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .recipe-upload-actions .btn-cancel {
+      padding: 6px 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .recipe-upload-actions .btn-upload {
+      padding: 6px 16px;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
     /* DF13: NewsCard 展开模式 */
     .card-body .news-expanded {
       padding: 12px 16px;
@@ -6333,7 +6452,124 @@
       html += '</div>';
 
       if (summaryEl) summaryEl.innerHTML = html;
-      bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
+      // DF24: 展开 -> 整周表格
+      renderRecipeCardExpanded(bodyEl, data);
+    }
+
+
+    /** DF24: RecipeCard 展开模式 */
+    async function renderRecipeCardExpanded(bodyEl, todayData) {
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      try {
+        const resp = await fetch('/v1/api/daily/recipe/week', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const weekData = await resp.json();
+
+        let html = '<div class="recipe-expanded">';
+
+        // Upload button bar
+        html += '<div class="recipe-upload-bar">';
+        html += '<button class="recipe-upload-btn" onclick="showRecipeUpload()">📋 上传食谱</button>';
+        html += '</div>';
+
+        // Week table
+        html += '<table class="recipe-table">';
+        html += '<thead><tr><th></th><th>午餐</th><th>晚餐</th></tr></thead>';
+        html += '<tbody>';
+
+        const days = weekData.days || {};
+        for (let d = 1; d <= 7; d++) {
+          const day = days[String(d)] || {};
+          const dayName = day.dayName || '';
+          const lunch = day.lunch || '';
+          const dinner = day.dinner || '';
+          const today = todayData && todayData.day === d;
+
+          html += '<tr' + (today ? ' style="background:var(--bg-hover)"' : '') + '>';
+          html += '<td class="recipe-day-name">' + (today ? '🔸 ' : '') + escapeHtml(dayName) + '</td>';
+          html += '<td' + (lunch ? '' : ' class="recipe-empty-cell"') + '>' + (lunch ? escapeHtml(lunch) : '—') + '</td>';
+          html += '<td' + (dinner ? '' : ' class="recipe-empty-cell"') + '>' + (dinner ? escapeHtml(dinner) : '—') + '</td>';
+          html += '</tr>';
+        }
+
+        html += '</tbody></table>';
+        html += '</div>';
+        bodyEl.innerHTML = html;
+      } catch (e) {
+        console.error('加载整周食谱失败:', e);
+        bodyEl.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>';
+      }
+    }
+
+    /** DF24: 食谱上传弹窗 */
+    function showRecipeUpload() {
+      const existing = document.getElementById('recipeUploadOverlay');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.className = 'recipe-upload-overlay';
+      overlay.id = 'recipeUploadOverlay';
+      overlay.onclick = function(e) { if (e.target === overlay) closeRecipeUpload(); };
+
+      overlay.innerHTML =
+        '<div class="recipe-upload-dialog">' +
+          '<h3>📋 上传食谱</h3>' +
+          '<textarea id="recipeUploadText" placeholder="粘贴食谱文本...&#10;格式：周一 午餐:沙拉 晚餐:鱼&#10;周二 午餐:炒面 晚餐:汤"></textarea>' +
+          '<div class="recipe-upload-hint">格式: 周一 午餐:xxx 晚餐:xxx（每行一天）</div>' +
+          '<div class="recipe-upload-actions">' +
+            '<button class="btn-cancel" onclick="closeRecipeUpload()">取消</button>' +
+            '<button class="btn-upload" onclick="uploadRecipe()">上传</button>' +
+          '</div>' +
+        '</div>';
+
+      document.body.appendChild(overlay);
+      const ta = document.getElementById('recipeUploadText');
+      if (ta) ta.focus();
+    }
+
+    function closeRecipeUpload() {
+      const overlay = document.getElementById('recipeUploadOverlay');
+      if (overlay) overlay.remove();
+    }
+
+    async function uploadRecipe() {
+      const ta = document.getElementById('recipeUploadText');
+      if (!ta) return;
+      const text = ta.value.trim();
+      if (!text) { showCommandToast('⚠️ 请输入食谱文本', 'error'); return; }
+
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      try {
+        const resp = await fetch('/v1/api/daily/recipe/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ text: text })
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          closeRecipeUpload();
+          cachedRecipeData = null;
+          const recipeCard = document.querySelector('[data-card-id="recipe"]');
+          if (recipeCard) {
+            await loadRecipeCard(recipeCard);
+            const body = recipeCard.querySelector('.card-body');
+            if (body && recipeCard.classList.contains('expanded')) {
+              renderRecipeCardExpanded(body, cachedRecipeData);
+            }
+          }
+          showCommandToast('✅ 食谱已上传 (' + (result.days || 0) + ' 天)', 'success');
+        } else {
+          showCommandToast('⚠️ ' + (result.error || '上传失败'), 'error');
+        }
+      } catch (e) {
+        console.error('上传食谱失败:', e);
+        showCommandToast('⚠️ 网络错误', 'error');
+      }
     }
 
 

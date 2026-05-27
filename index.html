@@ -1291,6 +1291,121 @@
     .wishes-collapsed .wishes-expand-hint:hover {
       text-decoration: underline;
     }
+    /* DF26: WishesCard 展开模式 */
+    .card-body .wishes-expanded {
+      padding: 12px 16px;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    .wishes-expanded .wishes-filter-tabs {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .wishes-expanded .wishes-filter-tab {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+    .wishes-expanded .wishes-filter-tab:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .wishes-expanded .wishes-filter-tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .wishes-item {
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .wishes-item:hover {
+      background: var(--bg-hover);
+    }
+    .wishes-item:last-child {
+      border-bottom: none;
+    }
+    .wishes-item-title {
+      font-size: 13px;
+      color: var(--text);
+    }
+    .wishes-item-meta {
+      display: flex;
+      gap: 6px;
+      margin-top: 2px;
+      font-size: 11px;
+    }
+    .wishes-status-badge {
+      padding: 1px 6px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .wishes-status-badge.idea { background: #e3f2fd; color: #1565c0; }
+    .wishes-status-badge.discussing { background: #f3e5f5; color: #7b1fa2; }
+    .wishes-status-badge.designing { background: #fff3e0; color: #e65100; }
+    .wishes-status-badge.implementing { background: #e8f5e9; color: #2e7d32; }
+    .wishes-status-badge.done { background: #e8eaf6; color: #283593; }
+    .wishes-status-badge.archived { background: #f5f5f5; color: #757575; }
+    .wishes-item-empty {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+      padding: 16px 0;
+    }
+    .wish-detail-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 603;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .wish-detail-dialog {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .wish-detail-dialog h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      color: var(--text);
+    }
+    .wish-detail-meta {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    .wish-detail-note {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      padding: 8px;
+      background: var(--bg-hover);
+      border-radius: 6px;
+    }
+    .wish-detail-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
     /* DF13: NewsCard 展开模式 */
     .card-body .news-expanded {
       padding: 12px 16px;
@@ -6683,7 +6798,103 @@
       html += '</div>';
 
       if (summaryEl) summaryEl.innerHTML = html;
-      bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
+      // DF26: 展开 → 列表 + 筛选
+      renderWishesCardExpanded(bodyEl, data);
+    }
+
+
+    /** DF26: WishesCard 展开模式 */
+    let wishesActiveFilter = 'all';
+
+    function renderWishesCardExpanded(bodyEl, data) {
+      const wishes = data && data.wishes ? data.wishes : [];
+      const total = data && data.total != null ? data.total : wishes.length;
+
+      let html = '<div class="wishes-expanded">';
+
+      // Filter tabs
+      html += '<div class="wishes-filter-tabs">';
+      html += '<button class="wishes-filter-tab' + (wishesActiveFilter === 'all' ? ' active' : '') + '" onclick="switchWishesFilter(\'all\')">全部 (' + total + ')</button>';
+      for (const status of ['idea', 'discussing', 'designing', 'implementing', 'done', 'archived']) {
+        const count = wishes.filter(function(w) { return w.status === status; }).length;
+        if (count > 0) {
+          const label = WISH_STATUS_LABELS[status] || status;
+          html += '<button class="wishes-filter-tab' + (wishesActiveFilter === status ? ' active' : '') + '" onclick="switchWishesFilter(\'' + status + '\')">' + label + ' (' + count + ')</button>';
+        }
+      }
+      html += '</div>';
+
+      // Wishes list
+      const filtered = wishesActiveFilter === 'all' ? wishes : wishes.filter(function(w) { return w.status === wishesActiveFilter; });
+      if (!filtered.length) {
+        html += '<div class="wishes-item-empty">' + (wishesActiveFilter === 'all' ? '💡 暂无心愿' : '该状态暂无') + '</div>';
+      } else {
+        for (const w of filtered) {
+          const statusLabel = (WISH_STATUS_LABELS[w.status] || w.status).replace(/^[^ ]+ /, '');
+          const tags = (w.tags || []).map(t => '<span style="color:var(--text-secondary);font-size:10px;">#' + escapeHtml(t) + '</span>').join(' ');
+          const dataEnc = encodeURIComponent(JSON.stringify(w));
+          html += '<div class="wishes-item" onclick="showWishDetail(decodeURIComponent(\'' + dataEnc + '\'))" title="查看详情">';
+          html += '<div class="wishes-item-title">' + escapeHtml(w.text) + '</div>';
+          html += '<div class="wishes-item-meta">';
+          html += '<span class="wishes-status-badge ' + w.status + '">' + statusLabel + '</span>';
+          html += tags;
+          html += '</div>';
+          html += '</div>';
+        }
+      }
+
+      html += '</div>';
+      bodyEl.innerHTML = html;
+    }
+
+    function switchWishesFilter(status) {
+      wishesActiveFilter = status;
+      const card = document.querySelector('[data-card-id="wishes"]');
+      if (card && cachedWishesData) {
+        const body = card.querySelector('.card-body');
+        if (body) renderWishesCardExpanded(body, cachedWishesData);
+      }
+    }
+
+    function showWishDetail(encoded) {
+      let wish;
+      try {
+        wish = typeof encoded === 'string' ? JSON.parse(encoded) : encoded;
+      } catch (e) { return; }
+
+      const existing = document.getElementById('wishDetailOverlay');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.className = 'wish-detail-overlay';
+      overlay.id = 'wishDetailOverlay';
+      overlay.onclick = function(e) { if (e.target === overlay) closeWishDetail(); };
+
+      const statusLabel = WISH_STATUS_LABELS[wish.status] || wish.status;
+      const note = wish.note || '';
+      const link = wish.link || '';
+      const tags = (wish.tags || []).map(t => '#' + escapeHtml(t)).join(' ');
+
+      overlay.innerHTML =
+        '<div class="wish-detail-dialog">' +
+          '<h3>' + escapeHtml(wish.text) + '</h3>' +
+          '<div class="wish-detail-meta">' +
+            '<span class="wishes-status-badge ' + wish.status + '">' + statusLabel + '</span>' +
+            (tags ? '<span>' + tags + '</span>' : '') +
+          '</div>' +
+          (note ? '<div class="wish-detail-note">' + escapeHtml(note) + '</div>' : '') +
+          '<div class="wish-detail-actions">' +
+            '<button class="btn-data-cancel" onclick="closeWishDetail()">关闭</button>' +
+            (link ? '<a href="' + link + '" target="_blank" class="btn-data-save" style="text-decoration:none;">🔗 链接</a>' : '') +
+          '</div>' +
+        '</div>';
+
+      document.body.appendChild(overlay);
+    }
+
+    function closeWishDetail() {
+      const overlay = document.getElementById('wishDetailOverlay');
+      if (overlay) overlay.remove();
     }
 
 

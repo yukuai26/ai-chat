@@ -444,6 +444,40 @@
       padding: 24px;
       background: var(--bg);
     }
+    .dashboard-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .toolbar-btn {
+      font-size: 13px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .toolbar-btn:hover {
+      border-color: var(--accent);
+    }
+    .toolbar-btn.active {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+    .toolbar-hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
     /* ==================== 卡片网格 ==================== */
     .dashboard-grid {
       display: grid;
@@ -562,6 +596,37 @@
       color: var(--text-secondary);
       opacity: 0.5;
       font-size: 12px;
+    }
+    /* 拖拽排序 */
+    .card-placeholder .drag-handle {
+      display: none;
+      font-size: 16px;
+      color: var(--text-secondary);
+      cursor: grab;
+      padding: 0 4px;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .dashboard-grid.edit-mode .card-placeholder:not(.disabled) .drag-handle {
+      display: inline;
+    }
+    .dashboard-grid.edit-mode .card-placeholder:not(.disabled) {
+      cursor: grab;
+    }
+    .dashboard-grid.edit-mode .card-placeholder.drag-over {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+    .dashboard-grid.edit-mode .card-placeholder.dragging {
+      opacity: 0.4;
+    }
+    .dashboard-grid.edit-mode .card-placeholder.disabled {
+      cursor: not-allowed;
+      opacity: 0.3;
+    }
+    .dashboard-grid.edit-mode .card-add {
+      pointer-events: none;
+      opacity: 0.3;
     }
     /* 响应式 */
     @media (max-width: 1024px) {
@@ -1884,6 +1949,12 @@
       </div>
     </div>
     <div class="tab-content" id="tab-daily">
+      <div class="dashboard-toolbar" id="dashboardToolbar">
+        <button class="toolbar-btn" id="btnEditLayout" onclick="toggleEditLayout()" title="编辑布局">
+          <span>🔧</span> 编辑布局
+        </button>
+        <span class="toolbar-hint" id="layoutHint"></span>
+      </div>
       <div class="dashboard-grid" id="dashboardGrid">
         <div class="dashboard-loading">加载中...</div>
       </div>
@@ -4162,8 +4233,15 @@
         const summary = getCardSummary(card);
         const isImplemented = IMPLEMENTED_CARDS.includes(card.id);
 
-        html += '<div class="' + cls + '" data-card-id="' + card.id + '">' +
+        html += '<div class="' + cls + '" data-card-id="' + card.id + '"' +
+          ' draggable="true"' +
+          ' ondragstart="onDragStart(event, \'' + card.id + '\')"' +
+          ' ondragend="onDragEnd(event)"' +
+          ' ondragover="onDragOver(event)"' +
+          ' ondragleave="onDragLeave(event)"' +
+          ' ondrop="onDrop(event, \'' + card.id + '\')">' +
           '<div class="card-header" onclick="toggleCard(\'' + card.id + '\', event)">' +
+            '<span class="drag-handle" title="拖拽排序">⠿</span>' +
             '<span class="card-name">' + card.name + '</span>' +
             '<div style="display:flex;align-items:center;gap:6px">' +
               '<span class="card-badge">' + badgeText + '</span>' +
@@ -4294,6 +4372,116 @@
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
     const IMPLEMENTED_CARDS = [];
+
+    /* ===== 拖拽排序 (DF6) ===== */
+    let layoutEditing = false;
+    let dragSourceId = null;
+
+    /** 切换布局编辑模式 */
+    function toggleEditLayout() {
+      layoutEditing = !layoutEditing;
+      const grid = document.getElementById('dashboardGrid');
+      const btn = document.getElementById('btnEditLayout');
+      const hint = document.getElementById('layoutHint');
+
+      if (layoutEditing) {
+        grid.classList.add('edit-mode');
+        btn.classList.add('active');
+        btn.innerHTML = '<span>✅</span> 完成排序';
+        hint.textContent = '拖拽卡片调整顺序';
+      } else {
+        grid.classList.remove('edit-mode');
+        btn.classList.remove('active');
+        btn.innerHTML = '<span>🔧</span> 编辑布局';
+        hint.textContent = '';
+        saveLayoutOrder();
+      }
+    }
+
+    /** 拖拽：开始 */
+    function onDragStart(e, cardId) {
+      if (!layoutEditing) { e.preventDefault(); return; }
+      const el = document.querySelector('.card-placeholder[data-card-id="' + cardId + '"]');
+      if (!el || el.classList.contains('disabled')) { e.preventDefault(); return; }
+      dragSourceId = cardId;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', cardId);
+      // delay 添加 dragging class 让浏览器能截图
+      setTimeout(() => { el.classList.add('dragging'); }, 0);
+    }
+
+    /** 拖拽：结束 */
+    function onDragEnd(e) {
+      document.querySelectorAll('.card-placeholder.dragging').forEach(el => {
+        el.classList.remove('dragging');
+      });
+      document.querySelectorAll('.card-placeholder.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
+      });
+      dragSourceId = null;
+    }
+
+    /** 拖拽：进入目标上方 */
+    function onDragOver(e) {
+      if (!layoutEditing) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const el = e.currentTarget;
+      if (el && !el.classList.contains('disabled')) {
+        document.querySelectorAll('.card-placeholder.drag-over').forEach(x => {
+          if (x !== el) x.classList.remove('drag-over');
+        });
+        el.classList.add('drag-over');
+      }
+    }
+
+    /** 拖拽：离开目标 */
+    function onDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    /** 拖拽：放下 */
+    function onDrop(e, targetId) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!layoutEditing || !dragSourceId || dragSourceId === targetId) return;
+
+      // 在当前 dashboardCards 数组中重排
+      const srcIdx = dashboardCards.findIndex(c => c.id === dragSourceId);
+      const tgtIdx = dashboardCards.findIndex(c => c.id === targetId);
+      if (srcIdx < 0 || tgtIdx < 0) return;
+
+      const [moved] = dashboardCards.splice(srcIdx, 1);
+      dashboardCards.splice(tgtIdx, 0, moved);
+
+      // 重新渲染（数据已变，重建 DOM）
+      renderDashboardGrid();
+
+      // 编辑模式下恢复 edit-mode
+      if (layoutEditing) {
+        document.getElementById('dashboardGrid').classList.add('edit-mode');
+      }
+    }
+
+    /** 保存布局排序到服务器 */
+    async function saveLayoutOrder() {
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      const order = dashboardCards.map(c => c.id);
+      try {
+        await fetch('/v1/api/daily/config', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ layout: { order } })
+        });
+      } catch (e) {
+        console.error('保存布局排序失败:', e);
+      }
+    }
 
     /** 卡片点击展开/收起（单例模式：同时只有一个展开） */
     function toggleCard(cardId, event) {

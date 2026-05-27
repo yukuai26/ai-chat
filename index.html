@@ -691,6 +691,30 @@
     .news-collapsed .news-expand-hint:hover {
       text-decoration: underline;
     }
+    /* DF15: 新闻工具栏 */
+    .news-collapsed .news-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .news-toolbar .news-refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .news-toolbar .news-refresh-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .news-toolbar .news-refresh-btn.spinning {
+      animation: spin 0.8s linear infinite;
+    }
     /* DF13: NewsCard 展开模式 */
     .card-body .news-expanded {
       padding: 12px 16px;
@@ -5139,6 +5163,51 @@
       }
     }
 
+    /** DF15: 手动刷新新闻 */
+    async function refreshNewsCard() {
+      const btn = document.getElementById('newsRefreshBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('spinning');
+        btn.textContent = '⏳ 刷新中...';
+      }
+
+      const token = document.getElementById('token').value;
+      if (!token) {
+        showCommandToast('⚠️ 请先连接 API Token', 'error');
+        if (btn) { btn.disabled = false; btn.classList.remove('spinning'); btn.textContent = '🔄 刷新'; }
+        return;
+      }
+
+      try {
+        const resp = await fetch('/v1/api/daily/news/refresh', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await resp.json();
+
+        if (result.ok) {
+          // 清除缓存并重新加载
+          cachedNewsData = null;
+          const newsCard = document.querySelector('[data-card-id="news"]');
+          if (newsCard) await loadNewsCard(newsCard);
+          showCommandToast('✅ 新闻已刷新 (' + (result.count || 0) + ' 条)', 'success');
+        } else {
+          showCommandToast('⚠️ ' + (result.error || '刷新失败'), 'error');
+        }
+      } catch (e) {
+        console.error('刷新新闻失败:', e);
+        showCommandToast('⚠️ 网络错误', 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('spinning');
+          btn.textContent = '🔄 刷新';
+        }
+      }
+    }
+
+
     function renderNewsCardCollapsed(summaryEl, bodyEl, data) {
       if (!data || !data.articles || !data.articles.length) {
         if (summaryEl) summaryEl.textContent = '📰 暂无新闻数据';
@@ -5152,7 +5221,10 @@
 
       // 缩略模式：显示在 card-summary 中
       let collapsedHtml = '<div class="news-collapsed">';
+      collapsedHtml += '<div class="news-toolbar">';
       collapsedHtml += '<div class="news-date">📅 ' + dateStr + '</div>';
+      collapsedHtml += '<button class="news-refresh-btn" id="newsRefreshBtn" onclick="refreshNewsCard(); event.stopPropagation();" title="刷新新闻">🔄 刷新</button>';
+      collapsedHtml += '</div>';
       collapsedHtml += '<div class="news-summary">共 ' + articles.length + ' 条新闻</div>';
       collapsedHtml += '<ul class="news-title-list">';
       for (const a of latest) {

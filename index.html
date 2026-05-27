@@ -1931,8 +1931,8 @@
       white-space: nowrap;
       transition: background 0.15s;
     }
-    .tree-item:hover { background: rgba(233, 69, 96, 0.08); }
-    .tree-item.active { background: rgba(233, 69, 96, 0.16); color: var(--accent); }
+    .tree-item:hover { background: var(--bg-hover); }
+    .tree-item.active { background: var(--bg-hover); color: var(--text-primary); }
     .tree-toggle {
       width: 20px;
       min-width: 20px;
@@ -1991,7 +1991,7 @@
     .upload-progress {
       margin: 6px 8px;
       padding: 6px 10px;
-      background: rgba(233, 69, 96, 0.08);
+      background: var(--bg-hover);
       border-radius: 6px;
       display: none;
     }
@@ -2057,7 +2057,7 @@
       flex-shrink: 0;
       line-height: 1;
     }
-    .tree-toggle-btn:hover { background: rgba(233,69,96,0.12); color: var(--accent); }
+    .tree-toggle-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
     .tree-drawer-header {
       display: none;
       align-items: center;
@@ -2072,7 +2072,7 @@
       cursor: pointer; padding: 2px 6px; border-radius: 4px;
       line-height: 1;
     }
-    .tree-drawer-close:hover { background: rgba(233,69,96,0.12); color: var(--accent); }
+    .tree-drawer-close:hover { background: var(--bg-hover); color: var(--text-primary); }
     .tree-backdrop {
       display: none;
       position: fixed;
@@ -2462,7 +2462,7 @@
         cursor: pointer; padding: 2px 6px; border-radius: 4px;
         line-height: 1;
       }
-      .conv-drawer-close:hover { background: rgba(233,69,96,0.12); color: var(--accent); }
+      .conv-drawer-close:hover { background: var(--bg-hover); color: var(--text-primary); }
 
       /* === 设置面板 — 右侧抽屉 === */
       .settings-panel {
@@ -2499,7 +2499,7 @@
         cursor: pointer; padding: 2px 6px; border-radius: 4px;
         line-height: 1;
       }
-      .settings-drawer-close:hover { background: rgba(233,69,96,0.12); color: var(--accent); }
+      .settings-drawer-close:hover { background: var(--bg-hover); color: var(--text-primary); }
 
       /* 设置面板内容需要 padding（已在头部外面） */
       .settings-panel > :not(.settings-drawer-header) {
@@ -2903,7 +2903,7 @@
       transition: background 0.15s;
       margin-bottom: 2px;
     }
-    .conv-item:hover { background: rgba(233, 69, 96, 0.08); }
+    .conv-item:hover { background: var(--bg-hover); }
     .conv-item.active { background: rgba(233, 69, 96, 0.16); }
     .conv-item-title {
       font-size: 13px;
@@ -3045,8 +3045,8 @@
           </div>
           <div class="file-tree-header">📂 目录</div>
           <div class="tree-toolbar">
-            <button class="tree-toolbar-btn" onclick="promptNewFile()" title="新建文件"><span class="icon">📄</span> 新建文件</button>
-            <button class="tree-toolbar-btn" onclick="promptNewFolder()" title="新建文件夹"><span class="icon">📁</span> 新建文件夹</button>
+            <button class="tree-toolbar-btn" onclick="promptNewFile()" title="新建文件"><span class="icon">  </span> 新建文件</button>
+            <button class="tree-toolbar-btn" onclick="promptNewFolder()" title="新建文件夹"><span class="icon">  </span> 新建文件夹</button>
           </div>
           <div class="upload-dropzone" id="uploadDropzone">
             <span class="dz-icon">📤</span>
@@ -3065,7 +3065,7 @@
         <div class="resize-handle" id="resizeHandle"></div>
         <div class="file-viewer" id="fileViewer">
           <div class="placeholder">
-            <div class="icon">📄</div>
+            <div class="icon">  </div>
             <p>选择文件以查看内容</p>
           </div>
         </div>
@@ -4422,17 +4422,17 @@
         'md': '📝', 'py': '🐍', 'js': '📜', 'json': '📋',
         'html': '🌐', 'css': '🎨', 'yml': '⚙️', 'yaml': '⚙️',
         'sh': '💻', 'service': '⚡', 'conf': '🔧', 'cfg': '🔧',
-        'txt': '📄', 'log': '📋',
+        'txt': '  ', 'log': '📋',
         'png': '🖼️', 'jpg': '🖼️', 'jpeg': '🖼️', 'gif': '🖼️', 'svg': '🖼️',
         'bmp': '🖼️', 'ico': '🖼️', 'webp': '🖼️',
       };
-      return icons[ext] || '📄';
+      return icons[ext] || '  ';
     }
 
     function getFolderIcon(name) {
       return name === 'memory' ? '🧠' : name === 'projects' ? '📦' :
              name === 'sops' ? '📋' : name === 'ac' ? '⚙️' :
-             name === 'deploy' ? '🚀' : '📁';
+             name === 'deploy' ? '🚀' : '  ';
     }
 
     let activeTreeItem = null;
@@ -4545,7 +4545,7 @@
         resetViewerState();
         setUploadDir(fullPath);
         const viewer = document.getElementById('fileViewer');
-        viewer.innerHTML = '<div class="placeholder"><div class="icon">📁</div><p>' + escapeHtmlSafe(fullPath) + '</p></div>';
+        viewer.innerHTML = '<div class="placeholder"><div class="icon">  </div><p>' + escapeHtmlSafe(fullPath) + '</p></div>';
       } else {
         const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
         renderBreadcrumb(dirPath);
@@ -4610,7 +4610,7 @@
       const viewer = document.getElementById('fileViewer');
       viewer.innerHTML = `
         <div class="placeholder">
-          <div class="icon">📁</div>
+          <div class="icon">  </div>
           <p>${escapeHtmlSafe(path || '/')}</p>
         </div>`;
       // Reload the file tree for this path

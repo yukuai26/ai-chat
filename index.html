@@ -476,6 +476,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
     }
     .card-placeholder .card-name {
       font-size: 16px;
@@ -499,15 +500,41 @@
       color: var(--text-secondary);
       transition: transform 0.25s;
       flex-shrink: 0;
-      margin-left: 8px;
+      margin-left: 4px;
       background: none;
       border: none;
       cursor: pointer;
       padding: 0 4px;
       line-height: 1;
     }
+    .card-placeholder .card-close-btn {
+      display: none;
+      font-size: 20px;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .card-placeholder .card-close-btn:hover {
+      color: var(--text);
+    }
+    /* 展开模式 */
+    .card-placeholder.expanded {
+      grid-column: 1 / -1;
+      min-height: 200px;
+      padding: 24px;
+    }
+    .card-placeholder.expanded .card-name {
+      font-size: 20px;
+    }
     .card-placeholder.expanded .card-expand-btn {
-      transform: rotate(180deg);
+      display: none;
+    }
+    .card-placeholder.expanded .card-close-btn {
+      display: inline;
     }
     .card-placeholder .card-body {
       display: none;
@@ -521,6 +548,7 @@
     }
     .card-placeholder.expanded .card-body {
       display: block;
+      padding-top: 16px;
     }
     @keyframes cardExpand {
       from { opacity: 0; transform: translateY(-4px); }
@@ -3972,11 +4000,9 @@
       const layout = config.layout || {};
       const order = layout.order || dashboardCards.map(c => c.id);
 
-      // 按 order 排序
       const ordered = order
         .map(id => dashboardCards.find(c => c.id === id))
         .filter(Boolean);
-      // 追加 order 中不存在的卡片
       for (const card of dashboardCards) {
         if (!ordered.find(c => c.id === card.id)) {
           ordered.push(card);
@@ -3996,7 +4022,8 @@
             '<span class="card-name">' + card.name + '</span>' +
             '<div style="display:flex;align-items:center;gap:6px">' +
               '<span class="card-badge">' + badgeText + '</span>' +
-              '<span class="card-expand-btn">▾</span>' +
+              '<button class="card-expand-btn" title="展开">▾</button>' +
+              '<button class="card-close-btn" title="收起" onclick="collapseCard(\'' + card.id + '\'); event.stopPropagation();">✕</button>' +
             '</div>' +
           '</div>' +
           '<div class="card-summary">' + summary + '</div>' +
@@ -4031,19 +4058,34 @@
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
     const IMPLEMENTED_CARDS = [];
 
-    /** 卡片点击展开/收起 */
+    /** 卡片点击展开/收起（单例模式：同时只有一个展开） */
     function toggleCard(cardId, event) {
       if (event) event.stopPropagation();
       const card = dashboardCards.find(c => c.id === cardId);
       if (!card) return;
-      // 禁用卡片不做响应
       const config = JSON.parse(localStorage.getItem('aichat_dashboard_config') || '{}');
       if ((config.disabledCards || []).includes(cardId)) return;
       if (!card.enabled) return;
 
       const el = document.querySelector('.card-placeholder[data-card-id="' + cardId + '"]');
       if (!el) return;
-      el.classList.toggle('expanded');
+
+      const isCurrentlyExpanded = el.classList.contains('expanded');
+      if (isCurrentlyExpanded) {
+        collapseCard(cardId);
+      } else {
+        // 收起其他已展开的卡片
+        document.querySelectorAll('.card-placeholder.expanded').forEach(exp => {
+          exp.classList.remove('expanded');
+        });
+        el.classList.add('expanded');
+      }
+    }
+
+    /** 收起指定卡片 */
+    function collapseCard(cardId) {
+      const el = document.querySelector('.card-placeholder[data-card-id="' + cardId + '"]');
+      if (el) el.classList.remove('expanded');
     }
 
     // Hook into switchTab to load dashboard when tab is opened

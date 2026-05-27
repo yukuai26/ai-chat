@@ -103,6 +103,15 @@ JWT_REMEMBER_HOURS = 168  # 7 days
 
 # ---- 用户数据 ----
 def _load_users() -> dict:
+
+
+def _get_person() -> str:
+    """根据认证上下文返回当前用户标识（数据隔离）。
+    JWT 认证 → 用 request.user.username，旧 Token → 用 person 参数。
+    """
+    if hasattr(request, 'user') and request.user.get('username'):
+        return request.user['username']
+    return request.args.get('person', '管理员').strip()
     try:
         if os.path.isfile(USERS_FILE) and os.path.getsize(USERS_FILE) > 0:
             with open(USERS_FILE, "r", encoding="utf-8") as f:
@@ -469,32 +478,39 @@ def _list_directory(directory: Path) -> list[dict]:
 # ---- 认证中间件 (B3: 完整实现) ----
 
 def require_token(f):
-    """Token 认证装饰器。
+    """Token 认证装饰器（双模式：JWT + 旧 API Token）。
 
-    从 Authorization 头提取 Bearer Token，
-    与 API_TOKEN（来自环境变量 / Gateway 配置文件）比对。
-
-    安全特性：
-    - 拒绝空 Token
-    - 拒绝错误 Token
-    - 记录认证失败日志（不含 Token 明文）
+    优先尝试 JWT Bearer Token → 注入 request.user 用于数据隔离。
+    如 JWT 无效，回退到旧 API_TOKEN 比对（兼容过渡期）。
     """
     @wraps(f)
     def decorated(*args, **kwargs):
         auth_header = request.headers.get("Authorization", "")
 
-        # 提取 Bearer Token
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
         else:
             token = ""
 
-        # 拒绝空 Token
         if not token:
             logger.warning(f"认证失败: 空 Token (path={request.path}, ip={request.remote_addr})")
             return error_response("缺少认证 Token", 401, "请在 Authorization 头中提供 Bearer Token")
 
-        # Token 比对
+        # 1. 尝试 JWT 认证（AU7: auth_required 逻辑内联）
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+            request.user = {
+                "username": payload.get("user", ""),
+                "display_name": payload.get("display_name", ""),
+                "partner": payload.get("partner", "")
+            }
+            return f(*args, **kwargs)
+        except jwt.ExpiredSignatureError:
+            return jsonify({"ok": False, "error": "登录已过期", "code": "TOKEN_EXPIRED"}), 401
+        except jwt.InvalidTokenError:
+            pass  # Not a JWT, fall through to old token check
+
+        # 2. 回退到旧 API Token 认证（AU9: 兼容过渡期）
         if token != API_TOKEN:
             logger.warning(f"认证失败: Token 不匹配 (path={request.path}, ip={request.remote_addr})")
             return error_response("认证失败", 401, "Token 无效")
@@ -2139,7 +2155,7 @@ def todos_list():
     """
     if request.method == "GET":
         todos = _load_todos()
-        person = request.args.get("person", "").strip()
+        person = _get_person()
         todo_type = request.args.get("type", "").strip()
         done_filter = request.args.get("done", "any").strip()
 
@@ -2177,7 +2193,7 @@ def todos_list():
         if len(text) < 2:
             return error_response("内容至少 2 个字符", 400)
 
-        person = data.get("person", "管理员").strip()
+        person = data.get("person", "").strip() or _get_person() or _get_person()
         if person not in KNOWN_PERSONS:
             return error_response(f"未知用户: {person}", 400)
 
@@ -2394,7 +2410,7 @@ def todos_weekly_view():
     if not week:
         week = _current_week_key()
 
-    person = request.args.get("person", "").strip()
+    person = _get_person()
     done_filter = request.args.get("done", "any").strip()
 
     todos = _load_todos()
@@ -2938,7 +2954,7 @@ def notes_list():
     """
     if request.method == "GET":
         notes = _load_notes()
-        person = request.args.get("person", "").strip()
+        person = _get_person()
 
         if person:
             items = notes.get(person, [])
@@ -2963,7 +2979,7 @@ def notes_list():
         if len(text) < 1:
             return error_response("内容不能为空", 400)
 
-        person = data.get("person", "管理员").strip()
+        person = data.get("person", "").strip() or _get_person() or _get_person()
         if person not in KNOWN_PERSONS:
             return error_response(f"未知用户: {person}", 400)
 
@@ -3056,7 +3072,7 @@ def notes_search():
     if not q:
         return error_response("缺少搜索关键词 q", 400)
 
-    person = request.args.get("person", "").strip()
+    person = _get_person()
     notes = _load_notes()
     results = []
 
@@ -3109,7 +3125,7 @@ def bookmarks_list():
     """
     if request.method == "GET":
         bookmarks = _load_bookmarks()
-        person = request.args.get("person", "").strip()
+        person = _get_person()
         tag_filter = request.args.get("tag", "").strip()
 
         if person:
@@ -3135,7 +3151,7 @@ def bookmarks_list():
         if not url.startswith("http"):
             return error_response("URL 必须以 http 开头", 400)
 
-        person = data.get("person", "管理员").strip()
+        person = data.get("person", "").strip() or _get_person() or _get_person()
         if person not in KNOWN_PERSONS:
             return error_response(f"未知用户: {person}", 400)
 
@@ -3329,7 +3345,7 @@ def photos_list():
     """
     if request.method == "GET":
         photos = _load_photos()
-        person = request.args.get("person", "").strip()
+        person = _get_person()
         tab = request.args.get("tab", "").strip()
 
         if tab and tab != "all":
@@ -3413,7 +3429,7 @@ def photos_list():
         if not data or "image" not in data:
             return error_response("缺少必填字段 image", 400)
 
-        person = data.get("person", "管理员").strip()
+        person = data.get("person", "").strip() or _get_person() or _get_person()
         if person not in KNOWN_PERSONS:
             return error_response(f"未知用户: {person}", 400)
 
@@ -3479,7 +3495,7 @@ def photos_like(photo_id):
     若已在 likes 中则移除(取消)，否则添加。
     """
     data = request.get_json(silent=True) or {}
-    person = data.get("person", "管理员").strip()
+    person = data.get("person", "").strip() or _get_person() or _get_person()
     if person not in KNOWN_PERSONS:
         return error_response(f"未知用户: {person}", 400)
 
@@ -3568,7 +3584,7 @@ def _save_shares(data: dict):
 def shares_list():
     if request.method == "GET":
         shares = _load_shares()
-        person = request.args.get("person", "").strip()
+        person = _get_person()
         mood = request.args.get("mood", "").strip()
         if person:
             items = shares.get(person, [])
@@ -3586,7 +3602,7 @@ def shares_list():
         data = request.get_json(silent=True)
         if not data or "text" not in data:
             return error_response("缺少分享内容", 400)
-        person = data.get("person", "管理员").strip()
+        person = data.get("person", "").strip() or _get_person() or _get_person()
         if person not in KNOWN_PERSONS:
             return error_response(f"未知用户: {person}", 400)
         shares = _load_shares()
@@ -3647,7 +3663,7 @@ def _save_reminders(data: dict):
 def reminders_list():
     if request.method == "GET":
         reminders = _load_reminders()
-        person = request.args.get("person", "").strip()
+        person = _get_person()
         if person:
             items = reminders.get(person, [])
         else:
@@ -3662,7 +3678,7 @@ def reminders_list():
         data = request.get_json(silent=True)
         if not data or "text" not in data or "time" not in data:
             return error_response("缺少必填字段 text 和 time", 400)
-        person = data.get("person", "管理员").strip()
+        person = data.get("person", "").strip() or _get_person() or _get_person()
         if person not in KNOWN_PERSONS:
             return error_response(f"未知用户: {person}", 400)
         reminders = _load_reminders()
@@ -3797,7 +3813,7 @@ def _calc_streak(history: dict) -> int:
 def habits_list():
     if request.method == "GET":
         habits = _load_habits()
-        person = request.args.get("person", "").strip()
+        person = _get_person()
         if person:
             items = habits.get(person, [])
         else:
@@ -3817,7 +3833,7 @@ def habits_list():
         data = request.get_json(silent=True)
         if not data or "text" not in data:
             return error_response("缺少习惯名称", 400)
-        person = data.get("person", "管理员").strip()
+        person = data.get("person", "").strip() or _get_person() or _get_person()
         if person not in KNOWN_PERSONS:
             return error_response(f"未知用户: {person}", 400)
         habits = _load_habits()

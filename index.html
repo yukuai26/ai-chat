@@ -50,6 +50,13 @@
       height: 100vh;
       display: flex;
     }
+    /* U4: 自定义滚动条 — 4px 极细 */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: #aaa; }
+    /* 隐藏非悬停时的滚动条（可选） */
+    ::-webkit-scrollbar-thumb:window-inactive { background: transparent; }
     /* ==================== 三栏布局 ==================== */
     /* 左栏 — 会话列表 */
     .conv-panel {

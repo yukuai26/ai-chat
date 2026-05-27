@@ -12,7 +12,7 @@ import logging
 import mimetypes
 import requests
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
 from functools import wraps
@@ -2106,6 +2106,94 @@ def todos_weekly_view():
         "daily": daily_items,
         "weekly": weekly_items,
         "total": total,
+    })
+
+
+# ============================================================
+#  个人数据 API (DB12)
+# ============================================================
+
+PROFILES_DIR = os.path.join(USER_DATA_DIR, "profiles")
+DATA_FIELDS = {"weight", "exercise", "water", "sleep", "journal", "fitness", "finance", "meal"}
+
+DEFAULT_PERSON_DATA = {
+    "weight": [],
+    "exercise": [],
+    "water": [],
+    "sleep": [],
+    "journal": [],
+}
+
+
+def _profile_path(person: str) -> str:
+    """返回个人数据文件路径。"""
+    safe_name = person.replace("/", "_").replace("\\", "_")
+    return os.path.join(PROFILES_DIR, f"{safe_name}.json")
+
+
+def _load_person_data(person: str) -> dict:
+    """读取个人数据文件。"""
+    path = _profile_path(person)
+    try:
+        if os.path.isfile(path) and os.path.getsize(path) > 0:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"{person} 数据读取失败: {e}")
+    # 初始化空数据
+    return dict(DEFAULT_PERSON_DATA)
+
+
+@app.route("/v1/api/daily/data/<person>", methods=["GET"])
+@require_token
+def get_person_data(person):
+    """GET /v1/api/daily/data/{person} - 读取个人数据。
+
+    查询参数:
+      - fields: 逗号分隔的字段名，如 ?fields=weight,water
+      - days:   最近 N 天（默认 30）
+      - date:   指定日期 YYYY-MM-DD
+
+    返回:
+      {"ok":true, "person":"管理员", "data": {"weight": [...], ...}}
+    """
+    if person not in KNOWN_PERSONS:
+        return error_response(f"未知用户: {person}", 400)
+
+    data = _load_person_data(person)
+    fields_str = request.args.get("fields", "").strip()
+    days_str = request.args.get("days", "")
+    date_str = request.args.get("date", "").strip()
+
+    # 选择字段
+    if fields_str:
+        fields = [f.strip() for f in fields_str.split(",") if f.strip()]
+        invalid = set(fields) - set(data.keys())
+        if invalid:
+            return error_response(f"无效字段: {', '.join(invalid)}, 可用: {', '.join(sorted(data.keys()))}", 400)
+        filtered = {k: data.get(k, []) for k in fields}
+    else:
+        filtered = dict(data)
+
+    # 按日期过滤（date 优先于 days）
+    tz = ZoneInfo("Asia/Shanghai")
+    now = datetime.now(tz)
+    if date_str:
+        for k in filtered:
+            filtered[k] = [r for r in filtered[k] if r.get("date") == date_str]
+    elif days_str and days_str.isdigit():
+        cutoff = (now - timedelta(days=int(days_str))).strftime("%Y-%m-%d")
+        for k in filtered:
+            filtered[k] = [r for r in filtered[k] if r.get("date", "") >= cutoff]
+
+    total_records = sum(len(v) for v in filtered.values())
+    return jsonify({
+        "ok": True,
+        "person": person,
+        "data": filtered,
+        "total": total_records,
     })
 
 

@@ -651,6 +651,46 @@
       opacity: 0.5;
       font-size: 12px;
     }
+    /* DF12: NewsCard 缩略模式 */
+    .card-body .news-collapsed {
+      padding: 12px 16px;
+    }
+    .news-collapsed .news-date {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .news-collapsed .news-summary {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+    .news-collapsed .news-title-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 10px 0;
+    }
+    .news-collapsed .news-title-item {
+      padding: 4px 0;
+      font-size: 13px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-bottom: 1px solid var(--border);
+    }
+    .news-collapsed .news-title-item:last-child {
+      border-bottom: none;
+    }
+    .news-collapsed .news-expand-hint {
+      font-size: 11px;
+      color: var(--accent);
+      cursor: pointer;
+      text-align: center;
+    }
+    .news-collapsed .news-expand-hint:hover {
+      text-decoration: underline;
+    }
     /* 拖拽排序 */
     .card-placeholder .drag-handle {
       display: none;
@@ -4412,6 +4452,9 @@
         updateCommandHint();
         setupCommandBarDragDrop();
         setupCmdTagSync();
+        // 加载已实现卡片内容
+        const newsCard = document.querySelector('[data-card-id="news"]');
+        if (newsCard) loadNewsCard(newsCard);
         dashboardLoaded = true;
       } catch (e) {
         console.error('加载 Dashboard 失败:', e);
@@ -4829,7 +4872,7 @@
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = [];
+    const IMPLEMENTED_CARDS = ["news"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -4972,6 +5015,68 @@
     }
 
     // Hook into switchTab to load dashboard when tab is opened
+    /* ===== DF12: NewsCard 缩略模式 ===== */
+    let cachedNewsData = null;
+
+    async function loadNewsCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+
+      const token = document.getElementById('token').value;
+      if (!token) {
+        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
+        body.innerHTML = '<div class="card-body-placeholder">⚠️ 请先连接 API Token</div>';
+        return;
+      }
+
+      try {
+        if (!cachedNewsData) {
+          const resp = await fetch('/v1/api/daily/news', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          cachedNewsData = await resp.json();
+        }
+
+        renderNewsCardCollapsed(summary, body, cachedNewsData);
+      } catch (e) {
+        console.error('加载新闻失败:', e);
+        body.innerHTML = '<div class="card-body-placeholder">⚠️ 新闻加载失败</div>';
+      }
+    }
+
+    function renderNewsCardCollapsed(summaryEl, bodyEl, data) {
+      if (!data || !data.articles || !data.articles.length) {
+        if (summaryEl) summaryEl.textContent = '📰 暂无新闻数据';
+        bodyEl.innerHTML = '<div class="card-body-placeholder">📰 暂无新闻数据</div>';
+        return;
+      }
+
+      const articles = data.articles;
+      const latest = articles.slice(0, 3);
+      const dateStr = data.date || new Date().toISOString().slice(0, 10);
+
+      // 缩略模式：显示在 card-summary 中
+      let collapsedHtml = '<div class="news-collapsed">';
+      collapsedHtml += '<div class="news-date">📅 ' + dateStr + '</div>';
+      collapsedHtml += '<div class="news-summary">共 ' + articles.length + ' 条新闻</div>';
+      collapsedHtml += '<ul class="news-title-list">';
+      for (const a of latest) {
+        const title = a.title || '(无标题)';
+        collapsedHtml += '<li class="news-title-item" title="' + escapeHtmlAttr(title) + '">· ' + escapeHtml(title) + '</li>';
+      }
+      collapsedHtml += '</ul>';
+      collapsedHtml += '</div>';
+
+      if (summaryEl) summaryEl.innerHTML = collapsedHtml;
+
+      // 展开占位（DF13 实现）
+      bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
+    }
+
+
     const origSwitchTab2 = switchTab;
     switchTab = function(tabName) {
       origSwitchTab2(tabName);

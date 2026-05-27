@@ -1123,11 +1123,20 @@ DEFAULT_CARD_REGISTRY = {
             "api": "/v1/api/daily/bookmarks",
             "persons": ["管理员", "伴侣"],
             "expandable": True
+        },
+        {
+            "id": "photos",
+            "name": "📸 照片墙",
+            "width": "wide",
+            "enabled": True,
+            "api": "/v1/api/daily/photos",
+            "persons": ["管理员", "伴侣"],
+            "expandable": True
         }
     ],
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos"],
         "gap": 16
     },
     "commandPrefixes": [
@@ -1234,6 +1243,7 @@ RECIPE_PATH = os.path.join(USER_DATA_DIR, "recipe.json")
 WISHES_PATH = os.path.join(USER_DATA_DIR, "wishes.json")
 NOTES_PATH = os.path.join(USER_DATA_DIR, "notes.json")
 BOOKMARKS_PATH = os.path.join(USER_DATA_DIR, "bookmarks.json")
+PHOTOS_PATH = os.path.join(USER_DATA_DIR, "photos.json")
 
 
 def _load_todos():
@@ -1443,7 +1453,7 @@ DASHBOARD_CONFIG_PATH = os.path.join(USER_DATA_DIR, "dashboard-config.json")
 DEFAULT_DASHBOARD_CONFIG = {
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos"],
         "gap": 16,
     },
     "disabledCards": [],
@@ -2993,6 +3003,237 @@ def bookmarks_fetch():
         return jsonify({"ok": True, "data": {"title": title, "description": description, "favicon": favicon}})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 502
+
+
+# ---- 照片墙 Photos API ----
+
+def _load_photos() -> dict:
+    """读取照片元数据文件。"""
+    try:
+        if os.path.isfile(PHOTOS_PATH) and os.path.getsize(PHOTOS_PATH) > 0:
+            with open(PHOTOS_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"photos.json 读取失败: {e}")
+    return {}
+
+
+def _save_photos(data: dict):
+    """写入照片元数据文件。"""
+    os.makedirs(os.path.dirname(PHOTOS_PATH), exist_ok=True)
+    with open(PHOTOS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+@app.route("/v1/api/daily/photos", methods=["GET", "POST"])
+@require_token
+def photos_list():
+    """GET/POST /v1/api/daily/photos - 照片列表和上传。
+
+    GET 查询参数:
+      - person: 管理员/伴侣（不传则返回全部）
+      - tab: all / 管理员 / 伴侣（用于双人模式）
+
+    POST (JSON): {"person":"管理员", "image":"/path/to/photo.jpg", "caption":"描述"}
+    POST (form): 文件上传 multipart。
+    """
+    if request.method == "GET":
+        photos = _load_photos()
+        person = request.args.get("person", "").strip()
+        tab = request.args.get("tab", "").strip()
+
+        if tab and tab != "all":
+            items = photos.get(tab, [])
+        elif person:
+            items = photos.get(person, [])
+        else:
+            items = []
+            for p_items in photos.values():
+                if isinstance(p_items, list):
+                    items.extend(p_items)
+
+        items = sorted(items, key=lambda x: x.get("created", ""), reverse=True)
+        return jsonify({"ok": True, "photos": items, "total": len(items)})
+
+    if request.method == "POST":
+        # 文件上传
+        if request.content_type and "multipart" in request.content_type:
+            f = request.files.get("file")
+            if not f or f.filename == "":
+                return error_response("未选择文件", 400)
+            person = request.form.get("person", "管理员").strip()
+            if person not in KNOWN_PERSONS:
+                return error_response(f"未知用户: {person}", 400)
+
+            photos_dir = os.path.join(USER_DATA_DIR, "photos")
+            os.makedirs(photos_dir, exist_ok=True)
+            tz = ZoneInfo("Asia/Shanghai")
+            ts = datetime.now(tz).strftime("%Y%m%d_%H%M%S")
+            safe_person = person
+            ext = os.path.splitext(f.filename)[1] or ".jpg"
+            filename = f"{safe_person}_{ts}{ext}"
+            filepath = os.path.join(photos_dir, filename)
+            f.save(filepath)
+
+            rel_path = f"/user-files/photos/{filename}"
+            caption = request.form.get("caption", "").strip()
+            tags = request.form.get("tags", "").strip()
+            tags_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+
+            photos = _load_photos()
+            photos.setdefault(person, [])
+            new_id = len(photos[person]) + 1
+            # Find next available id
+            ids = [item.get("id", 0) for item in photos[person] if isinstance(item.get("id"), int)]
+            new_id = max(ids) + 1 if ids else 1
+
+            record = {
+                "id": new_id,
+                "image": rel_path,
+                "caption": caption,
+                "likes": [],
+                "comments": [],
+                "tags": tags_list,
+                "created": datetime.now(tz).isoformat(),
+            }
+            photos[person].append(record)
+            _save_photos(photos)
+            return jsonify({"ok": True, "photo": record, "message": "上传成功"})
+
+        # JSON 新增
+        data = request.get_json(silent=True)
+        if not data or "image" not in data:
+            return error_response("缺少必填字段 image", 400)
+
+        person = data.get("person", "管理员").strip()
+        if person not in KNOWN_PERSONS:
+            return error_response(f"未知用户: {person}", 400)
+
+        photos = _load_photos()
+        photos.setdefault(person, [])
+        ids = [item.get("id", 0) for item in photos[person] if isinstance(item.get("id"), int)]
+        new_id = max(ids) + 1 if ids else 1
+
+        record = {
+            "id": new_id,
+            "image": data["image"],
+            "caption": data.get("caption", "").strip(),
+            "likes": [],
+            "comments": [],
+            "tags": data.get("tags", []),
+            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+        }
+        photos[person].append(record)
+        _save_photos(photos)
+        return jsonify({"ok": True, "photo": record, "message": "已添加"})
+
+
+@app.route("/v1/api/daily/photos/<int:photo_id>", methods=["PUT", "DELETE"])
+@require_token
+def photos_item(photo_id):
+    """PUT/DELETE /v1/api/daily/photos/{id} - 编辑/删除照片。"""
+    photos = _load_photos()
+    found, found_person = None, None
+    for person, items in photos.items():
+        for item in items:
+            if item.get("id") == photo_id:
+                found, found_person = item, person
+                break
+        if found:
+            break
+    if not found:
+        return error_response(f"照片 #{photo_id} 不存在", 404)
+
+    if request.method == "DELETE":
+        photos[found_person] = [i for i in photos[found_person] if i.get("id") != photo_id]
+        _save_photos(photos)
+        return jsonify({"ok": True, "message": "已删除"})
+
+    if request.method == "PUT":
+        data = request.get_json(silent=True)
+        if not data:
+            return error_response("请求体不能为空", 400)
+        if "caption" in data:
+            found["caption"] = data["caption"].strip()
+        if "tags" in data:
+            found["tags"] = data["tags"]
+        _save_photos(photos)
+        return jsonify({"ok": True, "photo": found, "message": "已更新"})
+
+
+@app.route("/v1/api/daily/photos/<int:photo_id>/like", methods=["POST"])
+@require_token
+def photos_like(photo_id):
+    """POST /v1/api/daily/photos/{id}/like - 点赞/取消点赞。
+
+    请求体: {"person":"管理员"}
+    若已在 likes 中则移除(取消)，否则添加。
+    """
+    data = request.get_json(silent=True) or {}
+    person = data.get("person", "管理员").strip()
+    if person not in KNOWN_PERSONS:
+        return error_response(f"未知用户: {person}", 400)
+
+    photos = _load_photos()
+    found = None
+    found_person = None
+    for p, items in photos.items():
+        for item in items:
+            if item.get("id") == photo_id:
+                found, found_person = item, p
+                break
+        if found:
+            break
+    if not found:
+        return error_response(f"照片 #{photo_id} 不存在", 404)
+
+    likes = found.setdefault("likes", [])
+    if person in likes:
+        likes.remove(person)
+        action = "unliked"
+    else:
+        likes.append(person)
+        action = "liked"
+    _save_photos(photos)
+    return jsonify({"ok": True, "likes": likes, "action": action})
+
+
+@app.route("/v1/api/daily/photos/<int:photo_id>/comment", methods=["POST"])
+@require_token
+def photos_comment(photo_id):
+    """POST /v1/api/daily/photos/{id}/comment - 添加评论。
+
+    请求体: {"author":"管理员", "text":"评论内容"}
+    """
+    data = request.get_json(silent=True)
+    if not data or "text" not in data:
+        return error_response("缺少评论内容", 400)
+
+    author = data.get("author", "管理员").strip()
+    if author not in KNOWN_PERSONS:
+        return error_response(f"未知用户: {author}", 400)
+
+    photos = _load_photos()
+    found = None
+    found_person = None
+    for p, items in photos.items():
+        for item in items:
+            if item.get("id") == photo_id:
+                found, found_person = item, p
+                break
+        if found:
+            break
+    if not found:
+        return error_response(f"照片 #{photo_id} 不存在", 404)
+
+    comment = {
+        "author": author,
+        "text": data["text"].strip(),
+        "time": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+    }
+    found.setdefault("comments", []).append(comment)
+    _save_photos(photos)
+    return jsonify({"ok": True, "comment": comment, "message": "评论成功"})
 
 
 def _next_wish_id(wishes: list) -> int:

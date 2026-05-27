@@ -2270,6 +2270,56 @@ def get_person_data(person):
         })
 
 
+@app.route("/v1/api/daily/data/<person>/<field>", methods=["GET"])
+@require_token
+def get_person_field(person, field):
+    """GET /v1/api/daily/data/{person}/{field} - 字段级数据查询。
+
+    查询某人特定字段的历史记录，用于趋势图等场景。
+
+    查询参数:
+      - days:   最近 N 天（默认 90，用于趋势图）
+      - limit:  最大返回条数
+      - sort:   asc|desc（默认 desc，最新在前）
+
+    返回:
+      {"ok":true, "person":"管理员", "field":"weight",
+       "data": [{"date":"2026-05-27","value":70.5}, ...], "total": N}
+    """
+    if person not in KNOWN_PERSONS:
+        return error_response(f"未知用户: {person}", 400)
+    if field not in DATA_FIELDS:
+        return error_response(f"无效字段: {field}, 可用: {', '.join(sorted(DATA_FIELDS))}", 400)
+
+    data = _load_person_data(person)
+    records = data.get(field, [])
+
+    days_str = request.args.get("days", "90")
+    limit_str = request.args.get("limit", "")
+    sort_order = request.args.get("sort", "desc").strip()
+
+    # 按天数过滤
+    if days_str.isdigit():
+        tz = ZoneInfo("Asia/Shanghai")
+        cutoff = (datetime.now(tz) - timedelta(days=int(days_str))).strftime("%Y-%m-%d")
+        records = [r for r in records if r.get("date", "") >= cutoff]
+
+    # 排序（默认最新在前）
+    records = sorted(records, key=lambda r: r.get("date", ""), reverse=(sort_order != "asc"))
+
+    # 截断
+    if limit_str.isdigit():
+        records = records[:int(limit_str)]
+
+    return jsonify({
+        "ok": True,
+        "person": person,
+        "field": field,
+        "data": records,
+        "total": len(records),
+    })
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

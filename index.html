@@ -10001,7 +10001,7 @@
       authFetch('/v1/files/ls?path=' + encodeURIComponent(path)).then(function(r){return r.json();}).then(function(d){
         var tree = document.getElementById('fileTreeLoading');
         if (!tree || !d.ok) return;
-        var html = '<div style="padding:4px 8px;font-size:11px;color:var(--text-tertiary);" onclick="updateMidColumn(\\'files\\')" style="cursor:pointer;">⬅ 返回根目录</div>';
+        var html = '<div style="padding:4px 8px;font-size:11px;color:var(--text-tertiary);" onclick="updateMidColumn(&quot;files&quot;)" style="cursor:pointer;">⬅ 返回根目录</div>';
         for (var i = 0; i < (d.files || []).length; i++) {
           var f = d.files[i];
           var icon = f.type === 'dir' ? '📁' : '📄';
@@ -10031,7 +10031,7 @@
       for (var i = 0; i < fd; i++) container.innerHTML += '<span></span>';
       for (var d = 1; d <= daysInMonth; d++) {
         var isToday = (d === now.getDate() && calMonth === now.getMonth()+1 && calYear === now.getFullYear());
-        container.innerHTML += '<span style="text-align:center;padding:3px 0;cursor:pointer;border-radius:50%;' + (isToday ? 'background:var(--accent);color:#fff;' : '') + '" onclick="switchTab(\\'calendar\\')">' + d + '</span>';
+        container.innerHTML += '<span style="text-align:center;padding:3px 0;cursor:pointer;border-radius:50%;' + (isToday ? 'background:var(--accent);color:#fff;' : '') + '" data-mid-date="0" onclick="void(0)" style="cursor:pointer;">' + d + '</span>';
       }
       container.innerHTML += '</div>';
     }

@@ -764,6 +764,106 @@
     .todo-collapsed .todo-expand-hint:hover {
       text-decoration: underline;
     }
+    /* DF17: TodoCard 展开模式 */
+    .card-body .todo-expanded {
+      padding: 12px 16px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .todo-expanded .todo-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .todo-expanded .todo-tab {
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+    .todo-expanded .todo-tab:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .todo-expanded .todo-tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .todo-expanded .todo-subtabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+    .todo-expanded .todo-subtab {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+    }
+    .todo-expanded .todo-subtab.active {
+      background: var(--bg-hover);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .todo-expanded .todo-stats {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .todo-expanded .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .todo-expanded .todo-item:last-child {
+      border-bottom: none;
+    }
+    .todo-expanded .todo-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+    .todo-expanded .todo-item-text {
+      flex: 1;
+      color: var(--text);
+    }
+    .todo-expanded .todo-item-text.done {
+      text-decoration: line-through;
+      color: var(--text-secondary);
+      opacity: 0.6;
+    }
+    .todo-expanded .todo-item-delete {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 2px;
+      transition: color 0.15s;
+    }
+    .todo-expanded .todo-item-delete:hover {
+      color: #e53935;
+    }
+    .todo-expanded .todo-empty {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+      padding: 16px 0;
+    }
     /* DF13: NewsCard 展开模式 */
     .card-body .news-expanded {
       padding: 12px 16px;
@@ -5430,7 +5530,169 @@
       collapsedHtml += '</div>';
 
       if (summaryEl) summaryEl.innerHTML = collapsedHtml;
-      bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
+      // 展开模式：双人/每日-本周 Tab
+      renderTodoCardExpanded(bodyEl, data);
+    }
+
+
+    /** DF17: TodoCard 展开模式 */
+    let todoActivePerson = null;
+    let todoActiveView = 'daily'; // 'daily' | 'weekly'
+
+    function renderTodoCardExpanded(bodyEl, data) {
+      if (!data || !data.persons || !Object.keys(data.persons).length) {
+        bodyEl.innerHTML = '<div class="card-body-placeholder">📋 暂无待办事项</div>';
+        return;
+      }
+
+      const persons = Object.keys(data.persons);
+      if (!todoActivePerson || !persons.includes(todoActivePerson)) {
+        todoActivePerson = persons[0];
+      }
+
+      let html = '<div class="todo-expanded">';
+
+      // 人物 Tabs
+      html += '<div class="todo-tabs">';
+      for (const p of persons) {
+        const active = p === todoActivePerson ? ' active' : '';
+        html += '<button class="todo-tab' + active + '" onclick="switchTodoPerson(\'' + escapeHtml(p) + '\')">👤 ' + escapeHtml(p) + '</button>';
+      }
+      html += '</div>';
+
+      // 日/周 Subtabs
+      html += '<div class="todo-subtabs">';
+      html += '<button class="todo-subtab' + (todoActiveView === 'daily' ? ' active' : '') + '" onclick="switchTodoView(\'daily\')">📅 每日</button>';
+      html += '<button class="todo-subtab' + (todoActiveView === 'weekly' ? ' active' : '') + '" onclick="switchTodoView(\'weekly\')">📆 本周</button>';
+      html += '</div>';
+
+      // 统计行
+      const personData = data.persons[todoActivePerson] || {};
+      const done = personData.done || 0;
+      const pending = personData.pending || 0;
+      const total = done + pending;
+      const pct = total > 0 ? Math.round(done / total * 100) : 0;
+      html += '<div class="todo-stats">✅ ' + done + ' / ' + total + ' 已完成 (' + pct + '%)</div>';
+
+      // Todo 列表
+      html += '<div id="todoItemList">';
+      html += '<div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">⏳ 加载中...</div>';
+      html += '</div>';
+
+      html += '</div>';
+      bodyEl.innerHTML = html;
+
+      // 异步加载具体 Todo 列表
+      loadTodoItems();
+    }
+
+    async function loadTodoItems() {
+      const container = document.getElementById('todoItemList');
+      if (!container) return;
+
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      let url = '/v1/api/daily/todos?person=' + encodeURIComponent(todoActivePerson) + '&done=false';
+      if (todoActiveView === 'weekly') {
+        url = '/v1/api/daily/todos/week?person=' + encodeURIComponent(todoActivePerson) + '&done=false';
+      }
+
+      try {
+        const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const result = await resp.json();
+        let items;
+        if (todoActiveView === 'weekly') {
+          items = [].concat(result.daily || [], result.weekly || []);
+        } else {
+          items = result.todos || result.items || [];
+        }
+
+        if (!items.length) {
+          container.innerHTML = '<div class="todo-empty">🎉 全部完成！</div>';
+          return;
+        }
+
+        container.innerHTML = items.map(function(item) {
+          const text = escapeHtml(item.text || '');
+          const isDone = item.done;
+          const id = item.id;
+          return '<div class="todo-item">' +
+            '<input type="checkbox" class="todo-checkbox"' + (isDone ? ' checked' : '') + ' onchange="toggleTodoDone(' + id + ', this.checked)" title="完成">' +
+            '<span class="todo-item-text' + (isDone ? ' done' : '') + '">' + text + '</span>' +
+            '<button class="todo-item-delete" onclick="deleteTodoItem(' + id + ')" title="删除">🗑</button>' +
+            '</div>';
+        }).join('');
+      } catch (e) {
+        console.error('加载 Todo 列表失败:', e);
+        container.innerHTML = '<div class="todo-empty">⚠️ 加载失败</div>';
+      }
+    }
+
+    function switchTodoPerson(person) {
+      todoActivePerson = person;
+      const newsCard = document.querySelector('[data-card-id="todo"]');
+      if (newsCard && cachedTodoData) {
+        const body = newsCard.querySelector('.card-body');
+        if (body) renderTodoCardExpanded(body, cachedTodoData);
+      }
+    }
+
+    function switchTodoView(view) {
+      todoActiveView = view;
+      loadTodoItems();
+    }
+
+    async function toggleTodoDone(id, checked) {
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      try {
+        const resp = await fetch('/v1/api/daily/todos/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ done: checked ? 1 : 0 })
+        });
+        if (resp.ok) {
+          // 刷新缓存 + 重新渲染
+          cachedTodoData = null;
+          const todoCard = document.querySelector('[data-card-id="todo"]');
+          if (todoCard) await loadTodoCard(todoCard);
+          const body = todoCard ? todoCard.querySelector('.card-body') : null;
+          if (body && todoCard.classList.contains('expanded')) {
+            renderTodoCardExpanded(body, cachedTodoData);
+          }
+        }
+      } catch (e) {
+        console.error('Toggle todo failed:', e);
+      }
+    }
+
+    async function deleteTodoItem(id) {
+      if (!confirm('确定删除这个待办？')) return;
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      try {
+        const resp = await fetch('/v1/api/daily/todos/' + id, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (resp.ok) {
+          cachedTodoData = null;
+          const todoCard = document.querySelector('[data-card-id="todo"]');
+          if (todoCard) {
+            await loadTodoCard(todoCard);
+            const body = todoCard.querySelector('.card-body');
+            if (body && todoCard.classList.contains('expanded')) {
+              renderTodoCardExpanded(body, cachedTodoData);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Delete todo failed:', e);
+      }
     }
 
 

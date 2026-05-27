@@ -4022,7 +4022,7 @@
       const saved = JSON.parse(localStorage.getItem('aichat_config') || '{}');
       if (saved.agentId) agentId = saved.agentId;
       // CRITICAL: Gateway chat needs the API Token, not the user JWT
-      token = saved.token || '';
+      token = saved.token || 'e0fb40cef753818c92577e3c8fe2af53';
       // Directly set connected state (JWT already verified)
       connected = true;
       setStatus(true, '已连接');

@@ -924,6 +924,36 @@
     .todo-add-bar .todo-add-btn:hover {
       opacity: 0.85;
     }
+    /* DF20: DataCard 缩略模式 */
+    .card-body .data-collapsed {
+      padding: 12px 16px;
+    }
+    .data-collapsed .data-person-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      font-size: 13px;
+    }
+    .data-collapsed .data-person-name {
+      font-weight: 600;
+      color: var(--text);
+      min-width: 50px;
+    }
+    .data-collapsed .data-person-info {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+    .data-collapsed .data-expand-hint {
+      font-size: 11px;
+      color: var(--accent);
+      cursor: pointer;
+      text-align: center;
+      margin-top: 6px;
+    }
+    .data-collapsed .data-expand-hint:hover {
+      text-decoration: underline;
+    }
     /* DF13: NewsCard 展开模式 */
     .card-body .news-expanded {
       padding: 12px 16px;
@@ -4782,6 +4812,8 @@
         if (newsCard) loadNewsCard(newsCard);
         const todoCard = document.querySelector('[data-card-id="todo"]');
         if (todoCard) loadTodoCard(todoCard);
+        const dataCard = document.querySelector('[data-card-id="data"]');
+        if (dataCard) loadDataCard(dataCard);
         dashboardLoaded = true;
       } catch (e) {
         console.error('加载 Dashboard 失败:', e);
@@ -5199,7 +5231,7 @@
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -5836,6 +5868,74 @@
         console.error('添加 Todo 失败:', e);
         showCommandToast('⚠️ 网络错误', 'error');
       }
+    }
+
+
+    /* ===== DF20: DataCard ===== */
+    let cachedDataSummary = null;
+    const KNOWN_PERSONS_DATA = ["管理员", "伴侣"];
+
+    async function loadDataCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+
+      const token = document.getElementById('token').value;
+      if (!token) {
+        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
+        return;
+      }
+
+      try {
+        if (!cachedDataSummary) {
+          const today = new Date().toISOString().slice(0, 10);
+          const results = {};
+          for (const person of KNOWN_PERSONS_DATA) {
+            const resp = await fetch('/v1/api/daily/data/' + encodeURIComponent(person) + '?date=' + today, {
+              headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (resp.ok) {
+              const d = await resp.json();
+              results[person] = d;
+            }
+          }
+          cachedDataSummary = { date: today, persons: results };
+        }
+
+        renderDataCardCollapsed(summary, body, cachedDataSummary);
+      } catch (e) {
+        console.error('加载 Data 失败:', e);
+        body.innerHTML = '<div class="card-body-placeholder">⚠️ 数据加载失败</div>';
+      }
+    }
+
+    function renderDataCardCollapsed(summaryEl, bodyEl, data) {
+      if (!data || !data.persons || !Object.keys(data.persons).length) {
+        if (summaryEl) summaryEl.textContent = '📊 暂无数据';
+        bodyEl.innerHTML = '<div class="card-body-placeholder">📊 暂无数据</div>';
+        return;
+      }
+
+      // 统计每人今天的数据条目数
+      let html = '<div class="data-collapsed">';
+      for (const [name, d] of Object.entries(data.persons)) {
+        let updateCount = 0;
+        if (d && d.ok) {
+          for (const field of ['weight', 'water', 'sleep', 'exercise', 'journal', 'fitness', 'finance']) {
+            if (d[field] && Array.isArray(d[field]) && d[field].length) updateCount += d[field].length;
+          }
+        }
+        html += '<div class="data-person-row">';
+        html += '<span class="data-person-name">👤 ' + escapeHtml(name) + '</span>';
+        html += '<span class="data-person-info">今天更新 ' + updateCount + ' 项</span>';
+        html += '</div>';
+      }
+      html += '<div class="data-expand-hint" onclick="toggleCard(\'data\', event)">展开查看详情 ▼</div>';
+      html += '</div>';
+
+      if (summaryEl) summaryEl.innerHTML = html;
+      bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
     }
 
 

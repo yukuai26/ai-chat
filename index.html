@@ -9955,17 +9955,92 @@
       var header = document.getElementById('midTitle');
       var content = document.getElementById('midContent');
       if (tabName === 'chat') {
-        if (header) header.textContent = '会话';
-        if (content) { content.innerHTML = '<div class="conv-list" id="convList"></div>'; loadConversations(); }
+        if (header) header.textContent = '💬 会话';
+        if (content) {
+          content.innerHTML = '<div class="conv-list" id="convList"></div>';
+          setTimeout(function(){ loadConversations(); }, 50);
+        }
       } else if (tabName === 'files') {
-        if (header) header.textContent = '文件';
-        if (content) { content.innerHTML = '<div class="file-tree" id="fileTree"></div>'; loadFileTree(); }
+        if (header) header.textContent = '📁 文件';
+        if (content) {
+          content.innerHTML = '<div class="file-tree" id="fileTreeLoading"><div class="spinner" style="margin:20px auto;"></div></div>';
+          // Use existing file listing code
+          authFetch('/v1/files/ls?path=/user-files').then(function(r){return r.json();}).then(function(d){
+            if (d.ok && d.files) {
+              var html = '<div style="padding:4px 8px;">';
+              var roots = {'我的文件': '/user-files', '项目文件': '/workspace-assistant', 'Build喵': '/workspace-build-cat'};
+              for (var k in roots) {
+                html += '<div class="file-tree-folder" onclick="loadMidDir(\'' + roots[k] + '\')" style="padding:6px 10px;cursor:pointer;border-radius:4px;font-size:13px;">📁 ' + k + '</div>';
+              }
+              html += '</div><div style="font-size:11px;color:var(--text-tertiary);padding:8px;">点击文件夹浏览</div>';
+              document.getElementById('fileTreeLoading').innerHTML = html;
+            }
+          }).catch(function(){}); 
+        }
       } else if (tabName === 'daily') {
-        if (header) header.textContent = '每日卡片';
-        if (content) { content.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--text-tertiary);">选择卡片查看详情</div>'; }
+        if (header) header.textContent = '📊 每日卡片';
+        if (content) {
+          var cards = ['⏰ 提醒', '✅ 待办事项', '📊 数据追踪', '📝 笔记', '🍳 食谱', '❤️ 伴侣空间', '📷 照片墙'];
+          var html = '<div style="padding:4px 0;">';
+          for (var i = 0; i < cards.length; i++) {
+            html += '<div class="daily-card-nav" onclick="scrollToDailyCard(' + i + ')" style="padding:10px 14px;cursor:pointer;border-radius:4px;font-size:13px;display:flex;align-items:center;gap:8px;">' + cards[i] + '</div>';
+          }
+          html += '</div>';
+          content.innerHTML = html;
+        }
       } else if (tabName === 'calendar') {
-        if (header) header.textContent = '月视图';
+        if (header) header.textContent = '📅 月视图';
+        if (content) {
+          content.innerHTML = '<div id="midCalendarGrid" class="calendar-grid" style="margin: 8px;"></div>';
+          setTimeout(function(){ renderMidCalendar(); }, 50);
+        }
       }
+    }
+
+    function loadMidDir(path) {
+      authFetch('/v1/files/ls?path=' + encodeURIComponent(path)).then(function(r){return r.json();}).then(function(d){
+        var tree = document.getElementById('fileTreeLoading');
+        if (!tree || !d.ok) return;
+        var html = '<div style="padding:4px 8px;font-size:11px;color:var(--text-tertiary);cursor:pointer;" onclick="updateMidColumn(&quot;files&quot;)">⬅ 返回根目录</div>';
+        for (var i = 0; i < (d.files || []).length; i++) {
+          var f = d.files[i];
+          var icon = f.type === 'dir' ? '📁' : '📄';
+          html += '<div style="padding:6px 10px;font-size:12px;border-radius:2px;">' + icon + ' ' + (f.name || f) + '</div>';
+        }
+        tree.innerHTML = html;
+      }).catch(function(){});
+    }
+
+    function scrollToDailyCard(idx) {
+      switchTab('daily');
+      var cards = document.querySelectorAll('#tab-daily .card-section, #tab-daily .daily-section');
+      if (cards[idx]) cards[idx].scrollIntoView({behavior: 'smooth'});
+    }
+
+    function renderMidCalendar() {
+      var container = document.getElementById('midCalendarGrid');
+      if (!container) return;
+      var now = new Date();
+      if (typeof calYear === 'undefined') { calYear = now.getFullYear(); calMonth = now.getMonth() + 1; }
+      var monthTitle = calYear + '年' + calMonth + '月';
+      container.innerHTML = '<div style="text-align:center;font-size:12px;padding:4px;color:var(--text-secondary);">' + monthTitle + '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:10px;">' +
+        '<span style="text-align:center;color:var(--text-tertiary)">日</span><span style="text-align:center;color:var(--text-tertiary)">一</span><span style="text-align:center;color:var(--text-tertiary)">二</span><span style="text-align:center;color:var(--text-tertiary)">三</span><span style="text-align:center;color:var(--text-tertiary)">四</span><span style="text-align:center;color:var(--text-tertiary)">五</span><span style="text-align:center;color:var(--text-tertiary)">六</span>';
+      var fd = new Date(calYear, calMonth - 1, 1).getDay();
+      var daysInMonth = new Date(calYear, calMonth, 0).getDate();
+      for (var i = 0; i < fd; i++) container.innerHTML += '<span></span>';
+      for (var d = 1; d <= daysInMonth; d++) {
+        var isToday = (d === now.getDate() && calMonth === now.getMonth()+1 && calYear === now.getFullYear());
+        container.innerHTML += '<span style="text-align:center;padding:3px 0;cursor:pointer;border-radius:50%;' + (isToday ? 'background:var(--accent);color:#fff;' : '') + '" data-mid-date="' + d + '">' + d + '</span>';
+      }
+      container.innerHTML += '</div>';
+      // Add click handlers to day cells
+      setTimeout(function() {
+        var cells = container.querySelectorAll('[data-mid-date]');
+        for (var i = 0; i < cells.length; i++) {
+          cells[i].onclick = function() { switchTab('calendar'); };
+        }
+      }, 10);
     }
 
     // Hook into existing loadConversations to render into mid-column

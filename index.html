@@ -494,6 +494,47 @@
       color: var(--text-secondary);
       line-height: 1.5;
     }
+    .card-placeholder .card-expand-btn {
+      font-size: 18px;
+      color: var(--text-secondary);
+      transition: transform 0.25s;
+      flex-shrink: 0;
+      margin-left: 8px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .card-placeholder.expanded .card-expand-btn {
+      transform: rotate(180deg);
+    }
+    .card-placeholder .card-body {
+      display: none;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+      padding-top: 12px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      animation: cardExpand 0.2s ease;
+    }
+    .card-placeholder.expanded .card-body {
+      display: block;
+    }
+    @keyframes cardExpand {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .card-placeholder .card-body-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 0;
+      color: var(--text-secondary);
+      opacity: 0.5;
+      font-size: 12px;
+    }
     /* 响应式 */
     @media (max-width: 1024px) {
       .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
@@ -3946,13 +3987,24 @@
       for (const card of ordered) {
         const isDisabled = disabledCards.includes(card.id) || !card.enabled;
         const cls = isDisabled ? 'card-placeholder disabled' : 'card-placeholder';
+        const badgeText = isDisabled ? '已禁用' : '收折中';
         const summary = getCardSummary(card);
-        html += '<div class="' + cls + '" data-card-id="' + card.id + '" onclick="onCardClick(\'' + card.id + '\')">' +
-          '<div class="card-header">' +
+        const isImplemented = IMPLEMENTED_CARDS.includes(card.id);
+
+        html += '<div class="' + cls + '" data-card-id="' + card.id + '">' +
+          '<div class="card-header" onclick="toggleCard(\'' + card.id + '\', event)">' +
             '<span class="card-name">' + card.name + '</span>' +
-            (isDisabled ? '<span class="card-badge">已禁用</span>' : '<span class="card-badge">待实现</span>') +
+            '<div style="display:flex;align-items:center;gap:6px">' +
+              '<span class="card-badge">' + badgeText + '</span>' +
+              '<span class="card-expand-btn">▾</span>' +
+            '</div>' +
           '</div>' +
           '<div class="card-summary">' + summary + '</div>' +
+          '<div class="card-body">' +
+            (isImplemented
+              ? '<div class="card-body-placeholder">⏳ 内容加载中...</div>'
+              : '<div class="card-body-placeholder">📦 卡片待实现</div>') +
+          '</div>' +
         '</div>';
       }
       grid.innerHTML = html;
@@ -3976,16 +4028,22 @@
       return summaries[card.id] || '卡片数据加载中...';
     }
 
-    /** 卡片点击事件 */
-    function onCardClick(cardId) {
+    /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
+    const IMPLEMENTED_CARDS = [];
+
+    /** 卡片点击展开/收起 */
+    function toggleCard(cardId, event) {
+      if (event) event.stopPropagation();
       const card = dashboardCards.find(c => c.id === cardId);
       if (!card) return;
       // 禁用卡片不做响应
       const config = JSON.parse(localStorage.getItem('aichat_dashboard_config') || '{}');
       if ((config.disabledCards || []).includes(cardId)) return;
       if (!card.enabled) return;
-      // 缩略/展开切换将在 DF3/DF4 实现
-      console.log('卡片点击:', cardId, card.name);
+
+      const el = document.querySelector('.card-placeholder[data-card-id="' + cardId + '"]');
+      if (!el) return;
+      el.classList.toggle('expanded');
     }
 
     // Hook into switchTab to load dashboard when tab is opened

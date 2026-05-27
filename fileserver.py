@@ -1213,6 +1213,7 @@ def put_card_by_id(card_id):
 KNOWN_PERSONS = ["管理员", "伴侣"]
 TODOS_PATH = os.path.join(USER_DATA_DIR, "todos.json")
 RECIPE_PATH = os.path.join(USER_DATA_DIR, "recipe.json")
+WISHES_PATH = os.path.join(USER_DATA_DIR, "wishes.json")
 
 
 def _load_todos():
@@ -2526,6 +2527,196 @@ def get_week_recipe():
         "ok": True,
         "days": days,
         "filledDays": filled,
+    })
+
+
+
+
+
+# ============================================================
+#  心愿池 CRUD API (DB18)
+# ============================================================
+
+WISH_STATUSES = {"dreaming", "planning", "in_progress", "done", "archived"}
+
+
+def _load_wishes() -> list:
+    """读取心愿文件。"""
+    try:
+        if os.path.isfile(WISHES_PATH) and os.path.getsize(WISHES_PATH) > 0:
+            with open(WISHES_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"wishes.json 读取失败: {e}")
+    return []
+
+
+def _save_wishes(data: list):
+    """保存心愿文件。"""
+    os.makedirs(os.path.dirname(WISHES_PATH), exist_ok=True)
+    with open(WISHES_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _next_wish_id(wishes: list) -> int:
+    """生成下一个心愿 ID。"""
+    if not wishes:
+        return 1
+    return max(w.get("id", 0) for w in wishes) + 1
+
+
+@app.route("/v1/api/daily/wishes", methods=["GET", "POST"])
+@require_token
+def wishes_list():
+    """GET/POST /v1/api/daily/wishes - 心愿池列表和创建。
+
+    GET 查询参数:
+      - status: 按状态过滤 (dreaming/planning/in_progress/done/archived)
+      - tag:    按标签过滤
+      - limit:  最大返回数
+
+    POST 请求体:
+      {"text": "去冰岛看极光", "status": "dreaming", "tags": ["旅行"]}
+    """
+    if request.method == "GET":
+        wishes = _load_wishes()
+        status = request.args.get("status", "").strip()
+        tag = request.args.get("tag", "").strip()
+        limit_str = request.args.get("limit", "")
+
+        if status:
+            if status not in WISH_STATUSES:
+                return error_response(f"无效状态: {status}, 可用: {', '.join(sorted(WISH_STATUSES))}", 400)
+            wishes = [w for w in wishes if w.get("status") == status]
+
+        if tag:
+            wishes = [w for w in wishes if tag in w.get("tags", [])]
+
+        if limit_str.isdigit():
+            wishes = wishes[:int(limit_str)]
+
+        return jsonify({
+            "ok": True,
+            "wishes": wishes,
+            "total": len(wishes),
+        })
+
+    # POST
+    data = request.get_json(silent=True)
+    if not data or "text" not in data:
+        return error_response("缺少必填字段 text", 400)
+    text = data["text"].strip()
+    if len(text) < 2:
+        return error_response("心愿内容至少 2 个字符", 400)
+
+    wishes = _load_wishes()
+    tz = ZoneInfo("Asia/Shanghai")
+    now = datetime.now(tz)
+
+    new_wish = {
+        "id": _next_wish_id(wishes),
+        "text": text,
+        "status": data.get("status", "dreaming").strip(),
+        "tags": data.get("tags", []),
+        "note": data.get("note", "").strip(),
+        "link": data.get("link", "").strip(),
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+
+    if new_wish["status"] not in WISH_STATUSES:
+        return error_response(f"无效状态: {new_wish['status']}", 400)
+
+    wishes.append(new_wish)
+    try:
+        _save_wishes(wishes)
+    except IOError as e:
+        return error_response(f"保存失败: {e}", 500)
+
+    return jsonify({
+        "ok": True,
+        "wish": new_wish,
+        "message": f"已添加心愿: {text}",
+    })
+
+
+@app.route("/v1/api/daily/wishes/<int:wish_id>", methods=["PUT", "DELETE"])
+@require_token
+def wishes_item(wish_id):
+    """PUT/DELETE /v1/api/daily/wishes/{id} - 更新/删除心愿。
+
+    PUT 请求体:
+      {"status":"planning"}  或 {"text":"新的描述"} 或 {"tags":["旅行"]}
+
+    DELETE 无请求体。
+    """
+    wishes = _load_wishes()
+    idx = next((i for i, w in enumerate(wishes) if w.get("id") == wish_id), None)
+
+    if idx is None:
+        return error_response(f"心愿 #{wish_id} 不存在", 404)
+
+    if request.method == "DELETE":
+        removed = wishes.pop(idx)
+        try:
+            _save_wishes(wishes)
+        except IOError as e:
+            return error_response(f"保存失败: {e}", 500)
+        return jsonify({
+            "ok": True,
+            "wish": removed,
+            "message": f"已删除心愿: {removed.get('text', '')}",
+        })
+
+    # PUT
+    data = request.get_json(silent=True)
+    if not data:
+        return error_response("请求体不能为空", 400)
+
+    wish = wishes[idx]
+    tz = ZoneInfo("Asia/Shanghai")
+    changed = False
+
+    if "text" in data:
+        t = data["text"].strip()
+        if len(t) < 2:
+            return error_response("内容至少 2 个字符", 400)
+        wish["text"] = t
+        changed = True
+
+    if "status" in data:
+        s = data["status"].strip()
+        if s not in WISH_STATUSES:
+            return error_response(f"无效状态: {s}", 400)
+        wish["status"] = s
+        changed = True
+
+    if "tags" in data:
+        wish["tags"] = data["tags"] if isinstance(data["tags"], list) else []
+        changed = True
+
+    if "note" in data:
+        wish["note"] = data["note"].strip()
+        changed = True
+
+    if "link" in data:
+        wish["link"] = data["link"].strip()
+        changed = True
+
+    if not changed:
+        return jsonify({"ok": True, "wish": wish, "message": "无变更"})
+
+    wish["updated_at"] = datetime.now(tz).isoformat()
+    try:
+        _save_wishes(wishes)
+    except IOError as e:
+        return error_response(f"保存失败: {e}", 500)
+
+    return jsonify({
+        "ok": True,
+        "wish": wish,
+        "message": f"已更新心愿 #{wish_id}",
     })
 
 

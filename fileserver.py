@@ -1114,11 +1114,20 @@ DEFAULT_CARD_REGISTRY = {
             "api": "/v1/api/daily/notes",
             "persons": ["管理员", "伴侣"],
             "expandable": True
+        },
+        {
+            "id": "bookmarks",
+            "name": "🔗 收藏夹",
+            "width": "medium",
+            "enabled": True,
+            "api": "/v1/api/daily/bookmarks",
+            "persons": ["管理员", "伴侣"],
+            "expandable": True
         }
     ],
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks"],
         "gap": 16
     },
     "commandPrefixes": [
@@ -1224,6 +1233,7 @@ TODOS_PATH = os.path.join(USER_DATA_DIR, "todos.json")
 RECIPE_PATH = os.path.join(USER_DATA_DIR, "recipe.json")
 WISHES_PATH = os.path.join(USER_DATA_DIR, "wishes.json")
 NOTES_PATH = os.path.join(USER_DATA_DIR, "notes.json")
+BOOKMARKS_PATH = os.path.join(USER_DATA_DIR, "bookmarks.json")
 
 
 def _load_todos():
@@ -1433,7 +1443,7 @@ DASHBOARD_CONFIG_PATH = os.path.join(USER_DATA_DIR, "dashboard-config.json")
 DEFAULT_DASHBOARD_CONFIG = {
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks"],
         "gap": 16,
     },
     "disabledCards": [],
@@ -2760,6 +2770,153 @@ def notes_search():
 
     results.sort(key=lambda x: x.get("created", ""), reverse=True)
     return jsonify({"ok": True, "results": results, "total": len(results), "query": q})
+
+
+# ---- 收藏夹 Bookmarks API ----
+
+def _load_bookmarks() -> dict:
+    """读取收藏夹文件。"""
+    try:
+        if os.path.isfile(BOOKMARKS_PATH) and os.path.getsize(BOOKMARKS_PATH) > 0:
+            with open(BOOKMARKS_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"bookmarks.json 读取失败: {e}")
+    return {}
+
+
+def _save_bookmarks(data: dict):
+    """写入收藏夹文件。"""
+    os.makedirs(os.path.dirname(BOOKMARKS_PATH), exist_ok=True)
+    with open(BOOKMARKS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+@app.route("/v1/api/daily/bookmarks", methods=["GET", "POST"])
+@require_token
+def bookmarks_list():
+    """GET/POST /v1/api/daily/bookmarks - 收藏夹列表和新增。
+
+    GET 查询参数:
+      - person: 管理员/伴侣
+      - tag: 按标签过滤
+
+    POST 请求体:
+      {"person":"管理员", "url":"https://...", "title":"标题", "tags":["技术"]}
+    若未提供 title，服务端将抓取页面标题（B2）。
+
+    收藏按 created 倒序排列。每个条目: {id, url, title, description, favicon, tags, created, read}
+    """
+    if request.method == "GET":
+        bookmarks = _load_bookmarks()
+        person = request.args.get("person", "").strip()
+        tag_filter = request.args.get("tag", "").strip()
+
+        if person:
+            items = bookmarks.get(person, [])
+        else:
+            items = []
+            for p_items in bookmarks.values():
+                if isinstance(p_items, list):
+                    items.extend(p_items)
+
+        if tag_filter:
+            items = [b for b in items if tag_filter in b.get("tags", [])]
+
+        items = sorted(items, key=lambda x: x.get("created", ""), reverse=True)
+        return jsonify({"ok": True, "bookmarks": items, "total": len(items)})
+
+    if request.method == "POST":
+        data = request.get_json(silent=True)
+        if not data or "url" not in data:
+            return error_response("缺少必填字段 url", 400)
+
+        url = data["url"].strip()
+        if not url.startswith("http"):
+            return error_response("URL 必须以 http 开头", 400)
+
+        person = data.get("person", "管理员").strip()
+        if person not in KNOWN_PERSONS:
+            return error_response(f"未知用户: {person}", 400)
+
+        bookmarks = _load_bookmarks()
+        bookmarks.setdefault(person, [])
+
+        tz = ZoneInfo("Asia/Shanghai")
+        now_str = datetime.now(tz).isoformat()
+
+        new_id = 1
+        for item in bookmarks[person]:
+            if isinstance(item.get("id"), int) and item["id"] >= new_id:
+                new_id = item["id"] + 1
+
+        title = data.get("title", "").strip()
+        if not title:
+            try:
+                import requests as req_lib
+                r = req_lib.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+                detail_re = re.search(r"<title[^>]*>([^<]+)</title>", r.text, re.I)
+                title = detail_re.group(1).strip() if detail_re else url
+            except Exception:
+                title = url
+
+        bookmark = {
+            "id": new_id,
+            "url": url,
+            "title": title,
+            "description": data.get("description", ""),
+            "favicon": data.get("favicon", ""),
+            "tags": data.get("tags", []),
+            "created": now_str,
+            "read": False,
+        }
+        bookmarks[person].append(bookmark)
+        _save_bookmarks(bookmarks)
+        return jsonify({"ok": True, "bookmark": bookmark, "message": f"已收藏: {title}"})
+
+
+@app.route("/v1/api/daily/bookmarks/<int:bookmark_id>", methods=["PUT", "DELETE"])
+@require_token
+def bookmarks_item(bookmark_id):
+    """PUT/DELETE /v1/api/daily/bookmarks/{id} - 编辑/删除收藏。
+
+    PUT 请求体: {"title":"新标题", "tags":["新标签"], "read":true}
+    DELETE 需要 ?person= 参数。
+    """
+    bookmarks = _load_bookmarks()
+
+    found, found_person = None, None
+    for person, items in bookmarks.items():
+        for item in items:
+            if item.get("id") == bookmark_id:
+                found, found_person = item, person
+                break
+        if found:
+            break
+
+    if not found:
+        return error_response(f"收藏 #{bookmark_id} 不存在", 404)
+
+    if request.method == "DELETE":
+        bookmarks[found_person] = [i for i in bookmarks[found_person] if i.get("id") != bookmark_id]
+        _save_bookmarks(bookmarks)
+        return jsonify({"ok": True, "message": f"已删除收藏 #{bookmark_id}"})
+
+    if request.method == "PUT":
+        data = request.get_json(silent=True)
+        if not data:
+            return error_response("请求体不能为空", 400)
+
+        for field in ["title", "description", "favicon"]:
+            if field in data:
+                found[field] = data[field].strip() if isinstance(data[field], str) else data[field]
+        if "tags" in data:
+            found["tags"] = data["tags"]
+        if "read" in data:
+            found["read"] = bool(data["read"])
+
+        _save_bookmarks(bookmarks)
+        return jsonify({"ok": True, "bookmark": found, "message": "已更新"})
 
 
 def _next_wish_id(wishes: list) -> int:

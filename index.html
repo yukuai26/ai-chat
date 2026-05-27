@@ -436,6 +436,45 @@
       min-height: 0;
       overflow: hidden;
     }
+    /* ==================== 每日 Dashboard ==================== */
+    #tab-daily {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 24px;
+      background: var(--bg);
+    }
+    .dashboard-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+    .dashboard-empty .empty-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    .dashboard-empty h3 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 8px;
+    }
+    .dashboard-empty p {
+      font-size: 14px;
+      margin: 0;
+      line-height: 1.6;
+    }
+    .dashboard-empty .hint-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      opacity: 0.6;
+      margin-top: 12px;
+    }
     .file-browser {
       display: flex;
       flex: 1;
@@ -1552,6 +1591,7 @@
     <div class="tab-bar" id="tabBar">
       <button class="tab-btn active" data-tab="chat" onclick="switchTab('chat')">💬 聊天</button>
       <button class="tab-btn" data-tab="files" onclick="switchTab('files')">📁 文件管理器</button>
+      <button class="tab-btn" data-tab="daily" onclick="switchTab('daily')">📊 每日</button>
     </div>
     <div class="tab-content active" id="tab-chat">
       <div class="messages" id="messages">
@@ -1608,6 +1648,16 @@
             <div class="icon">📄</div>
             <p>选择文件以查看内容</p>
           </div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-daily">
+      <div class="dashboard-container" id="dashboardContainer">
+        <div class="dashboard-empty">
+          <div class="empty-icon">📊</div>
+          <h3>每日 Dashboard</h3>
+          <p>卡片注册表已准备就绪，等待前端组件接入。</p>
+          <p class="hint-text">后续 Issue (DF2-DF7) 将实现卡片网格和指令中枢。</p>
         </div>
       </div>
     </div>

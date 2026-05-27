@@ -1199,6 +1199,212 @@ def put_card_by_id(card_id):
         return error_response(f"保存失败: {e}", 500)
 
 
+# ---- 每日 Dashboard: 统一指令中枢 (DB3) ----
+
+KNOWN_PERSONS = ["管理员", "伴侣"]
+TODOS_PATH = os.path.join(USER_DATA_DIR, "todos.json")
+
+
+def _load_todos():
+    """读取 Todo 文件，不存在或错误时返回空字典。"""
+    try:
+        if os.path.isfile(TODOS_PATH) and os.path.getsize(TODOS_PATH) > 0:
+            with open(TODOS_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"todos.json 读取失败: {e}")
+    return {}
+
+
+def _save_todos(data: dict):
+    """写入 Todo 文件。"""
+    os.makedirs(os.path.dirname(TODOS_PATH), exist_ok=True)
+    with open(TODOS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _dispatch_add_todo(person: str, text: str):
+    """@todo 指令处理器：添加一条 Todo。"""
+    if not person or not text:
+        return {"ok": False, "message": "用法: @todo <管理员|伴侣> <内容>"}
+    if person not in KNOWN_PERSONS:
+        return {"ok": False, "message": f"未知用户: {person}，可用: {KNOWN_PERSONS}"}
+
+    todos = _load_todos()
+    if person not in todos:
+        todos[person] = {}
+    if "daily" not in todos[person]:
+        todos[person]["daily"] = []
+
+    tz = ZoneInfo("Asia/Shanghai")
+    today = datetime.now(tz).strftime("%Y-%m-%d")
+    new_id = 1
+    for item in todos[person].get("daily", []):
+        if item.get("id", 0) >= new_id:
+            new_id = item["id"] + 1
+
+    todo_item = {
+        "id": new_id,
+        "text": text,
+        "done": False,
+        "type": "daily",
+        "date": today,
+    }
+    todos[person]["daily"].append(todo_item)
+    _save_todos(todos)
+
+    return {"ok": True, "message": f"已添加 {person} Todo: {text}", "todo": todo_item}
+
+
+def _dispatch_done(person: str, todo_id_str: str):
+    """@done 指令处理器：勾选一条 Todo。"""
+    if not person or not todo_id_str:
+        return {"ok": False, "message": "用法: @done <管理员|伴侣> <id>"}
+    try:
+        todo_id = int(todo_id_str)
+    except ValueError:
+        return {"ok": False, "message": "Todo ID 必须是数字"}
+
+    todos = _load_todos()
+    if person not in todos:
+        return {"ok": False, "message": f"用户 {person} 无 Todo"}
+
+    for category in ["daily", "weekly"]:
+        for item in todos[person].get(category, []):
+            if item["id"] == todo_id:
+                item["done"] = True
+                _save_todos(todos)
+                return {"ok": True, "message": f"已完成 {person} Todo #{todo_id}: {item['text']}"}
+
+    return {"ok": False, "message": f"未找到 {person} Todo #{todo_id}"}
+
+
+def _parse_command(text: str) -> dict:
+    """解析指令文本，提取前缀、用户、内容。
+
+    Returns:
+        {
+            "prefix": "@todo" | None,
+            "person": "管理员" | "伴侣" | None,
+            "text": "买牛奶",
+            "matched": True | False,
+            "action": "add_todo" | None,
+            "api": "/v1/api/daily/todos" | None
+        }
+    """
+    text = text.strip()
+    if not text or not text.startswith("@"):
+        return {"prefix": None, "person": None, "text": text, "matched": False, "action": None, "api": None}
+
+    # 从注册表加载指令前缀
+    registry = _load_card_registry()
+    prefixes = registry.get("commandPrefixes", [])
+
+    # 找到第一个匹配的 @前缀
+    for pf in sorted(prefixes, key=lambda x: -len(x["prefix"])):  # 长前缀优先
+        prefix = pf["prefix"]
+        if text.startswith(prefix + " ") or text == prefix:
+            remaining = text[len(prefix):].strip()
+
+            # 检查是否包含已知用户名
+            person = None
+            for p in KNOWN_PERSONS:
+                if remaining.startswith(p + " ") or remaining == p:
+                    person = p
+                    remaining = remaining[len(p):].strip()
+                    break
+
+            return {
+                "prefix": prefix,
+                "person": person,
+                "text": remaining,
+                "matched": True,
+                "action": pf.get("action", ""),
+                "api": pf.get("api", ""),
+            }
+
+    # @ 开头但未匹配任何前缀 → 不改写，由 caller 决定回退
+    return {"prefix": None, "person": None, "text": text, "matched": False, "action": None, "api": None}
+
+
+@app.route("/v1/api/daily/command", methods=["POST"])
+@require_token
+def daily_command():
+    """POST /v1/api/daily/command — 统一指令中枢。
+
+    请求体: {"text": "@todo 管理员 买牛奶"} 或 {"text": "今天天气怎么样"}
+
+    流程:
+      1. 解析 @前缀，匹配卡片注册表中的 commandPrefixes
+      2. 匹配成功 → 分发到对应处理器
+      3. 无匹配 → 回退为自然语言，调用 Gateway 处理
+
+    返回:
+      - 指令匹配: {"ok": true, "prefix": "@todo", "action": "add_todo", ...}
+      - 自然语言: {"ok": true, "type": "chat", "content": "AI 回复..."}
+    """
+    data = request.get_json(silent=True)
+    if not data or "text" not in data:
+        return error_response("缺少必填参数", 400, "请求体需包含 text 字段")
+
+    text = data["text"]
+    if not isinstance(text, str) or not text.strip():
+        return error_response("指令内容不能为空", 400)
+
+    # 解析指令
+    parsed = _parse_command(text)
+
+    # 匹配到前缀 → 分发
+    if parsed["matched"]:
+        prefix = parsed["prefix"]
+        person = parsed["person"]
+        content = parsed["text"]
+
+        logger.info(f"指令解析: prefix={prefix}, person={person}, text={content}")
+
+        # @todo — 添加 Todo
+        if prefix == "@todo":
+            result = _dispatch_add_todo(person, content)
+            result["prefix"] = prefix
+            result["action"] = parsed["action"]
+            return jsonify(result)
+
+        # @done — 勾选 Todo
+        if prefix == "@done":
+            result = _dispatch_done(person, content)
+            result["prefix"] = prefix
+            result["action"] = parsed["action"]
+            return jsonify(result)
+
+        # 其他指令 — 返回解析结果（处理器在后续 Phase 实现）
+        return jsonify({
+            "ok": True,
+            "prefix": prefix,
+            "action": parsed["action"],
+            "parsed": {"person": person, "text": content},
+            "message": f"指令 {prefix} 已解析，处理器将在后续 Phase 实现",
+        })
+
+    # 未匹配前缀 → 回退自然语言，走 Gateway
+    logger.info(f"指令中枢 → 自然语言回退: {text[:80]}")
+    try:
+        messages = _build_gateway_messages(
+            [],
+            f"用户通过指令中枢发送了以下消息: {text}",
+            None,
+        )
+        assistant_msg = _call_gateway(messages)
+        return jsonify({
+            "ok": True,
+            "type": "chat",
+            "prefix": None,
+            "content": assistant_msg.get("content", ""),
+            "time": assistant_msg.get("time", ""),
+        })
+    except RuntimeError as e:
+        return error_response(f"指令处理失败: {e}", 502)
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

@@ -732,14 +732,32 @@
       bottom: 80px;
       right: 24px;
       z-index: 500;
-      padding: 12px 20px;
+      padding: 12px 36px 12px 20px;
       border-radius: 10px;
       font-size: 13px;
       color: #fff;
       box-shadow: 0 4px 16px rgba(0,0,0,0.3);
       animation: toastIn 0.25s ease;
-      max-width: 400px;
+      max-width: 420px;
       line-height: 1.5;
+      cursor: pointer;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .dashboard-toast .toast-close {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.8);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+    .dashboard-toast .toast-close:hover {
+      color: #fff;
     }
     .dashboard-toast.success {
       background: #2e7d32;
@@ -753,6 +771,10 @@
     @keyframes toastIn {
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(8px); }
     }
     /* 添加卡片按钮 */
     .dashboard-grid .card-add {
@@ -4515,6 +4537,7 @@
 
       input.disabled = true;
       sendBtn.disabled = true;
+      sendBtn.textContent = '⏳';
 
       try {
         const resp = await fetch('/v1/api/daily/command', {
@@ -4549,6 +4572,7 @@
       } finally {
         input.disabled = false;
         sendBtn.disabled = false;
+        sendBtn.textContent = '发送';
         input.value = '';
         input.focus();
       }
@@ -4562,12 +4586,35 @@
       const toast = document.createElement('div');
       toast.className = 'dashboard-toast ' + (type || 'info');
       toast.textContent = msg;
+
+      // 关闭按钮
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'toast-close';
+      closeBtn.innerHTML = '&times;';
+      closeBtn.title = '关闭';
+      closeBtn.onclick = function(e) {
+        e.stopPropagation();
+        dismissToast(toast);
+      };
+      toast.appendChild(closeBtn);
+
+      // 点击 toast 任意位置也可关闭
+      toast.addEventListener('click', function() { dismissToast(toast); });
+
       document.body.appendChild(toast);
 
-      // 5 秒后自动消失
-      setTimeout(() => {
+      let dismissTimer = setTimeout(function() { dismissToast(toast); }, 6000);
+      toast._dismissTimer = dismissTimer;
+    }
+
+    function dismissToast(toast) {
+      if (!toast || toast._dismissed) return;
+      toast._dismissed = true;
+      if (toast._dismissTimer) clearTimeout(toast._dismissTimer);
+      toast.style.animation = 'toastOut 0.2s ease forwards';
+      setTimeout(function() {
         if (toast.parentNode) toast.remove();
-      }, 5000);
+      }, 200);
     }
 
     /** 加载面板时更新命令提示 */

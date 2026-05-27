@@ -1132,11 +1132,20 @@ DEFAULT_CARD_REGISTRY = {
             "api": "/v1/api/daily/photos",
             "persons": ["管理员", "伴侣"],
             "expandable": True
+        },
+        {
+            "id": "shares",
+            "name": "💬 分享板",
+            "width": "medium",
+            "enabled": True,
+            "api": "/v1/api/daily/shares",
+            "persons": ["管理员", "伴侣"],
+            "expandable": True
         }
     ],
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares"],
         "gap": 16
     },
     "commandPrefixes": [
@@ -1244,6 +1253,7 @@ WISHES_PATH = os.path.join(USER_DATA_DIR, "wishes.json")
 NOTES_PATH = os.path.join(USER_DATA_DIR, "notes.json")
 BOOKMARKS_PATH = os.path.join(USER_DATA_DIR, "bookmarks.json")
 PHOTOS_PATH = os.path.join(USER_DATA_DIR, "photos.json")
+SHARES_PATH = os.path.join(USER_DATA_DIR, "shares.json")
 
 
 def _load_todos():
@@ -1453,7 +1463,7 @@ DASHBOARD_CONFIG_PATH = os.path.join(USER_DATA_DIR, "dashboard-config.json")
 DEFAULT_DASHBOARD_CONFIG = {
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares"],
         "gap": 16,
     },
     "disabledCards": [],
@@ -3253,6 +3263,85 @@ def photos_comment(photo_id):
     found.setdefault("comments", []).append(comment)
     _save_photos(photos)
     return jsonify({"ok": True, "comment": comment, "message": "评论成功"})
+
+
+# ---- 分享板 Shares API ----
+
+def _load_shares() -> dict:
+    try:
+        if os.path.isfile(SHARES_PATH) and os.path.getsize(SHARES_PATH) > 0:
+            with open(SHARES_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"shares.json 读取失败: {e}")
+    return {}
+
+
+def _save_shares(data: dict):
+    os.makedirs(os.path.dirname(SHARES_PATH), exist_ok=True)
+    with open(SHARES_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+@app.route("/v1/api/daily/shares", methods=["GET", "POST"])
+@require_token
+def shares_list():
+    if request.method == "GET":
+        shares = _load_shares()
+        person = request.args.get("person", "").strip()
+        mood = request.args.get("mood", "").strip()
+        if person:
+            items = shares.get(person, [])
+        else:
+            items = []
+            for p_items in shares.values():
+                if isinstance(p_items, list):
+                    items.extend(p_items)
+        if mood:
+            items = [i for i in items if i.get("mood") == mood]
+        items = sorted(items, key=lambda x: x.get("created", ""), reverse=True)
+        return jsonify({"ok": True, "shares": items, "total": len(items)})
+
+    if request.method == "POST":
+        data = request.get_json(silent=True)
+        if not data or "text" not in data:
+            return error_response("缺少分享内容", 400)
+        person = data.get("person", "管理员").strip()
+        if person not in KNOWN_PERSONS:
+            return error_response(f"未知用户: {person}", 400)
+        shares = _load_shares()
+        shares.setdefault(person, [])
+        ids = [i.get("id", 0) for i in shares[person] if isinstance(i.get("id"), int)]
+        new_id = max(ids) + 1 if ids else 1
+        record = {
+            "id": new_id,
+            "text": data["text"].strip(),
+            "mood": data.get("mood", "😊").strip(),
+            "tags": data.get("tags", []),
+            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+        }
+        shares[person].append(record)
+        _save_shares(shares)
+        return jsonify({"ok": True, "share": record, "message": "已分享"})
+
+
+@app.route("/v1/api/daily/shares/<int:share_id>", methods=["DELETE"])
+@require_token
+def shares_item(share_id):
+    shares = _load_shares()
+    found, found_person = None, None
+    for p, items in shares.items():
+        for item in items:
+            if item.get("id") == share_id:
+                found, found_person = item, p
+                break
+        if found:
+            break
+    if not found:
+        return error_response(f"分享 #{share_id} 不存在", 404)
+    shares[found_person] = [i for i in shares[found_person] if i.get("id") != share_id]
+    _save_shares(shares)
+    return jsonify({"ok": True, "message": "已删除"})
 
 
 def _next_wish_id(wishes: list) -> int:

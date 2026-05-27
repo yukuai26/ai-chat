@@ -17,11 +17,13 @@ from zoneinfo import ZoneInfo
 from pathlib import Path
 from functools import wraps
 from flask import Flask, request, jsonify, send_file
+from flask_sock import Sock
 
 import bcrypt
 import jwt
 
 app = Flask(__name__)
+sock = Sock(app)
 
 # ---- 日志 ----
 logging.basicConfig(level=logging.INFO, format="[fileserver] %(asctime)s %(levelname)s: %(message)s")
@@ -2290,6 +2292,7 @@ def todos_item(todo_id):
             return jsonify({"ok": True, "todo": found, "message": "无变更"})
 
         _save_todos(todos)
+        _notify_partner(person if request.user else person or request.user, {"event": "todo_changed", "by": person})
         return jsonify({"ok": True, "todo": found, "message": f"已更新 Todo #{todo_id}"})
 
 
@@ -2594,6 +2597,7 @@ def get_person_data(person):
 
         try:
             _save_person_data(person, data)
+            _notify_partner(request.user, {"event": "data_changed", "by": request.user, "field": field})
         except IOError as e:
             return error_response(f"保存失败: {e}", 500)
 
@@ -3059,6 +3063,7 @@ def notes_item(note_id):
             found["tags"] = data["tags"]
 
         _save_notes(notes)
+        _notify_partner(request.user, {"event": "card_changed", "by": request.user, "card": "notes"})
         return jsonify({"ok": True, "note": found, "message": "已更新"})
 
 
@@ -3212,6 +3217,7 @@ def bookmarks_list():
         }
         bookmarks[person].append(bookmark)
         _save_bookmarks(bookmarks)
+        _notify_partner(request.user, {"event": "card_changed", "by": request.user, "card": "bookmarks"})
         return jsonify({"ok": True, "bookmark": bookmark, "message": f"已收藏: {title}"})
 
 
@@ -3256,6 +3262,7 @@ def bookmarks_item(bookmark_id):
             found["read"] = bool(data["read"])
 
         _save_bookmarks(bookmarks)
+        _notify_partner(request.user, {"event": "card_changed", "by": request.user, "card": "bookmarks"})
         return jsonify({"ok": True, "bookmark": found, "message": "已更新"})
 
 
@@ -3450,6 +3457,7 @@ def photos_list():
         }
         photos[person].append(record)
         _save_photos(photos)
+        _notify_partner(request.user, {"event": "photo_changed", "by": request.user})
         return jsonify({"ok": True, "photo": record, "message": "已添加"})
 
 
@@ -3483,6 +3491,7 @@ def photos_item(photo_id):
         if "tags" in data:
             found["tags"] = data["tags"]
         _save_photos(photos)
+        _notify_partner(request.user, {"event": "photo_changed", "by": request.user})
         return jsonify({"ok": True, "photo": found, "message": "已更新"})
 
 
@@ -3697,6 +3706,7 @@ def reminders_list():
         }
         reminders[person].append(record)
         _save_reminders(reminders)
+        _notify_partner(request.user, {"event": "card_changed", "by": request.user, "card": "reminders"})
         return jsonify({"ok": True, "reminder": record, "message": "已创建"})
 
 
@@ -3737,6 +3747,7 @@ def reminders_item(reminder_id):
         if "enabled" in data:
             found["enabled"] = data["enabled"]
         _save_reminders(reminders)
+        _notify_partner(request.user, {"event": "card_changed", "by": request.user, "card": "reminders"})
         return jsonify({"ok": True, "reminder": found, "message": "已更新"})
 
 
@@ -3848,6 +3859,7 @@ def habits_list():
         }
         habits[person].append(record)
         _save_habits(habits)
+        _notify_partner(request.user, {"event": "card_changed", "by": request.user, "card": "habits"})
         return jsonify({"ok": True, "habit": record, "message": "已创建"})
 
 
@@ -4040,6 +4052,81 @@ def global_search():
 
     total = sum(len(g["items"]) for g in results)
     return jsonify({"ok": True, "results": results, "total": total, "query": query})
+
+# ---- WebSocket 实时同步 (Phase 13) ----
+
+# {username: [ws1, ws2, ...]}
+_ws_connections = {}
+
+@sock.route('/v1/ws')
+def ws_handler(ws):
+    """WebSocket 连接 — JWT token 从 query param 传入"""
+    token = request.args.get('token', '')
+    username = None
+    if token:
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+            username = payload.get('sub', '')
+        except Exception:
+            pass
+
+    if not username:
+        # 无有效 token — 发送错误并关闭
+        ws.send(json.dumps({"event": "error", "message": "认证失败"}))
+        return
+
+    # 注册连接
+    _ws_connections.setdefault(username, []).append(ws)
+
+    try:
+        ws.send(json.dumps({"event": "connected", "message": "WebSocket 已连接"}))
+        # 保持连接，接收客户端心跳
+        while True:
+            msg = ws.receive()
+            if msg is None:
+                break
+            # 心跳处理
+            data = json.loads(msg) if isinstance(msg, str) else {}
+            if data.get('type') == 'ping':
+                ws.send(json.dumps({"type": "pong"}))
+    except Exception:
+        pass
+    finally:
+        # 清理连接
+        if username in _ws_connections:
+            _ws_connections[username] = [s for s in _ws_connections[username] if s != ws]
+            if not _ws_connections[username]:
+                del _ws_connections[username]
+
+
+def _broadcast(event: dict, exclude_user: str = None):
+    """向所有在线用户广播事件"""
+    for user, sockets in _ws_connections.items():
+        if user == exclude_user:
+            continue
+        payload = json.dumps(event)
+        for ws in sockets:
+            try:
+                ws.send(payload)
+            except Exception:
+                pass
+
+
+def _notify_partner(sender_username: str, event: dict):
+    """通知发送者的伴侣"""
+    users = _load_users()
+    partner_name = None
+    for uname, uinfo in users.items():
+        if isinstance(uinfo, dict) and uinfo.get('partner') == sender_username:
+            partner_name = uname
+            break
+    if partner_name and partner_name in _ws_connections:
+        payload = json.dumps(event)
+        for ws in _ws_connections[partner_name]:
+            try:
+                ws.send(payload)
+            except Exception:
+                pass
 
 
 def _next_wish_id(wishes: list) -> int:

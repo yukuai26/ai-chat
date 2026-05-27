@@ -8930,6 +8930,113 @@
       }
     }
 
+
+    /* ===== WS8-WS9: WebSocket 实时同步 ===== */
+    let ws = null;
+    let wsReconnectTimer = null;
+
+    function connectWS() {
+      if (!authJwt) return;
+      var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      var host = location.hostname || 'localhost';
+      var port = location.port;
+      var wsUrl = proto + '//' + host + (port ? ':' + port : '') + '/v1/ws?token=' + authJwt;
+
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch(e) { scheduleReconnect(); return; }
+
+      ws.onopen = function() {
+        // 每30秒心跳
+        ws.pingInterval = setInterval(function() {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 30000);
+      };
+
+      ws.onmessage = function(e) {
+        try {
+          var event = JSON.parse(e.data);
+          handleWSEvent(event);
+        } catch(ex) {}
+      };
+
+      ws.onclose = function() {
+        clearInterval(ws.pingInterval);
+        ws = null;
+        scheduleReconnect();
+      };
+
+      ws.onerror = function() {
+        clearInterval(ws.pingInterval);
+        ws = null;
+        scheduleReconnect();
+      };
+    }
+
+    function scheduleReconnect() {
+      if (wsReconnectTimer) return;
+      wsReconnectTimer = setTimeout(function() {
+        wsReconnectTimer = null;
+        if (authJwt) connectWS();
+      }, 3000);
+    }
+
+    function handleWSEvent(event) {
+      switch(event.event) {
+        case 'todo_changed':
+          if (event.by !== authUser.username) {
+            showToast(event.by + ' 更新了 Todo');
+            if (typeof loadTodos === 'function') refreshTodoCard();
+          }
+          break;
+        case 'data_changed':
+          if (event.by !== authUser.username) {
+            showToast(event.by + ' 更新了「' + (event.field || '数据') + '」');
+          }
+          break;
+        case 'card_changed':
+          if (event.by !== authUser.username) {
+            showToast(event.by + ' 更新了「' + (event.card || '卡片') + '」');
+          }
+          break;
+        case 'share_received':
+          showToast('📤 ' + event.from + ' 给你分享了东西');
+          break;
+        case 'photo_liked':
+          if (event.by !== authUser.username) {
+            showToast('❤️ ' + event.by + ' 点赞了你的照片');
+          }
+          break;
+        case 'photo_changed':
+          if (event.by !== authUser.username) {
+            showToast('📸 ' + event.by + ' 更新了照片');
+          }
+          break;
+        case 'error':
+          showToast('连接断开，尝试重连...', 'warning');
+          break;
+      }
+    }
+
+    // Connect WS after login
+    var origInitAfterLogin = initAfterLogin;
+    initAfterLogin = function() {
+      origInitAfterLogin();
+      setTimeout(connectWS, 500);
+    };
+
+    // Disconnect on logout
+    var origDoLogout = doLogout;
+    doLogout = function() {
+      if (ws) { ws.close(); ws = null; }
+      clearInterval(ws && ws.pingInterval);
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = null;
+      origDoLogout();
+    };
+
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>

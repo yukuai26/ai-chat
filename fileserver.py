@@ -3896,6 +3896,152 @@ def habits_item(habit_id):
     return jsonify({"ok": True, "message": "已删除"})
 
 
+# ---- 全局搜索 API (Phase 11) ----
+
+@app.route("/v1/api/search", methods=["GET"])
+@require_token
+def global_search():
+    """GET /v1/api/search?q=关键词&limit=20 - 跨所有数据源搜索"""
+    query = request.args.get("q", "").strip()
+    limit = int(request.args.get("limit", "20") or "20")
+    if not query:
+        return jsonify({"ok": True, "results": [], "total": 0, "query": ""})
+
+    person = _get_person()
+    results = []
+    ql = query.lower()
+    SESSION_DIR_PATH = "/home/ubuntu/.openclaw/user-sessions"
+    tz = ZoneInfo("Asia/Shanghai")
+
+    # 1. 对话 Session
+    conv_items = []
+    try:
+        for fn in os.listdir(SESSION_DIR_PATH):
+            if not fn.endswith(".json") or fn == "session-index.json":
+                continue
+            fp = os.path.join(SESSION_DIR_PATH, fn)
+            try:
+                with open(fp, "r", encoding="utf-8") as f:
+                    sess = json.load(f)
+                title = sess.get("title", "") or fn
+                matches = ql in title.lower()
+                msg_count = 0
+                for msg in sess.get("messages", []):
+                    content = msg.get("content", "")
+                    if isinstance(content, list):
+                        content = " ".join(str(c.get("text", "")) for c in content if isinstance(c, dict))
+                    if ql in str(content).lower():
+                        matches = True
+                    msg_count += 1
+                if matches:
+                    conv_items.append({
+                        "id": fn.replace(".json", ""),
+                        "title": title,
+                        "subtitle": f"{msg_count} 条消息",
+                        "action": "open_session",
+                        "action_data": fn.replace(".json", ""),
+                        "_score": 0 if ql in title.lower() else 1,
+                        "_time": sess.get("updated", "")
+                    })
+            except Exception:
+                pass
+    except Exception:
+        pass
+    # Sort: title match first, then recent
+    conv_items.sort(key=lambda x: (x["_score"], x["_time"] or ""), reverse=False)
+    if conv_items:
+        for item in conv_items[:5]:
+            del item["_score"]; del item["_time"]
+        results.append({"group": "对话", "icon": "💬", "items": conv_items[:5]})
+
+    # 2. 用户文件
+    file_items = []
+    try:
+        for fn in os.listdir(USER_FILES_DIR):
+            if ql in fn.lower():
+                fp = os.path.join(USER_FILES_DIR, fn)
+                fstat = os.stat(fp)
+                import datetime as dt
+                mtime = dt.datetime.fromtimestamp(fstat.st_mtime, tz).strftime("%Y-%m-%d")
+                file_items.append({
+                    "id": fn, "title": fn, "subtitle": f"{mtime}",
+                    "action": "open_file", "action_data": f"/v1/files/{fn}",
+                    "_score": 0 if fn.lower().startswith(ql) else 1, "_time": mtime
+                })
+    except Exception:
+        pass
+    file_items.sort(key=lambda x: (x["_score"], x["_time"] or ""), reverse=False)
+    if file_items:
+        for item in file_items[:5]: del item["_score"]; del item["_time"]
+        results.append({"group": "文件", "icon": "📁", "items": file_items[:5]})
+
+    # 3. Todo
+    todos = _load_todos()
+    todo_items = []
+    for t in todos.get(person, []):
+        if ql in (t.get("text", "")).lower():
+            todo_items.append({"id": str(t.get("id")), "title": t["text"],
+                "subtitle": f"{person}" + (" [已完成]" if t.get("done") else ""),
+                "action": "open_card", "action_data": "todo"})
+    if todo_items:
+        results.append({"group": "Todo", "icon": "✅", "items": todo_items[:5]})
+
+    # 4. 笔记
+    notes = _load_notes()
+    note_items = []
+    for n in notes.get(person, []):
+        if ql in (n.get("text", "")).lower():
+            note_items.append({"id": str(n.get("id")), "title": n["text"][:80],
+                "subtitle": f"{person} · {(n.get('created','')[:16])}",
+                "action": "open_card", "action_data": "notes"})
+    if note_items:
+        results.append({"group": "随手记", "icon": "📝", "items": note_items[:5]})
+
+    # 5. 收藏夹
+    bm = _load_bookmarks()
+    bm_items = []
+    for b in bm.get(person, []):
+        if ql in (b.get("title","")+b.get("url","")).lower():
+            bm_items.append({"id": str(b.get("id")), "title": b.get("title","") or b.get("url",""),
+                "subtitle": ", ".join(b.get("tags",[])[:3]),
+                "action": "open_card", "action_data": "bookmarks"})
+    if bm_items:
+        results.append({"group": "收藏夹", "icon": "🔗", "items": bm_items[:5]})
+
+    # 6. 照片
+    photos = _load_photos()
+    photo_items = []
+    for p in photos.get(person, []):
+        if ql in (p.get("caption","")).lower() or any(ql in t for t in p.get("tags",[])):
+            photo_items.append({"id": str(p.get("id")), "title": p.get("caption","") or "照片",
+                "subtitle": p.get("created","")[:16], "action": "open_card", "action_data": "photos"})
+    if photo_items:
+        results.append({"group": "照片墙", "icon": "📸", "items": photo_items[:5]})
+
+    # 7. 提醒
+    reminders = _load_reminders()
+    rem_items = []
+    for r in reminders.get(person, []):
+        if ql in (r.get("text","")).lower():
+            rem_items.append({"id": str(r.get("id")), "title": r["text"],
+                "subtitle": f"{r.get('time','')}", "action": "open_card", "action_data": "reminders"})
+    if rem_items:
+        results.append({"group": "提醒", "icon": "⏰", "items": rem_items[:5]})
+
+    # 8. 习惯
+    habits = _load_habits()
+    hab_items = []
+    for h in habits.get(person, []):
+        if ql in (h.get("text","")).lower():
+            hab_items.append({"id": str(h.get("id")), "title": h["text"],
+                "subtitle": f"🔥{h.get('streak',0)}天", "action": "open_card", "action_data": "habits"})
+    if hab_items:
+        results.append({"group": "习惯", "icon": "✅", "items": hab_items[:5]})
+
+    total = sum(len(g["items"]) for g in results)
+    return jsonify({"ok": True, "results": results, "total": total, "query": query})
+
+
 def _next_wish_id(wishes: list) -> int:
     """生成下一个心愿 ID。"""
     if not wishes:

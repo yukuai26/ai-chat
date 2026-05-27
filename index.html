@@ -2975,6 +2975,80 @@
     .conv-context-menu-item.danger { color: var(--accent); }
     .conv-context-menu-item.danger:hover { background: rgba(233,69,96,0.2); }
     .conv-context-menu-item .menu-icon { font-size: 14px; width: 18px; text-align: center; }
+  
+    /* GS4-GS7: 全局搜索面板 */
+    .search-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.2);
+      z-index: 9990;
+      backdrop-filter: blur(2px);
+    }
+    .search-panel {
+      position: fixed;
+      top: 15%; left: 50%;
+      transform: translateX(-50%);
+      width: 560px; max-width: 92vw;
+      max-height: 70vh;
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+      z-index: 9991;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .search-input-wrap {
+      display: flex; align-items: center; gap: 8px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-input-field {
+      flex: 1; border: none; outline: none;
+      font-size: 16px; background: transparent;
+      color: var(--text-primary); font-family: inherit;
+    }
+    .search-input-field::placeholder { color: var(--text-tertiary); }
+    .search-results {
+      overflow-y: auto; flex: 1;
+      padding: 8px 0;
+    }
+    .search-group {
+      padding: 4px 0;
+    }
+    .search-group-label {
+      padding: 4px 20px;
+      font-size: 11px; font-weight: 600;
+      color: var(--text-tertiary); text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .search-item {
+      display: flex; gap: 10px;
+      padding: 8px 20px;
+      cursor: pointer; transition: background 0.1s;
+      align-items: center;
+    }
+    .search-item:hover, .search-item.active {
+      background: var(--bg-hover);
+    }
+    .search-item-icon { font-size: 16px; flex-shrink: 0; width: 24px; text-align: center; }
+    .search-item-content { flex: 1; min-width: 0; }
+    .search-item-title {
+      font-size: 13px; color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .search-item-subtitle {
+      font-size: 11px; color: var(--text-tertiary);
+      margin-top: 1px;
+    }
+    .search-highlight { background: var(--accent); color: #fff; padding: 0 2px; border-radius: 2px; }
+    .search-empty {
+      text-align: center; padding: 32px;
+      font-size: 13px; color: var(--text-tertiary);
+    }
+    .search-loading {
+      text-align: center; padding: 20px;
+      font-size: 12px; color: var(--text-tertiary);
+    }
+
   </style>
 </head>
 <body>
@@ -3011,6 +3085,7 @@
       </div>
     </div>
   </div>
+<!-- 全局搜索面板 (Phase 11) -->  <div class="search-backdrop" id="searchBackdrop" style="display:none;" onclick="closeSearch()"></div>  <div class="search-panel" id="searchPanel" style="display:none;">    <div class="search-input-wrap">      <span style="font-size:18px;">🔍</span>      <input type="text" id="searchInput" class="search-input-field" placeholder="搜索对话、文件、卡片..." oninput="onSearchInput()" onkeydown="onSearchKeydown(event)">      <span style="font-size:11px;color:var(--text-tertiary);">Esc</span>    </div>    <div class="search-results" id="searchResults"></div>  </div>
 
   <!-- 左栏 — 会话列表 -->
   <div class="conv-panel" id="convPanel">
@@ -3035,6 +3110,7 @@
       <h1>AI Chat</h1>
       <span class="model-badge" id="modelBadge">DeepSeek V4 Pro</span>
       <button class="panel-toggle" id="toggleSettingsPanel" onclick="togglePanelRight()" title="切换设置面板">⚙️</button>
+      <button class="search-trigger" onclick="openSearch()" title="全局搜索 (⌘K)" style="background:none;border:none;cursor:pointer;font-size:16px;padding:4px 8px;">🔍</button>
       <div class="user-info" id="userInfo" style="display:none;margin-left:auto;display:none;align-items:center;gap:6px;padding:0 8px;cursor:pointer;" onclick="toggleUserMenu(event)">
         <span class="user-avatar" id="userAvatar" style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;"></span>
         <span class="user-name" id="userName" style="font-size:12px;color:var(--text-primary);"></span>
@@ -8436,6 +8512,7 @@
       origSwitchTab2(tabName);
       if (tabName === 'daily') { loadDashboard(); }
     };
+n    /* ===== GS4-GS7: 全局搜索 ===== */    let searchDebounce = null;    let searchIndex = -1;    let searchResultItems = [];    function openSearch() {      document.getElementById("searchBackdrop").style.display = "block";      document.getElementById("searchPanel").style.display = "flex";      document.getElementById("searchInput").focus();      searchIndex = -1; searchResultItems = [];      document.getElementById("searchResults").innerHTML = '<div class="search-empty">输入关键字开始搜索...</div>';    }    function closeSearch() {      document.getElementById("searchBackdrop").style.display = "none";      document.getElementById("searchPanel").style.display = "none";      document.getElementById("searchInput").value = "";    }    function onSearchInput() {      clearTimeout(searchDebounce);      searchDebounce = setTimeout(doSearch, 200);    }    async function doSearch() {      const q = document.getElementById("searchInput").value.trim();      const container = document.getElementById("searchResults");      if (!q) { container.innerHTML = '<div class="search-empty">输入关键字开始搜索...</div>'; return; }      container.innerHTML = '<div class="search-loading">搜索中...</div>';      try {        const resp = await authFetch('/v1/api/search?q=' + encodeURIComponent(q) + '&limit=20');        const data = await resp.json();        if (!data.ok) { container.innerHTML = '<div class="search-empty">搜索失败</div>'; return; }        renderSearchResults(data, q);      } catch(e) { container.innerHTML = '<div class="search-empty">搜索失败</div>'; }    }    function highlightText(text, query) {      if (!text || !query) return text;      var idx = text.toLowerCase().indexOf(query.toLowerCase());      if (idx < 0) return text;      var before = text.substring(0, idx);      var match = text.substring(idx, idx + query.length);      var after = text.substring(idx + query.length);      return before + '<span class="search-highlight">' + match + '</span>' + after;    }    function renderSearchResults(data, query) {      const container = document.getElementById("searchResults");      const results = data.results || [];      const total = data.total || 0;      if (!total) {        container.innerHTML = '<div class="search-empty">未找到与「' + query + '」相关的内容</div>';        return;      }      let html = '';      searchResultItems = [];      for (var gi = 0; gi < results.length; gi++) {        var group = results[gi];        html += '<div class="search-group">';        html += '<div class="search-group-label">' + group.icon + ' ' + group.group + ' (' + group.items.length + ')</div>';        for (var ii = 0; ii < group.items.length; ii++) {          var item = group.items[ii];          var index = searchResultItems.length;          searchResultItems.push(item);          html += '<div class="search-item" data-index="' + index + '" onclick="openSearchResult(' + index + ')">';          html += '<span class="search-item-icon">' + group.icon + '</span>';          html += '<div class="search-item-content">';          html += '<div class="search-item-title">' + highlightText(item.title || '', query) + '</div>';          html += '<div class="search-item-subtitle">' + (item.subtitle || '') + '</div>';          html += '</div></div>';        }        html += '</div>';      }      container.innerHTML = html;      container.scrollTop = 0;      searchIndex = -1;    }    function onSearchKeydown(e) {      if (e.key === 'Escape') { closeSearch(); return; }      if (e.key === 'ArrowDown') { e.preventDefault(); moveSearchSelection(1); return; }      if (e.key === 'ArrowUp') { e.preventDefault(); moveSearchSelection(-1); return; }      if (e.key === 'Enter') {        e.preventDefault();        if (searchIndex >= 0 && searchIndex < searchResultItems.length) {          openSearchResult(searchIndex);        }      }    }    function moveSearchSelection(delta) {      var items = document.querySelectorAll('.search-item');      if (!items.length) return;      for (var i = 0; i < items.length; i++) items[i].classList.remove('active');      searchIndex = Math.max(0, Math.min(items.length - 1, searchIndex + delta));      items[searchIndex].classList.add('active');      items[searchIndex].scrollIntoView({ block: 'nearest' });    }    function openSearchResult(index) {      var item = searchResultItems[index];      if (!item) return;      closeSearch();      if (item.action === 'open_card') {        switchTab('daily');        setTimeout(function() {          var card = document.querySelector('[data-card-id="' + item.action_data + '"]');          if (card) {            var expanded = card.querySelector('.card-body[style*="display:block"]');            if (!expanded) toggleCard(item.action_data);            card.scrollIntoView({ behavior: 'smooth' });          }        }, 300);      } else if (item.action === 'open_file') {        var path = item.action_data;        if (path.startsWith('/v1/files/')) path = path.replace('/v1/files/', '/user-files/');        openFile(path);      } else if (item.action === 'open_session') {        loadConversation(item.action_data);      }    }    // Cmd/Ctrl+K 快捷键    document.addEventListener('keydown', function(e) {      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {        e.preventDefault();        openSearch();      }    });
 
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>

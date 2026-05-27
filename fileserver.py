@@ -1141,11 +1141,20 @@ DEFAULT_CARD_REGISTRY = {
             "api": "/v1/api/daily/shares",
             "persons": ["管理员", "伴侣"],
             "expandable": True
+        },
+        {
+            "id": "reminders",
+            "name": "⏰ 提醒",
+            "width": "medium",
+            "enabled": True,
+            "api": "/v1/api/daily/reminders",
+            "persons": ["管理员", "伴侣"],
+            "expandable": True
         }
     ],
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares", "reminders"],
         "gap": 16
     },
     "commandPrefixes": [
@@ -1254,6 +1263,7 @@ NOTES_PATH = os.path.join(USER_DATA_DIR, "notes.json")
 BOOKMARKS_PATH = os.path.join(USER_DATA_DIR, "bookmarks.json")
 PHOTOS_PATH = os.path.join(USER_DATA_DIR, "photos.json")
 SHARES_PATH = os.path.join(USER_DATA_DIR, "shares.json")
+REMINDERS_PATH = os.path.join(USER_DATA_DIR, "reminders.json")
 
 
 def _load_todos():
@@ -1463,7 +1473,7 @@ DASHBOARD_CONFIG_PATH = os.path.join(USER_DATA_DIR, "dashboard-config.json")
 DEFAULT_DASHBOARD_CONFIG = {
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares", "reminders"],
         "gap": 16,
     },
     "disabledCards": [],
@@ -3342,6 +3352,144 @@ def shares_item(share_id):
     shares[found_person] = [i for i in shares[found_person] if i.get("id") != share_id]
     _save_shares(shares)
     return jsonify({"ok": True, "message": "已删除"})
+
+
+# ---- 提醒 Reminders API ----
+
+def _load_reminders() -> dict:
+    try:
+        if os.path.isfile(REMINDERS_PATH) and os.path.getsize(REMINDERS_PATH) > 0:
+            with open(REMINDERS_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"reminders.json 读取失败: {e}")
+    return {}
+
+
+def _save_reminders(data: dict):
+    os.makedirs(os.path.dirname(REMINDERS_PATH), exist_ok=True)
+    with open(REMINDERS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+@app.route("/v1/api/daily/reminders", methods=["GET", "POST"])
+@require_token
+def reminders_list():
+    if request.method == "GET":
+        reminders = _load_reminders()
+        person = request.args.get("person", "").strip()
+        if person:
+            items = reminders.get(person, [])
+        else:
+            items = []
+            for p_items in reminders.values():
+                if isinstance(p_items, list):
+                    items.extend(p_items)
+        items = sorted(items, key=lambda x: (not x.get("enabled", True), x.get("time", "")))
+        return jsonify({"ok": True, "reminders": items, "total": len(items)})
+
+    if request.method == "POST":
+        data = request.get_json(silent=True)
+        if not data or "text" not in data or "time" not in data:
+            return error_response("缺少必填字段 text 和 time", 400)
+        person = data.get("person", "管理员").strip()
+        if person not in KNOWN_PERSONS:
+            return error_response(f"未知用户: {person}", 400)
+        reminders = _load_reminders()
+        reminders.setdefault(person, [])
+        ids = [i.get("id", 0) for i in reminders[person] if isinstance(i.get("id"), int)]
+        new_id = max(ids) + 1 if ids else 1
+        record = {
+            "id": new_id,
+            "type": data.get("type", "once").strip(),
+            "text": data["text"].strip(),
+            "time": data["time"].strip(),
+            "day": data.get("day", "").strip(),
+            "date": data.get("date"),
+            "enabled": data.get("enabled", True),
+            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+        }
+        reminders[person].append(record)
+        _save_reminders(reminders)
+        return jsonify({"ok": True, "reminder": record, "message": "已创建"})
+
+
+@app.route("/v1/api/daily/reminders/<int:reminder_id>", methods=["PUT", "DELETE"])
+@require_token
+def reminders_item(reminder_id):
+    reminders = _load_reminders()
+    found, found_person = None, None
+    for p, items in reminders.items():
+        for item in items:
+            if item.get("id") == reminder_id:
+                found, found_person = item, p
+                break
+        if found:
+            break
+    if not found:
+        return error_response(f"提醒 #{reminder_id} 不存在", 404)
+
+    if request.method == "DELETE":
+        reminders[found_person] = [i for i in reminders[found_person] if i.get("id") != reminder_id]
+        _save_reminders(reminders)
+        return jsonify({"ok": True, "message": "已删除"})
+
+    if request.method == "PUT":
+        data = request.get_json(silent=True)
+        if not data:
+            return error_response("请求体不能为空", 400)
+        if "text" in data:
+            found["text"] = data["text"].strip()
+        if "time" in data:
+            found["time"] = data["time"].strip()
+        if "type" in data:
+            found["type"] = data["type"].strip()
+        if "day" in data:
+            found["day"] = data["day"].strip()
+        if "date" in data:
+            found["date"] = data["date"]
+        if "enabled" in data:
+            found["enabled"] = data["enabled"]
+        _save_reminders(reminders)
+        return jsonify({"ok": True, "reminder": found, "message": "已更新"})
+
+
+@app.route("/v1/api/daily/reminders/due", methods=["GET"])
+@require_token
+def reminders_due():
+    """GET /v1/api/daily/reminders/due - 查询当前应触发的提醒（供 cron 调用）。"""
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    current_time = now.strftime("%H:%M")
+    current_day = now.strftime("%A")
+    weekday_map = {
+        "Monday": "周一", "Tuesday": "周二", "Wednesday": "周三",
+        "Thursday": "周四", "Friday": "周五", "Saturday": "周六", "Sunday": "周日"
+    }
+    current_day_cn = weekday_map.get(current_day, "")
+    current_date = now.day
+
+    reminders = _load_reminders()
+    due = []
+    for person, items in reminders.items():
+        for item in items:
+            if not item.get("enabled", True):
+                continue
+            rtype = item.get("type", "once")
+            rtime = item.get("time", "")
+            if rtime != current_time:
+                continue
+            matched = False
+            if rtype == "once":
+                matched = True
+            elif rtype == "daily":
+                matched = True
+            elif rtype == "weekly":
+                matched = item.get("day", "") == current_day_cn
+            elif rtype == "monthly":
+                matched = item.get("date") == current_date
+            if matched:
+                due.append({"person": person, "reminder": item})
+    return jsonify({"ok": True, "due": due, "checked_at": now.isoformat()})
 
 
 def _next_wish_id(wishes: list) -> int:

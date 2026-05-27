@@ -5368,6 +5368,8 @@
         if (photosCard) loadPhotosCard(photosCard);
         const sharesCard = document.querySelector('[data-card-id="shares"]');
         if (sharesCard) loadSharesCard(sharesCard);
+        const remindersCard = document.querySelector('[data-card-id="reminders"]');
+        if (remindersCard) loadRemindersCard(remindersCard);
         const summaryCard = document.querySelector('[data-card-id="summary"]');
         if (summaryCard) loadSummaryCard(summaryCard);
         dashboardLoaded = true;
@@ -5785,12 +5787,13 @@
         bookmarks: '🔗 在线收藏 · 稍后看',
         photos: '📸 照片墙 · 生活记录',
         shares: '💬 分享板 · 心情记录',
+        reminders: '⏰ 提醒 · 定时备忘',
       };
       return summaries[card.id] || '卡片数据加载中...';
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos", "shares"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos", "shares", "reminders"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -7003,6 +7006,118 @@
 
     /* ===== N2+ N3: 随手记 Notes Card ===== */
     let cachedNotesData = null;
+
+    /* ===== R1-R6: 提醒 Reminders Card ===== */
+    let cachedRemindersData = null;
+    const REPEAT_TYPES = { 'once': '单次', 'daily': '每天', 'weekly': '每周', 'monthly': '每月' };
+    const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+    async function loadRemindersCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+      const token = document.getElementById('token').value;
+      if (!token) { if (summary) summary.textContent = '⚠️ 请先连接 API Token'; return; }
+      try {
+        if (!cachedRemindersData) {
+          const resp = await fetch('/v1/api/daily/reminders', { headers: { 'Authorization': 'Bearer ' + token }});
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          cachedRemindersData = await resp.json();
+        }
+        renderRemindersCardCollapsed(summary, body, cachedRemindersData);
+        renderRemindersCardExpanded(body, cachedRemindersData);
+      } catch(e) { body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>'; }
+    }
+
+    function renderRemindersCardCollapsed(summaryEl, bodyEl, data) {
+      const reminders = data && data.reminders ? data.reminders : [];
+      const total = data && data.total != null ? data.total : reminders.length;
+      const enabled = reminders.filter(function(r){return r.enabled;});
+      if (!total) {
+        if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">⏰ 暂无提醒</div></div>';
+        return;
+      }
+      let html = '<div class="wishes-collapsed">';
+      html += '<div class="wishes-total">⏰ <strong>' + enabled.length + '</strong> / ' + total + ' 条提醒</div>';
+      html += '<div class="wishes-status-list" style="flex-direction:column;align-items:stretch;">';
+      for (const r of enabled.slice(0, 3)) {
+        const typeLabel = REPEAT_TYPES[r.type] || '单次';
+        html += '<div style="font-size:11px;color:var(--text-secondary);padding:2px 0;display:flex;justify-content:space-between;">';
+        html += '<span>' + escapeHtml(r.text||'') + '</span><span style="color:var(--text-tertiary);">' + r.time + ' ' + typeLabel + '</span></div>';
+      }
+      html += '</div><div class="wishes-expand-hint" onclick="toggleCard(\'reminders\',event)">展开查看 ▼</div></div>';
+      if (summaryEl) summaryEl.innerHTML = html;
+    }
+
+    function renderRemindersCardExpanded(bodyEl, data) {
+      const reminders = data && data.reminders ? data.reminders : [];
+      let html = '<div>';
+      // New reminder form
+      html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">';
+      html += '<input type="text" id="reminderTextInput" placeholder="提醒内容..." style="flex:1;min-width:100px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);">';
+      html += '<input type="time" id="reminderTimeInput" value="09:00" style="padding:6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);width:70px;">';
+      html += '<select id="reminderTypeSelect" style="padding:6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;background:var(--bg-card);width:55px;">';
+      for (const k in REPEAT_TYPES) html += '<option value="' + k + '">' + REPEAT_TYPES[k] + '</option>';
+      html += '</select>';
+      html += '<button onclick="addReminder()" style="padding:6px 10px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">+</button>';
+      html += '</div>';
+
+      if (!reminders.length) {
+        html += '<div style="text-align:center;color:var(--text-secondary);padding:12px;">暂无提醒</div>';
+      } else {
+        for (const r of reminders) {
+          const cls = r.enabled ? '' : 'opacity:0.4;';
+          const typeLabel = REPEAT_TYPES[r.type] || '单次';
+          html += '<div style="display:flex;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center;' + cls + '">';
+          html += '<span onclick="toggleReminder(' + r.id + ')" style="cursor:pointer;font-size:14px;">' + (r.enabled ? '🔔' : '🔕') + '</span>';
+          html += '<div style="flex:1;min-width:0;">';
+          html += '<div style="font-size:13px;color:var(--text-primary);">' + escapeHtml(r.text||'') + '</div>';
+          html += '<div style="font-size:10px;color:var(--text-tertiary);">' + r.time + ' · ' + typeLabel + (r.day?' · '+r.day:'') + (r.date?' · '+r.date+'号':'') + '</div></div>';
+          html += '<span onclick="deleteReminder(' + r.id + ')" style="font-size:11px;color:var(--text-tertiary);cursor:pointer;">✕</span></div>';
+        }
+      }
+      html += '</div>';
+      bodyEl.innerHTML = html;
+    }
+
+    async function addReminder() {
+      const text = document.getElementById('reminderTextInput').value.trim();
+      if (!text) return;
+      const time = document.getElementById('reminderTimeInput').value;
+      const type = document.getElementById('reminderTypeSelect').value;
+      const token = document.getElementById('token').value;
+      const body = { text: text, time: time, type: type };
+      if (type === 'weekly') body.day = '周一';
+      if (type === 'monthly') body.date = 1;
+      const resp = await fetch('/v1/api/daily/reminders', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (resp.ok) { cachedRemindersData = null; const c = document.querySelector('[data-card-id="reminders"]'); if(c) loadRemindersCard(c); }
+      else { alert('创建失败'); }
+    }
+
+    async function toggleReminder(id) {
+      const token = document.getElementById('token').value;
+      const reminders = cachedRemindersData && cachedRemindersData.reminders || [];
+      const found = reminders.find(function(r){return r.id===id;});
+      if (!found) return;
+      const resp = await fetch('/v1/api/daily/reminders/' + id, {
+        method: 'PUT', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !found.enabled })
+      });
+      if (resp.ok) { cachedRemindersData = null; const c = document.querySelector('[data-card-id="reminders"]'); if(c) loadRemindersCard(c); }
+    }
+
+    async function deleteReminder(id) {
+      if (!confirm('删除这个提醒？')) return;
+      const token = document.getElementById('token').value;
+      await fetch('/v1/api/daily/reminders/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }});
+      cachedRemindersData = null;
+      const c = document.querySelector('[data-card-id="reminders"]');
+      if (c) loadRemindersCard(c);
+    }
 
     /* ===== S1+ S2+ S3+ S4: 分享板 Shares Card ===== */
     let cachedSharesData = null;

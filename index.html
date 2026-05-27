@@ -3049,9 +3049,197 @@
       font-size: 12px; color: var(--text-tertiary);
     }
 
+  
+    /* ===== Phase 12: 手机适配 ===== */
+    /* MB4: 断点系统 + MB11: 安全区 */
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --mobile: 768px; --tablet: 1024px;
+    }
+
+    /* MB1: 底部 Tab 栏 */
+    .mobile-bottom-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: calc(56px + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      z-index: 100; justify-content: space-around; align-items: center;
+    }
+    .mobile-tab-item {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 6px 12px; cursor: pointer; background: none; border: none;
+      font-family: inherit; color: var(--text-tertiary); font-size: 10px;
+      min-width: 48px; min-height: 48px; justify-content: center;
+    }
+    .mobile-tab-item.active { color: var(--accent); }
+    .mobile-tab-item .tab-icon { font-size: 20px; }
+
+    /* MB2: 顶部栏 */
+    .mobile-top-bar {
+      display: none;
+      position: sticky; top: 0; z-index: 99;
+      height: 44px; padding: 0 12px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      align-items: center; justify-content: space-between;
+    }
+    .mobile-top-bar .top-title { font-weight: 600; font-size: 15px; }
+    .mobile-top-bar .top-actions { display: flex; gap: 4px; }
+    .mobile-hamburger {
+      background: none; border: none; font-size: 20px; cursor: pointer;
+      padding: 8px; color: var(--text-primary); min-width: 44px; min-height: 44px;
+    }
+
+    /* MB3: 侧滑导航 */
+    .mobile-drawer-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.3); z-index: 998;
+    }
+    .mobile-drawer {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 280px; max-width: 80vw;
+      background: var(--bg-card);
+      z-index: 999; transform: translateX(-100%);
+      transition: transform 0.25s ease; display: flex; flex-direction: column;
+      padding-top: var(--safe-top);
+    }
+    .mobile-drawer.open { transform: translateX(0); }
+    .mobile-drawer-backdrop.show { display: block; }
+    .mobile-drawer-header {
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      font-weight: 600; font-size: 16px;
+    }
+    .mobile-drawer-body { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .mobile-drawer-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; cursor: pointer; font-size: 14px;
+      min-height: 44px; color: var(--text-primary);
+    }
+    .mobile-drawer-item:hover { background: var(--bg-hover); }
+
+    /* ========== 手机断点 (<768px) ========== */
+    @media (max-width: 767px) {
+      /* MB5: 聊天 Tab */
+      .conv-panel { position: fixed; top: 44px; left: 0; right: 0; bottom: 56px;
+        width: 100% !important; z-index: 50; border-right: none;
+        transform: translateX(0); background: var(--bg-page); }
+      .chat-area { padding: 0 8px; }
+      .message-row { margin: 6px 0; }
+      .message-bubble { max-width: 88%; }
+      .input-area { padding: 8px; }
+      .input-area textarea { font-size: 16px; }
+
+      /* MB6: 文件 Tab */
+      .file-layout { flex-direction: column; }
+      .file-tree { display: none; }
+      .file-tree-mobile { display: block; margin-bottom: 8px; }
+      .file-list { width: 100%; }
+      .file-viewer { position: fixed; inset: 0; z-index: 200; background: var(--bg-page); }
+
+      /* MB7: 每日 Tab */
+      .card-grid { grid-template-columns: 1fr; gap: 8px; }
+      .card-expanded { position: fixed; inset: 0; z-index: 200;
+        background: var(--bg-page); overflow-y: auto; padding: 16px; }
+      .dashboard-content { padding: 8px 0; }
+
+      /* 全局 */
+      .sidebar, .desktop-nav, .panel-toggle, .search-trigger { display: none !important; }
+      .mobile-top-bar { display: flex; }
+      .mobile-bottom-nav { display: flex; }
+      .main-content { margin-left: 0 !important; padding: 0 8px; padding-bottom: 64px; }
+      .settings-panel { position: fixed; inset: 0; z-index: 200;
+        width: 100% !important; background: var(--bg-page); }
+      .login-card { width: 92vw; padding: 28px 20px; }
+
+      /* MB8: 触摸优化 */
+      button, .btn-icon, .tab-btn, .mobile-tab-item { min-width: 44px; min-height: 44px; }
+      .card-header, .conv-item { min-height: 48px; }
+
+      /* MB9: 上传按钮 */
+      .upload-fab {
+        display: flex; position: fixed; bottom: 72px; right: 16px;
+        width: 48px; height: 48px; border-radius: 50%;
+        background: var(--accent); color: #fff; font-size: 24px;
+        align-items: center; justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 60;
+        border: none; cursor: pointer;
+      }
+    }
+
+    /* ========== 平板断点 (768px-1023px) ========== */
+    @media (min-width: 768px) and (max-width: 1023px) {
+      .card-grid { grid-template-columns: repeat(2, 1fr); }
+      .conv-panel { width: 240px !important; }
+      .mobile-bottom-nav, .mobile-top-bar { display: none; }
+    }
+
+    /* ========== 桌面 (>1024px) ========== */
+    @media (min-width: 1024px) {
+      .mobile-bottom-nav, .mobile-top-bar, .mobile-drawer-backdrop { display: none; }
+    }
+
+    /* MB8: 左滑删除 */
+    .swipe-item { position: relative; overflow: hidden; }
+    .swipe-item .swipe-delete {
+      position: absolute; right: 0; top: 0; bottom: 0;
+      width: 64px; background: #e74c3c; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; cursor: pointer;
+      transform: translateX(100%); transition: transform 0.2s ease;
+    }
+    .swipe-item.swiped .swipe-delete { transform: translateX(0); }
+    .swipe-item .swipe-content {
+      position: relative; z-index: 1; background: var(--bg-card);
+      transition: transform 0.2s ease;
+    }
+    .swipe-item.swiped .swipe-content { transform: translateX(-64px); }
+
+    /* MB8: 长按菜单 */
+    .context-menu {
+      position: fixed; z-index: 9999;
+      background: var(--bg-card); border-radius: var(--radius-sm);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 4px 0;
+      min-width: 120px;
+    }
+    .context-menu-item {
+      padding: 10px 16px; font-size: 13px; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .context-menu-item:hover { background: var(--bg-hover); }
+    .context-menu-item.danger { color: #e74c3c; }
+
+    /* 移动端安全区 */
+    body { padding-top: var(--safe-top); }
+
   </style>
 </head>
 <body>
+  <!-- MB2: 手机顶部栏 -->
+  <div class="mobile-top-bar">
+    <button class="mobile-hamburger" onclick="openMobileDrawer()" aria-label="菜单">☰</button>
+    <span class="top-title">小助手</span>
+    <div class="top-actions">
+      <button class="search-trigger" onclick="openSearch()" style="background:none;border:none;font-size:16px;cursor:pointer;padding:8px;">🔍</button>
+      <div class="user-info" id="userInfo" style="display:none;">
+        <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu(event)">?</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MB3: 侧滑导航面板 -->
+  <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop" onclick="closeMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobileDrawer">
+    <div class="mobile-drawer-header">导航</div>
+    <div class="mobile-drawer-body">
+      <div class="mobile-drawer-item" onclick="switchTab('chat');closeMobileDrawer();"><span>💬</span> 聊天</div>
+      <div class="mobile-drawer-item" onclick="switchTab('files');closeMobileDrawer();"><span>📁</span> 文件</div>
+      <div class="mobile-drawer-item" onclick="switchTab('daily');closeMobileDrawer();"><span>📊</span> 每日</div>
+      <div class="mobile-drawer-item" style="color:var(--text-tertiary);" onclick="openSettings();closeMobileDrawer();"><span>⚙️</span> 设置</div>
+    </div>
+  </div>
   <!-- 登录页覆盖层 (AU11: 登录页) -->
   <div class="login-overlay" id="loginOverlay" style="display:none;">
     <div class="login-card">
@@ -8511,6 +8699,7 @@
     switchTab = function(tabName) {
       origSwitchTab2(tabName);
       if (tabName === 'daily') { loadDashboard(); }
+      syncMobileTab(tabName);
     };
 
     /* ===== GS4-GS7: 全局搜索 ===== */
@@ -8644,8 +8833,128 @@
       }
     });
 
+
+    /* ===== MB1-MB11: 手机适配 JS (2/2) ===== */
+
+    // MB1: 同步底部 Tab 活跃状态 (switchTab is wrapped above, this just syncs)
+    function syncMobileTab(tabName) {
+      document.querySelectorAll('.mobile-tab-item').forEach(function(b) { b.classList.remove('active'); });
+      var tabMap = {chat: 'mobileTabChat', files: 'mobileTabFiles', daily: 'mobileTabDaily'};
+      var target = document.getElementById(tabMap[tabName]);
+      if (target) target.classList.add('active');
+    }
+
+    // MB2: 汉堡菜单 → 侧滑导航
+    function openMobileDrawer() {
+      document.getElementById('mobileDrawer').classList.add('open');
+      document.getElementById('mobileDrawerBackdrop').classList.add('show');
+    }
+    function closeMobileDrawer() {
+      document.getElementById('mobileDrawer').classList.remove('open');
+      document.getElementById('mobileDrawerBackdrop').classList.remove('show');
+    }
+
+    // MB5: 键盘适配 (visualViewport)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function() {
+        var kbHeight = window.innerHeight - window.visualViewport.height;
+        var inputArea = document.querySelector('.input-area');
+        if (inputArea) inputArea.style.bottom = kbHeight + 'px';
+        var bottomNav = document.querySelector('.mobile-bottom-nav');
+        if (bottomNav) bottomNav.style.bottom = kbHeight + 'px';
+      });
+    }
+
+    // MB9: 手机上传
+    function handleMobileUpload(event) {
+      var files = event.target.files;
+      if (!files || !files.length) return;
+      for (var i = 0; i < files.length; i++) {
+        uploadFile(files[i]);
+      }
+      event.target.value = '';
+    }
+
+    // MB8: 滑动删除 - 绑定到 todo/note 项
+    function enableSwipeDelete(container) {
+      var startX = 0;
+      container.addEventListener('touchstart', function(e) {
+        startX = e.touches[0].clientX;
+        var swipeContent = container.querySelector('.swipe-content');
+        if (swipeContent) swipeContent.style.transition = 'none';
+      }, { passive: true });
+      container.addEventListener('touchmove', function(e) {
+        var dx = e.touches[0].clientX - startX;
+        if (dx < -20) {
+          container.classList.add('swiped');
+        } else if (dx > 20) {
+          container.classList.remove('swiped');
+        }
+      }, { passive: true });
+    }
+
+    // MB8: 长按菜单
+    document.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      var target = e.target.closest('.message-bubble, .conv-item, .file-item');
+      if (!target) return;
+      var menu = document.getElementById('contextMenu');
+      menu.style.display = 'block';
+      menu.style.left = e.clientX + 'px';
+      menu.style.top = e.clientY + 'px';
+      menu.innerHTML = '<div class="context-menu-item" onclick="copySelection();document.getElementById(\'contextMenu\').style.display=\'none\';">📋 复制</div>' +
+        '<div class="context-menu-item danger" onclick="document.getElementById(\'contextMenu\').style.display=\'none\';">🗑 删除</div>';
+    });
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.context-menu')) {
+        document.getElementById('contextMenu').style.display = 'none';
+      }
+    });
+
+    // MB8: 下拉刷新
+    var pullStart = 0;
+    document.addEventListener('touchstart', function(e) { pullStart = e.touches[0].clientY; }, { passive: true });
+    document.addEventListener('touchend', function(e) {
+      if (window.scrollY === 0) {
+        var dy = e.changedTouches[0].clientY - pullStart;
+        if (dy > 100) { location.reload(); }
+      }
+    });
+
+    // 设置面板打开（手机端用）
+    function openSettings() {
+      if (isMobileView()) {
+        var panel = document.getElementById('settingsPanel');
+        panel.classList.add('open');
+        document.getElementById('panelBackdrop').classList.add('show');
+      }
+    }
+
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+  <!-- MB1: 底部 Tab 栏 -->
+  <div class="mobile-bottom-nav">
+    <button class="mobile-tab-item active" id="mobileTabChat" onclick="switchTab('chat')">
+      <span class="tab-icon">💬</span> 聊天
+    </button>
+    <button class="mobile-tab-item" id="mobileTabFiles" onclick="switchTab('files')">
+      <span class="tab-icon">📁</span> 文件
+    </button>
+    <button class="mobile-tab-item" id="mobileTabDaily" onclick="switchTab('daily')">
+      <span class="tab-icon">📊</span> 每日
+    </button>
+    <button class="mobile-tab-item" id="mobileTabSettings" onclick="openSettings()">
+      <span class="tab-icon">⚙️</span> 设置
+    </button>
+  </div>
+
+  <!-- MB9: 悬浮上传按钮（手机端） -->
+  <button class="upload-fab" id="uploadFAB" onclick="document.getElementById('fileUploadInput').click()" title="上传文件">+</button>
+  <input type="file" id="fileUploadInput" style="display:none;" accept="*/*" multiple onchange="handleMobileUpload(event)">
+
+  <!-- MB8: 长按菜单 -->
+  <div class="context-menu" id="contextMenu" style="display:none;"></div>
 </body>
 </html>

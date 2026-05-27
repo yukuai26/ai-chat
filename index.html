@@ -3360,12 +3360,7 @@
   <div class="mobile-top-bar">
     <button class="mobile-hamburger" onclick="openMobileDrawer()" aria-label="菜单">☰</button>
     <span class="top-title">小助手</span>
-    <div class="top-actions">
-      <button class="search-trigger" onclick="openSearch()" style="background:none;border:none;font-size:16px;cursor:pointer;padding:8px;">🔍</button>
-      <div class="user-info" id="userInfo" style="display:none;">
-        <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu(event)">?</div>
-      </div>
-    </div>
+    <button class="search-trigger" onclick="openSearch()" style="background:none;border:none;font-size:16px;cursor:pointer;padding:8px;" title="搜索 ⌘K">🔍</button>
   </div>
 
   <!-- MB3: 侧滑导航面板 -->
@@ -3376,6 +3371,7 @@
       <div class="mobile-drawer-item" onclick="switchTab('chat');closeMobileDrawer();"><span>💬</span> 聊天</div>
       <div class="mobile-drawer-item" onclick="switchTab('files');closeMobileDrawer();"><span>📁</span> 文件</div>
       <div class="mobile-drawer-item" onclick="switchTab('daily');closeMobileDrawer();"><span>📊</span> 每日</div>
+      <div class="mobile-drawer-item" onclick="switchTab('calendar');closeMobileDrawer();"><span>📅</span> 日历</div>
       <div class="mobile-drawer-item" style="color:var(--text-tertiary);" onclick="openSettings();closeMobileDrawer();"><span>⚙️</span> 设置</div>
     </div>
   </div>
@@ -3437,7 +3433,7 @@
       <h1>AI Chat</h1>
       <span class="model-badge" id="modelBadge">DeepSeek V4 Pro</span>
       <button class="panel-toggle" id="toggleSettingsPanel" onclick="togglePanelRight()" title="切换设置面板">⚙️</button>
-      <button class="search-trigger" onclick="openSearch()" title="全局搜索 (⌘K)" style="background:none;border:none;cursor:pointer;font-size:16px;padding:4px 8px;">🔍</button>
+      <button class="search-trigger" onclick="openSearch()" title="全局搜索 (⌘K)" style="background:none;border:none;cursor:pointer;font-size:13px;padding:4px 8px;color:var(--text-secondary);display:flex;align-items:center;gap:4px;">🔍 <span style="font-size:11px;">搜索</span></button>
       <div class="user-info" id="userInfo" style="display:none;margin-left:auto;display:none;align-items:center;gap:6px;padding:0 8px;cursor:pointer;" onclick="toggleUserMenu(event)">
         <span class="user-avatar" id="userAvatar" style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;"></span>
         <span class="user-name" id="userName" style="font-size:12px;color:var(--text-primary);"></span>
@@ -3512,7 +3508,25 @@
         </div>
       </div>
     </div>
-    <div class="tab-content" id="tab-daily">
+    <div class="tab-content" id="tab-calendar">
+      <div class="calendar-layout" id="calendarLayout">
+        <div class="calendar-month">
+          <div class="calendar-month-header">
+            <button class="cal-nav-btn" onclick="calPrevMonth()">◀</button>
+            <span class="cal-month-title" id="calMonthTitle"></span>
+            <button class="cal-nav-btn" onclick="calNextMonth()">▶</button>
+            <button class="cal-today-btn" onclick="calGoToday()">今天</button>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+        <div class="calendar-detail" id="calendarDetail">
+          <div class="cal-detail-date" id="calDetailDate">选择日期查看详情</div>
+          <div class="cal-detail-sections" id="calDetailSections"></div>
+        </div>
+      </div>
+    </div>
+
+  <div class="tab-content" id="tab-daily">
       <div class="dashboard-scroll" id="dashboardScroll">
         <div class="dashboard-toolbar" id="dashboardToolbar">
           <button class="toolbar-btn" id="btnEditLayout" onclick="toggleEditLayout()" title="编辑布局">
@@ -9743,6 +9757,9 @@
     </button>
     <button class="mobile-tab-item" id="mobileTabDaily" onclick="switchTab('daily')">
       <span class="tab-icon">📊</span> 每日
+    </button>
+    <button class="mobile-tab-item" id="mobileTabCalendar" onclick="switchTab('calendar')">
+      <span class="tab-icon">📅</span> 日历
     </button>
     <button class="mobile-tab-item" id="mobileTabSettings" onclick="openSettings()">
       <span class="tab-icon">⚙️</span> 设置

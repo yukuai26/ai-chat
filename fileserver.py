@@ -76,6 +76,7 @@ CHAT_TIMEOUT = 120  # Gateway 调用超时（秒）
 # ---- Session 存储配置 ----
 SESSION_DIR = "/home/ubuntu/.openclaw/user-sessions"
 USER_FILES_DIR = "/home/ubuntu/.openclaw/user-files"
+USER_DATA_DIR = "/home/ubuntu/.openclaw/user-data"
 
 logger.info(f"fileserver 启动，白名单目录: {WHITELIST}")
 
@@ -91,7 +92,7 @@ def _ensure_directories():
 
     目录不存在时自动创建，已存在则跳过。
     """
-    dirs = [USER_FILES_DIR, SESSION_DIR]
+    dirs = [USER_FILES_DIR, SESSION_DIR, USER_DATA_DIR]
     for d in dirs:
         try:
             p = Path(d)
@@ -1046,6 +1047,156 @@ def make_directory():
     except OSError as e:
         logger.error(f"目录创建失败: {target}, 错误: {e}")
         return error_response(f"目录创建失败: {e}", 500)
+
+
+# ---- 每日 Dashboard: 卡片注册表 (DB2) ----
+
+# 默认卡片注册表结构
+DEFAULT_CARD_REGISTRY = {
+    "cards": [
+        {
+            "id": "news",
+            "name": "📰 资讯",
+            "width": "medium",
+            "enabled": True,
+            "api": "/v1/api/daily/news",
+            "expandable": True,
+            "refreshInterval": 3600
+        },
+        {
+            "id": "todo",
+            "name": "📋 Todo",
+            "width": "medium",
+            "enabled": True,
+            "api": "/v1/api/daily/todos",
+            "persons": ["管理员", "伴侣"],
+            "expandable": True
+        },
+        {
+            "id": "data",
+            "name": "📊 数据",
+            "width": "medium",
+            "enabled": True,
+            "api": "/v1/api/daily/data",
+            "persons": ["管理员", "伴侣"],
+            "expandable": True
+        },
+        {
+            "id": "recipe",
+            "name": "🍽️ 食谱",
+            "width": "medium",
+            "enabled": True,
+            "api": "/v1/api/daily/recipe/today",
+            "expandable": True
+        },
+        {
+            "id": "wishes",
+            "name": "💡 心愿",
+            "width": "medium",
+            "enabled": True,
+            "api": "/v1/api/daily/wishes",
+            "expandable": True
+        }
+    ],
+    "layout": {
+        "columns": 3,
+        "order": ["news", "todo", "data", "recipe", "wishes"],
+        "gap": 16
+    },
+    "commandPrefixes": [
+        {"prefix": "@todo", "action": "add_todo", "api": "/v1/api/daily/todos", "method": "POST"},
+        {"prefix": "@done", "action": "check_todo", "api": "/v1/api/daily/todos/{id}", "method": "PUT"},
+        {"prefix": "@data", "action": "update_data", "api": "/v1/api/daily/data/{person}", "method": "POST"},
+        {"prefix": "@news", "action": "query_news", "api": "/v1/api/daily/news", "method": "GET"},
+        {"prefix": "@recipe", "action": "recipe", "api": "/v1/api/daily/recipe", "method": "GET"},
+        {"prefix": "@schedule", "action": "schedule", "api": "/v1/api/daily/schedule", "method": "POST"},
+        {"prefix": "@wish", "action": "add_wish", "api": "/v1/api/daily/wishes", "method": "POST"},
+        {"prefix": "@sum", "action": "summary", "api": "/v1/api/daily/summary", "method": "GET"}
+    ]
+}
+
+CARD_REGISTRY_PATH = os.path.join(USER_DATA_DIR, "card-registry.json")
+
+
+def _load_card_registry():
+    """读取卡片注册表，不存在或解析错误时返回默认结构。"""
+    try:
+        if os.path.isfile(CARD_REGISTRY_PATH) and os.path.getsize(CARD_REGISTRY_PATH) > 0:
+            with open(CARD_REGISTRY_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"card-registry.json 读取失败: {e}，使用默认值")
+    return DEFAULT_CARD_REGISTRY.copy()
+
+
+def _save_card_registry(data: dict):
+    """写入卡片注册表。"""
+    os.makedirs(os.path.dirname(CARD_REGISTRY_PATH), exist_ok=True)
+    with open(CARD_REGISTRY_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    logger.info("card-registry.json 已保存")
+
+
+@app.route("/v1/api/daily/registry", methods=["GET"])
+@require_token
+def get_card_registry():
+    """GET /v1/api/daily/registry — 读取卡片注册表。
+
+    返回完整注册表（cards + layout + commandPrefixes）。
+    若文件不存在则返回默认结构。
+    """
+    registry = _load_card_registry()
+    return jsonify(registry)
+
+
+@app.route("/v1/api/daily/registry", methods=["PUT"])
+@require_token
+def put_card_registry():
+    """PUT /v1/api/daily/registry — 更新卡片注册表。
+
+    请求体：完整注册表 JSON（覆盖写入）。
+    验证：必须包含 cards 数组。
+    """
+    data = request.get_json(silent=True)
+    if not data:
+        return error_response("请求体必须是有效 JSON", 400)
+    if "cards" not in data or not isinstance(data["cards"], list):
+        return error_response("注册表必须包含 cards 数组", 400)
+
+    try:
+        _save_card_registry(data)
+        return jsonify({"ok": True, "message": "卡片注册表已更新"})
+    except IOError as e:
+        return error_response(f"保存失败: {e}", 500)
+
+
+@app.route("/v1/api/daily/registry/cards/<card_id>", methods=["PUT"])
+@require_token
+def put_card_by_id(card_id):
+    """PUT /v1/api/daily/registry/cards/{id} — 更新单张卡片配置。
+
+    支持局部更新：enabled、width、name 等字段。
+    """
+    patch = request.get_json(silent=True)
+    if not patch:
+        return error_response("请求体必须是有效 JSON", 400)
+
+    registry = _load_card_registry()
+    card_found = False
+    for card in registry["cards"]:
+        if card["id"] == card_id:
+            card.update(patch)
+            card_found = True
+            break
+
+    if not card_found:
+        return error_response(f"卡片 '{card_id}' 不存在", 404)
+
+    try:
+        _save_card_registry(registry)
+        return jsonify({"ok": True, "card_id": card_id, "message": "卡片配置已更新"})
+    except IOError as e:
+        return error_response(f"保存失败: {e}", 500)
 
 
 # ---- 错误处理 ----

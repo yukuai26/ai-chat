@@ -1791,6 +1791,170 @@ def news_sources():
             return error_response(f"保存新闻源失败: {e}", 500)
 
 
+# ============================================================
+#  Todo CRUD API (DB9)
+# ============================================================
+
+VALID_TODO_TYPES = {"daily", "weekly"}
+
+
+@app.route("/v1/api/daily/todos", methods=["GET", "POST"])
+@require_token
+def todos_list():
+    """GET/POST /v1/api/daily/todos - Todo 列表和创建。
+
+    GET 查询参数:
+      - person: 按人员过滤（管理员/伴侣）
+      - type:   按类型过滤（daily/weekly）
+      - done:   按状态过滤（true/false/any）
+
+    POST 请求体:
+      {"person":"管理员", "text":"买牛奶", "type":"daily"}
+
+    返回:
+      GET  → {"ok":true, "todos": {...}, "total": N}
+      POST → {"ok":true, "todo": {...}, "message": "已添加"}
+    """
+    if request.method == "GET":
+        todos = _load_todos()
+        person = request.args.get("person", "").strip()
+        todo_type = request.args.get("type", "").strip()
+        done_filter = request.args.get("done", "any").strip()
+
+        # 按人员过滤
+        if person:
+            if person in todos:
+                filtered = {person: todos[person]}
+            else:
+                filtered = {}
+        else:
+            filtered = todos
+
+        # 按类型/状态过滤
+        if todo_type or done_filter != "any":
+            result = {}
+            for p, cats in filtered.items():
+                result[p] = {}
+                for cat, items in cats.items():
+                    if todo_type and cat != todo_type:
+                        continue
+                    if done_filter in ("true", "false"):
+                        want_done = (done_filter == "true")
+                        items = [i for i in items if i.get("done", False) == want_done]
+                    result[p][cat] = items
+            filtered = result
+
+        total = sum(len(v) for cats in filtered.values() for v in cats.values())
+        return jsonify({"ok": True, "todos": filtered, "total": total})
+
+    if request.method == "POST":
+        data = request.get_json(silent=True)
+        if not data or "text" not in data:
+            return error_response("缺少必填字段 text", 400)
+        text = data["text"].strip()
+        if len(text) < 2:
+            return error_response("内容至少 2 个字符", 400)
+
+        person = data.get("person", "管理员").strip()
+        if person not in KNOWN_PERSONS:
+            return error_response(f"未知用户: {person}", 400)
+
+        todo_type = data.get("type", "daily").strip()
+        if todo_type not in VALID_TODO_TYPES:
+            return error_response(f"无效类型: {todo_type}", 400)
+
+        todos = _load_todos()
+        todos.setdefault(person, {}).setdefault(todo_type, [])
+
+        tz = ZoneInfo("Asia/Shanghai")
+        today = datetime.now(tz).strftime("%Y-%m-%d")
+        new_id = 1
+        for item in todos[person].get(todo_type, []):
+            if item.get("id", 0) >= new_id:
+                new_id = item["id"] + 1
+
+        todo_item = {"id": new_id, "text": text, "done": False, "type": todo_type, "date": today}
+        todos[person][todo_type].append(todo_item)
+        _save_todos(todos)
+
+        return jsonify({"ok": True, "todo": todo_item, "message": f"已添加 Todo: {text}"})
+
+
+@app.route("/v1/api/daily/todos/<int:todo_id>", methods=["PUT", "DELETE"])
+@require_token
+def todos_item(todo_id):
+    """PUT/DELETE /v1/api/daily/todos/{id} - 更新/删除单个 Todo。
+
+    PUT  请求体: {"person":"管理员", "done":true}  或 {"text":"新内容"}
+    DELETE 无请求体，需 ?person= 参数。
+
+    返回:
+      PUT    → {"ok":true, "todo": {...}}
+      DELETE → {"ok":true, "message": "已删除"}
+    """
+    todos = _load_todos()
+
+    # 查找 Todo
+    found = None
+    found_person = None
+    found_cat = None
+    for p, cats in todos.items():
+        for cat, items in cats.items():
+            for item in items:
+                if item.get("id") == todo_id:
+                    found = item
+                    found_person = p
+                    found_cat = cat
+                    break
+            if found:
+                break
+        if found:
+            break
+
+    if not found:
+        return error_response(f"Todo #{todo_id} 不存在", 404)
+
+    if request.method == "DELETE":
+        todos[found_person][found_cat] = [i for i in todos[found_person][found_cat] if i["id"] != todo_id]
+        _save_todos(todos)
+        return jsonify({"ok": True, "message": f"已删除 Todo #{todo_id}"})
+
+    if request.method == "PUT":
+        data = request.get_json(silent=True)
+        if not data:
+            return error_response("请求体不能为空", 400)
+
+        changed = False
+
+        if "done" in data:
+            found["done"] = bool(data["done"])
+            changed = True
+
+        if "text" in data:
+            new_text = data["text"].strip()
+            if len(new_text) < 2:
+                return error_response("内容至少 2 个字符", 400)
+            found["text"] = new_text
+            changed = True
+
+        if "type" in data:
+            new_type = data["type"].strip()
+            if new_type not in VALID_TODO_TYPES:
+                return error_response(f"无效类型: {new_type}", 400)
+            if new_type != found_cat:
+                # 移动到另一个分类
+                todos[found_person][found_cat] = [i for i in todos[found_person][found_cat] if i["id"] != todo_id]
+                found["type"] = new_type
+                todos[found_person].setdefault(new_type, []).append(found)
+            changed = True
+
+        if not changed:
+            return jsonify({"ok": True, "todo": found, "message": "无变更"})
+
+        _save_todos(todos)
+        return jsonify({"ok": True, "todo": found, "message": f"已更新 Todo #{todo_id}"})
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

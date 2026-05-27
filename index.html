@@ -7057,37 +7057,204 @@
       if (summaryEl) summaryEl.innerHTML = html;
     }
 
+    let notesSearchTerm = '';
+    let notesActivePerson = '管理员';
+
     function renderNotesCardExpanded(bodyEl, data) {
       const notes = data && data.notes ? data.notes : [];
       const total = data && data.total != null ? data.total : notes.length;
 
-      let html = '<div>' +
-        '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;">已展开 · 共 ' + total + ' 条</div>';
+      let html = '<div>';
 
-      if (!notes.length) {
-        html += '<div style="text-align:center;color:var(--text-secondary);padding:16px;">📝 暂无随手记</div>';
+      // Search box
+      html += '<div style="margin-bottom:10px;display:flex;gap:8px;">';
+      html += '<input type="text" id="notesSearchInput" placeholder="搜索随手记..." value="' + escapeHtml(notesSearchTerm) + '" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);" oninput="filterNotes()">';
+      html += '<select id="notesPersonSelect" onchange="switchNotesPerson()" style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);">';
+      html += '<option value="管理员"' + (notesActivePerson === '管理员' ? ' selected' : '') + '>管理员</option>';
+      html += '<option value="伴侣"' + (notesActivePerson === '伴侣' ? ' selected' : '') + '>伴侣</option>';
+      html += '</select>';
+      html += '</div>';
+
+      const filtered = filterNotesBySearch(notes);
+      const displayTotal = filtered.length;
+
+      html += '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;">' +
+        (notesSearchTerm ? '🔍 结果 ' + displayTotal + ' 条' : '共 ' + total + ' 条') +
+        '</div>';
+
+      if (!filtered.length) {
+        html += '<div style="text-align:center;color:var(--text-secondary);padding:16px;">' +
+          (notesSearchTerm ? '未找到包含 "' + escapeHtml(notesSearchTerm) + '" 的记录' : '📝 暂无随手记') +
+          '</div>';
       } else {
-        for (const note of notes) {
+        for (const note of filtered) {
           const mood = note.mood || '';
           const tags = (note.tags || []).map(t => '<span style="color:var(--text-secondary);font-size:10px;background:var(--bg-hover);padding:1px 6px;border-radius:3px;">#' + escapeHtml(t) + '</span>').join(' ');
           const time = (note.created || '').slice(0, 16).replace('T', ' ');
           const text = note.text || '';
+          const noteId = note.id;
+          // 高亮搜索关键词
+          let displayText = escapeHtml(text);
+          if (notesSearchTerm) {
+            const re = new RegExp('(' + notesSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+            displayText = displayText.replace(re, '<mark style="background:#fff9c4;padding:0 1px;">$1</mark>');
+          }
 
-          html += '<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">';
-          html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">';
+          html += '<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">';
           html += '<span style="font-size:18px;">' + mood + '</span>';
+          html += '<div style="display:flex;gap:8px;align-items:center;">';
           html += '<span style="font-size:11px;color:var(--text-tertiary);">' + time + '</span>';
+          html += '<button onclick="deleteNotesItem(\'' + noteId + '\')" style="font-size:11px;color:var(--text-tertiary);background:none;border:none;cursor:pointer;padding:0;" title="删除">✕</button>';
           html += '</div>';
-          html += '<div style="font-size:13px;color:var(--text-primary);line-height:1.6;">' + escapeHtml(text) + '</div>';
+          html += '</div>';
+          html += '<div style="font-size:13px;color:var(--text-primary);line-height:1.6;">' + displayText + '</div>';
           if (tags) {
-            html += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">' + tags + '</div>';
+            html += '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;">' + tags + '</div>';
           }
           html += '</div>';
         }
       }
 
+      // Quick input box
+      html += '<div style="margin-top:12px;display:flex;gap:6px;border-top:1px solid var(--border);padding-top:10px;">';
+      html += '<input type="text" id="notesQuickInput" placeholder="快速记录... Enter 保存" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);" onkeydown="if(event.key===\'Enter\')saveNotesQuick()">';
+      html += '<button onclick="saveNotesQuick()" style="padding:6px 12px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">保存</button>';
+      html += '</div>';
+
       html += '</div>';
       bodyEl.innerHTML = html;
+    }
+
+    function filterNotesBySearch(notes) {
+      if (!notesSearchTerm) return notes;
+      const q = notesSearchTerm.toLowerCase();
+      return notes.filter(function(n) {
+        const text = (n.text || '').toLowerCase();
+        const tags = (n.tags || []).join(' ').toLowerCase();
+        return text.includes(q) || tags.includes(q);
+      });
+    }
+
+    async function filterNotes() {
+      const input = document.getElementById('notesSearchInput');
+      if (!input) return;
+      notesSearchTerm = input.value.trim();
+
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      try {
+        const resp = await fetch('/v1/api/daily/notes?person=' + encodeURIComponent(notesActivePerson), {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        const card = document.querySelector('[data-card-id="notes"]');
+        if (card) {
+          const body = card.querySelector('.card-body');
+          if (body) renderNotesCardExpanded(body, data);
+        }
+      } catch (e) {
+        console.error('搜索随手记失败:', e);
+      }
+    }
+
+    async function switchNotesPerson() {
+      const select = document.getElementById('notesPersonSelect');
+      if (!select) return;
+      notesActivePerson = select.value;
+      notesSearchTerm = '';
+
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      try {
+        const resp = await fetch('/v1/api/daily/notes?person=' + encodeURIComponent(notesActivePerson), {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        const card = document.querySelector('[data-card-id="notes"]');
+        if (card) {
+          const body = card.querySelector('.card-body');
+          if (body) renderNotesCardExpanded(body, data);
+        }
+      } catch (e) {
+        console.error('切换人员失败:', e);
+      }
+    }
+
+    async function saveNotesQuick() {
+      const input = document.getElementById('notesQuickInput');
+      if (!input || !input.value.trim()) return;
+      const text = input.value.trim();
+
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      try {
+        const resp = await fetch('/v1/api/daily/notes', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ person: notesActivePerson, text: text })
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        input.value = '';
+        notesSearchTerm = '';
+
+        // Reload notes
+        const reload = await fetch('/v1/api/daily/notes?person=' + encodeURIComponent(notesActivePerson), {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await reload.json();
+        if (data.ok) {
+          cachedNotesData = data;
+          const card = document.querySelector('[data-card-id="notes"]');
+          if (card) {
+            const summary = card.querySelector('.card-summary');
+            const body = card.querySelector('.card-body');
+            renderNotesCardCollapsed(summary, body, data);
+            renderNotesCardExpanded(body, data);
+          }
+        }
+      } catch (e) {
+        console.error('保存随手记失败:', e);
+      }
+    }
+
+    async function deleteNotesItem(noteId) {
+      if (!confirm('确定删除这条随手记？')) return;
+
+      const token = document.getElementById('token').value;
+      if (!token) return;
+
+      try {
+        const resp = await fetch('/v1/api/daily/notes/' + noteId + '?person=' + encodeURIComponent(notesActivePerson), {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+        // Reload
+        const reload = await fetch('/v1/api/daily/notes?person=' + encodeURIComponent(notesActivePerson), {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await reload.json();
+        if (data.ok) {
+          cachedNotesData = data;
+          const card = document.querySelector('[data-card-id="notes"]');
+          if (card) {
+            const summary = card.querySelector('.card-summary');
+            const body = card.querySelector('.card-body');
+            renderNotesCardCollapsed(summary, body, data);
+            renderNotesCardExpanded(body, data);
+          }
+        }
+      } catch (e) {
+        console.error('删除随手记失败:', e);
+        alert('删除失败: ' + e.message);
+      }
     }
 
     /* ===== DF27: 图表组件 ===== */

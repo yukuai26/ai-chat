@@ -2809,6 +2809,123 @@ def wishes_status_transition(wish_id):
 
 
 
+# ============================================================
+#  周统计汇总 API (DB20)
+# ============================================================
+
+@app.route("/v1/api/daily/summary/week", methods=["GET"])
+@require_token
+def weekly_summary():
+    """GET /v1/api/daily/summary/week - 本周统计汇总。
+
+    返回：
+      - exercise_days: 本周运动天数 + 总运动时长
+      - todo: 本周完成率（人数、完成/总计）
+      - data_trends: 各人各字段最新值 + 本周趋势
+
+    返回格式:
+      {"ok":true,
+       "week":"2026-W22",
+       "exercise": {"days":3, "total_min":120},
+       "todo": {"completion_rate":60.0, "done":6, "total":10, "persons":{...}},
+       "data_trends": {"管理员": {"weight":[{"date":"...","value":70},...], ...}, ...}}
+    """
+    tz = ZoneInfo("Asia/Shanghai")
+    now = datetime.now(tz)
+    today_str = now.strftime("%Y-%m-%d")
+    week_key = _current_week_key()
+
+    result = {
+        "ok": True,
+        "week": week_key,
+        "generated_at": now.isoformat(),
+    }
+
+    # ---- 运动统计 ----
+    all_exercise_dates: set[str] = set()
+    all_exercise_min = 0
+    for person in ["管理员", "伴侣"]:
+        person_data = _load_person_data(person)
+        for entry in person_data.get("exercise", []):
+            if _is_in_week(entry.get("date", ""), week_key):
+                all_exercise_dates.add(entry.get("date", ""))
+                if isinstance(entry.get("duration"), str):
+                    nums = re.findall(r"(\d+)", entry["duration"])
+                    if nums:
+                        all_exercise_min += int(nums[0])
+                elif isinstance(entry.get("duration"), (int, float)):
+                    all_exercise_min += int(entry["duration"])
+
+    result["exercise"] = {
+        "days": len(all_exercise_dates),
+        "total_min": all_exercise_min,
+    }
+
+    # ---- Todo 统计 ----
+    todos = _load_todos()
+    week_done = 0
+    week_total = 0
+    persons_stats = {}
+    for person, data in todos.items():
+        p_done = 0
+        p_total = 0
+        for item in data.get("daily", []):
+            if _is_in_week(item.get("date", ""), week_key):
+                p_total += 1
+                if item.get("done"):
+                    p_done += 1
+        for item in data.get("weekly", []):
+            p_total += 1
+            if item.get("done"):
+                p_done += 1
+        week_done += p_done
+        week_total += p_total
+        persons_stats[person] = {"done": p_done, "total": p_total}
+    week_rate = round(week_done / week_total * 100, 1) if week_total > 0 else 0
+    result["todo"] = {
+        "completion_rate": week_rate,
+        "done": week_done,
+        "total": week_total,
+        "persons": persons_stats,
+    }
+
+    # ---- 数据趋势 ----
+    data_trends = {}
+    fields_to_trend = ["weight", "water", "sleep", "exercise"]
+    for person in ["管理员", "伴侣"]:
+        person_data = _load_person_data(person)
+        person_trends = {}
+        for field in fields_to_trend:
+            entries = person_data.get(field, [])
+            # 只取本周数据
+            week_entries = [e for e in entries if _is_in_week(e.get("date", ""), week_key)]
+            week_entries.sort(key=lambda e: e.get("date", ""))
+
+            simplified = []
+            for e in week_entries:
+                entry_summary = {"date": e.get("date", "")}
+                if field == "weight":
+                    entry_summary["value"] = e.get("value")
+                elif field == "water":
+                    entry_summary["cups"] = e.get("cups")
+                elif field == "sleep":
+                    entry_summary["hours"] = e.get("hours")
+                elif field == "exercise":
+                    entry_summary["type"] = e.get("type", "")
+                    entry_summary["duration"] = e.get("duration", "")
+                    entry_summary["calories"] = e.get("calories", 0)
+                simplified.append(entry_summary)
+
+            if simplified:
+                person_trends[field] = simplified
+        if person_trends:
+            data_trends[person] = person_trends
+
+    result["data_trends"] = data_trends
+
+    return jsonify(result)
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

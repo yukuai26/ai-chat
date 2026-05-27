@@ -1322,6 +1322,43 @@
       color: #fff;
       border-color: var(--accent);
     }
+    /* DF27: 图表组件 */
+    .card-body .summary-charts {
+      padding: 12px 16px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .summary-charts canvas {
+      margin-bottom: 16px;
+      max-height: 200px;
+    }
+    .summary-charts .chart-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .summary-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .summary-stat-item {
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--bg-hover);
+      text-align: center;
+    }
+    .summary-stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .summary-stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
     .wishes-item {
       padding: 6px 0;
       border-bottom: 1px solid var(--border);
@@ -5270,6 +5307,8 @@
         if (recipeCard) loadRecipeCard(recipeCard);
         const wishesCard = document.querySelector('[data-card-id="wishes"]');
         if (wishesCard) loadWishesCard(wishesCard);
+        const summaryCard = document.querySelector('[data-card-id="summary"]');
+        if (summaryCard) loadSummaryCard(summaryCard);
         dashboardLoaded = true;
       } catch (e) {
         console.error('加载 Dashboard 失败:', e);
@@ -5687,7 +5726,7 @@
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -6898,6 +6937,174 @@
     }
 
 
+    /* ===== DF27: 图表组件 ===== */
+    let cachedSummaryData = null;
+    let chartInstances = {};
+
+    async function loadSummaryCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+
+      const token = document.getElementById('token').value;
+      if (!token) {
+        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
+        return;
+      }
+
+      try {
+        if (!cachedSummaryData) {
+          const resp = await fetch('/v1/api/daily/summary/week', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          cachedSummaryData = await resp.json();
+        }
+
+        renderSummaryCardCollapsed(summary, cachedSummaryData);
+        // 展开视图在 body 中渲染图表
+      } catch (e) {
+        console.error('加载总结失败:', e);
+        body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>';
+      }
+    }
+
+    function renderSummaryCardCollapsed(summaryEl, data) {
+      if (!data || !data.ok) {
+        if (summaryEl) summaryEl.textContent = '📊 暂无数据';
+        return;
+      }
+      const ex = data.exercise || {};
+      const todo = data.todo || {};
+      const week = data.week || '';
+      const weekLabel = week ? ' (W' + (week.split('-W')[1] || '') + ')' : '';
+
+      let html = '<div class="wishes-collapsed">';
+      html += '<div style="font-size:13px;margin-bottom:6px;">📊 本周' + weekLabel + '</div>';
+      html += '<div style="font-size:12px;color:var(--text-secondary);">';
+      html += '🏃 运动 ' + (ex.days || 0) + ' 天 · 📋 Todo ' + (todo.completion_rate || 0) + '%';
+      html += '</div>';
+      html += '<div class="wishes-expand-hint" onclick="toggleCard(\'summary\', event)">展开查看图表 ▼</div>';
+      html += '</div>';
+
+      if (summaryEl) summaryEl.innerHTML = html;
+    }
+
+    function renderSummaryCharts(bodyEl, data) {
+      if (!data || !data.ok) {
+        bodyEl.innerHTML = '<div class="card-body-placeholder">📊 暂无数据</div>';
+        return;
+      }
+
+      // 销毁旧图表
+      for (const key in chartInstances) {
+        if (chartInstances[key]) { chartInstances[key].destroy(); chartInstances[key] = null; }
+      }
+      chartInstances = {};
+
+      const ex = data.exercise || {};
+      const todo = data.todo || {};
+      const trends = data.data_trends || {};
+
+      let html = '<div class="summary-charts">';
+
+      // 统计概览
+      html += '<div class="chart-section-title">📊 本周概览</div>';
+      html += '<div class="summary-stats-grid">';
+      html += '<div class="summary-stat-item"><div class="summary-stat-value">' + (ex.days || 0) + '</div><div class="summary-stat-label">运动天数</div></div>';
+      html += '<div class="summary-stat-item"><div class="summary-stat-value">' + (ex.total_min || 0) + 'min</div><div class="summary-stat-label">运动时长</div></div>';
+      html += '<div class="summary-stat-item"><div class="summary-stat-value">' + (todo.completion_rate || 0) + '%</div><div class="summary-stat-label">Todo 完成率</div></div>';
+      html += '<div class="summary-stat-item"><div class="summary-stat-value">' + (todo.done || 0) + '/' + (todo.total || 0) + '</div><div class="summary-stat-label">已完成/总数</div></div>';
+      html += '</div>';
+
+      // Chart.js 画布
+      html += '<div class="chart-section-title">📋 Todo 完成率</div>';
+      html += '<canvas id="chartTodoRate"></canvas>';
+
+      // 数据趋势 -- 体重
+      for (const person of ['管理员', '伴侣']) {
+        if (trends[person] && trends[person].weight) {
+          html += '<div class="chart-section-title">⚖️ ' + person + ' 体重趋势</div>';
+          html += '<canvas id="chartWeight_' + person + '"></canvas>';
+        }
+      }
+
+      html += '</div>';
+      bodyEl.innerHTML = html;
+
+      // 渲染图表
+      setTimeout(function() {
+        // Todo 完成率 doughnut
+        const ctx1 = document.getElementById('chartTodoRate');
+        if (ctx1) {
+          const done = todo.done || 0;
+          const pending = (todo.total || 0) - done;
+          chartInstances['todoRate'] = new Chart(ctx1, {
+            type: 'doughnut',
+            data: {
+              labels: ['已完成', '未完成'],
+              datasets: [{
+                data: [done, pending > 0 ? pending : 0],
+                backgroundColor: ['#4caf50', '#e0e0e0'],
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
+            }
+          });
+          ctx1.parentElement.style.height = '150px';
+        }
+
+        // 体重趋势线图
+        for (const person of ['管理员', '伴侣']) {
+          const ctxW = document.getElementById('chartWeight_' + person);
+          if (ctxW && trends[person] && trends[person].weight) {
+            const entries = trends[person].weight;
+            const labels = entries.map(function(e) { return (e.date || '').slice(5); });
+            const values = entries.map(function(e) { return e.value; });
+            chartInstances['weight_' + person] = new Chart(ctxW, {
+              type: 'line',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: person + ' 体重',
+                  data: values,
+                  borderColor: '#42a5f5',
+                  backgroundColor: 'rgba(66,165,245,0.1)',
+                  fill: true,
+                  tension: 0.3,
+                  pointRadius: 3
+                }]
+              },
+              options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { y: { beginAtZero: false } },
+                plugins: { legend: { labels: { font: { size: 10 } } } }
+              }
+            });
+            ctxW.parentElement.style.height = '160px';
+          }
+        }
+      }, 100);
+    }
+
+    // Hook into toggleCard to render charts when summary expands
+    const _origToggleCard2 = toggleCard;
+    toggleCard = function(cardId, event) {
+      _origToggleCard2(cardId, event);
+      if (cardId === 'summary') {
+        const card = document.querySelector('[data-card-id="summary"]');
+        if (card && card.classList.contains('expanded') && cachedSummaryData) {
+          const body = card.querySelector('.card-body');
+          if (body) renderSummaryCharts(body, cachedSummaryData);
+        }
+      }
+    };
+
+
     const origSwitchTab2 = switchTab;
     switchTab = function(tabName) {
       origSwitchTab2(tabName);
@@ -6906,5 +7113,6 @@
 
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </body>
 </html>

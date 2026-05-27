@@ -11,6 +11,7 @@ import stat
 import logging
 import mimetypes
 import requests
+import subprocess
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
@@ -1665,6 +1666,63 @@ def get_news():
         "categories": categories,
         "total": total,
     })
+
+
+@app.route("/v1/api/daily/news/refresh", methods=["POST"])
+@require_token
+def refresh_news():
+    """POST /v1/api/daily/news/refresh - 触发新闻爬虫刷新。
+
+    执行 scripts/news_crawler.py 抓取最新新闻并写入缓存。
+    返回 {"ok": true, "count": 新增条数, "sources": 抓取的源数}
+
+    若爬虫脚本不存在则返回提示。
+    """
+    crawler_path = os.path.join(os.path.dirname(__file__), "scripts", "news_crawler.py")
+
+    if not os.path.isfile(crawler_path):
+        return jsonify({
+            "ok": True,
+            "count": 0,
+            "sources": 0,
+            "message": "新闻爬虫脚本尚未就绪，将在 Phase 6b (DB8) 实现",
+        })
+
+    try:
+        result = subprocess.run(
+            ["python3", crawler_path],
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode != 0:
+            logger.error(f"新闻爬虫执行失败: {result.stderr[:200]}")
+            return jsonify({
+                "ok": False,
+                "error": "新闻抓取失败",
+                "detail": result.stderr[:200],
+            }), 500
+
+        # 尝试解析爬虫输出 JSON
+        try:
+            output = json.loads(result.stdout.strip().split("\n")[-1])
+            return jsonify({
+                "ok": True,
+                "count": output.get("count", 0),
+                "sources": output.get("sources", 0),
+                "date": output.get("date"),
+            })
+        except (json.JSONDecodeError, IndexError):
+            return jsonify({
+                "ok": True,
+                "count": 0,
+                "sources": 0,
+                "message": "爬虫已执行，但输出格式异常",
+            })
+
+    except subprocess.TimeoutExpired:
+        return jsonify({"ok": False, "error": "新闻抓取超时"}), 500
+    except Exception as e:
+        logger.error(f"新闻爬虫异常: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 # ---- 错误处理 ----

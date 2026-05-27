@@ -3356,10 +3356,9 @@
   
     /* ===== BUG14: 登录页样式 ===== */
     .login-overlay {
-      position: fixed; inset: 0; z-index: 1000;
+      position: fixed; inset: 0; z-index: 10000;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(4px);
+      background: var(--bg-page, #f5f5f5);
     }
     .login-card {
       background: var(--bg-card, #fff); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12);
@@ -3721,7 +3720,7 @@
       const resp = await fetch(url, opts);
       if (resp.status === 401 && authJwt) {
         clearAuth();
-        showLoginOnly();
+        showLoginOverlay();
         throw new Error('登录已过期');
       }
       return resp;
@@ -3747,7 +3746,7 @@
       return origFetch(url, opts).then(function(r) {
         if (r.status === 401 && authJwt) {
           clearAuth();
-          showLoginOnly();
+          showLoginOverlay();
         }
         return r;
       });
@@ -3833,6 +3832,41 @@
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('registerOverlay').style.display = 'flex';
     }
+    function showLoginOverlay() {
+      // BUG15: 隐藏所有 UI 元素，只显示干净登录卡片
+      document.getElementById('registerOverlay').style.display = 'none';
+      document.getElementById('loginOverlay').style.display = 'flex';
+      document.getElementById('tabBar').style.display = 'none';
+      var ch = document.querySelector('.chat-header'); if (ch) ch.style.display = 'none';
+      var sp = document.getElementById('settingsPanel');
+      if (sp) sp.style.display = 'none';
+      var cp = document.getElementById('convPanel');
+      if (cp) cp.style.display = 'none';
+      var mb = document.querySelector('.mobile-bottom-nav');
+      if (mb) mb.style.display = 'none';
+      var mt = document.querySelector('.mobile-top-bar');
+      if (mt) mt.style.display = 'none';
+      document.querySelectorAll('.tab-content').forEach(function(t){t.style.display='none';});
+    }
+
+    function revealMainUI() {
+      // BUG15: 登录成功后恢复所有 UI 元素
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('registerOverlay').style.display = 'none';
+      document.getElementById('tabBar').style.display = '';
+      var ch2 = document.querySelector('.chat-header'); if (ch2) ch2.style.display = '';
+      var sp = document.getElementById('settingsPanel');
+      if (sp) sp.style.display = '';
+      var cp = document.getElementById('convPanel');
+      if (cp) cp.style.display = '';
+      var mb = document.querySelector('.mobile-bottom-nav');
+      if (mb) mb.style.display = '';
+      var mt = document.querySelector('.mobile-top-bar');
+      if (mt) mt.style.display = '';
+      var at = document.querySelector('.tab-content.active');
+      if (at) at.style.display = 'flex';
+    }
+
     function showLoginOnly() {
       document.getElementById('registerOverlay').style.display = 'none';
       document.getElementById('loginOverlay').style.display = 'flex';

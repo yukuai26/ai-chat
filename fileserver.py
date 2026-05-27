@@ -1725,6 +1725,72 @@ def refresh_news():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+def _save_news_sources(sources: list) -> None:
+    """将新闻源列表持久化到 sources.json。"""
+    os.makedirs(NEWS_DIR, exist_ok=True)
+    with open(DEFAULT_SOURCES_PATH, "w", encoding="utf-8") as f:
+        json.dump(sources, f, ensure_ascii=False, indent=2)
+
+
+@app.route("/v1/api/daily/news/sources", methods=["GET", "PUT"])
+@require_token
+def news_sources():
+    """GET/PUT /v1/api/daily/news/sources - 新闻源管理。
+
+    GET    → 返回所有新闻源列表
+    PUT    → 批量更新新闻源（替换全部）
+             请求体: [{"name":"36氪","url":"...","enabled":true,"category":"科技"}, ...]
+
+    返回: {"ok": true, "sources": [...]}
+    """
+    if request.method == "GET":
+        sources = _load_news_sources()
+        enabled_count = sum(1 for s in sources if s.get("enabled", True))
+        return jsonify({
+            "ok": True,
+            "sources": sources,
+            "total": len(sources),
+            "enabled_count": enabled_count,
+        })
+
+    if request.method == "PUT":
+        data = request.get_json(silent=True)
+        if not isinstance(data, list):
+            return error_response("请求体必须是新闻源数组", 400)
+
+        # 基本校验
+        cleaned = []
+        seen_names = set()
+        for i, src in enumerate(data):
+            if not isinstance(src, dict) or "name" not in src:
+                return error_response(f"第 {i+1} 项缺少必填字段 name", 400)
+            name = src["name"].strip()
+            if not name:
+                return error_response(f"第 {i+1} 项名称为空", 400)
+            if name in seen_names:
+                return error_response(f"新闻源 {name} 重复", 400)
+            seen_names.add(name)
+            cleaned.append({
+                "name": name,
+                "url": src.get("url", "").strip(),
+                "type": src.get("type", "rss"),
+                "enabled": src.get("enabled", True),
+                "category": src.get("category", "综合").strip() or "综合",
+            })
+
+        try:
+            _save_news_sources(cleaned)
+            return jsonify({
+                "ok": True,
+                "sources": cleaned,
+                "total": len(cleaned),
+                "enabled_count": sum(1 for s in cleaned if s["enabled"]),
+                "message": f"已更新 {len(cleaned)} 个新闻源",
+            })
+        except IOError as e:
+            return error_response(f"保存新闻源失败: {e}", 500)
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

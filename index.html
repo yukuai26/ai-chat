@@ -715,6 +715,55 @@
     .news-toolbar .news-refresh-btn.spinning {
       animation: spin 0.8s linear infinite;
     }
+    /* DF16: TodoCard 缩略模式 */
+    .card-body .todo-collapsed {
+      padding: 12px 16px;
+    }
+    .todo-collapsed .todo-person-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+    .todo-collapsed .todo-person-name {
+      font-weight: 600;
+      color: var(--text);
+      min-width: 50px;
+    }
+    .todo-collapsed .todo-person-count {
+      color: var(--accent);
+      font-size: 12px;
+    }
+    .todo-collapsed .todo-person-bar {
+      flex: 1;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .todo-collapsed .todo-person-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+    .todo-collapsed .todo-week-summary {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+    .todo-collapsed .todo-expand-hint {
+      font-size: 11px;
+      color: var(--accent);
+      cursor: pointer;
+      text-align: center;
+      margin-top: 4px;
+    }
+    .todo-collapsed .todo-expand-hint:hover {
+      text-decoration: underline;
+    }
     /* DF13: NewsCard 展开模式 */
     .card-body .news-expanded {
       padding: 12px 16px;
@@ -4571,6 +4620,8 @@
         // 加载已实现卡片内容
         const newsCard = document.querySelector('[data-card-id="news"]');
         if (newsCard) loadNewsCard(newsCard);
+        const todoCard = document.querySelector('[data-card-id="todo"]');
+        if (todoCard) loadTodoCard(todoCard);
         dashboardLoaded = true;
       } catch (e) {
         console.error('加载 Dashboard 失败:', e);
@@ -4988,7 +5039,7 @@
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news"];
+    const IMPLEMENTED_CARDS = ["news", "todo"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -5313,6 +5364,73 @@
     function closeNewsDetail() {
       const overlay = document.getElementById('newsDetailOverlay');
       if (overlay) overlay.remove();
+    }
+
+
+    /* ===== DF16: TodoCard ===== */
+    let cachedTodoData = null;
+
+    async function loadTodoCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+
+      const token = document.getElementById('token').value;
+      if (!token) {
+        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
+        return;
+      }
+
+      try {
+        if (!cachedTodoData) {
+          const resp = await fetch('/v1/api/daily/todos/summary', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          cachedTodoData = await resp.json();
+        }
+
+        renderTodoCardCollapsed(summary, body, cachedTodoData);
+      } catch (e) {
+        console.error('加载 Todo 失败:', e);
+        body.innerHTML = '<div class="card-body-placeholder">⚠️ Todo 加载失败</div>';
+      }
+    }
+
+    function renderTodoCardCollapsed(summaryEl, bodyEl, data) {
+      if (!data || !data.persons || !Object.keys(data.persons).length) {
+        if (summaryEl) summaryEl.textContent = '📋 暂无待办事项';
+        bodyEl.innerHTML = '<div class="card-body-placeholder">📋 暂无待办事项</div>';
+        return;
+      }
+
+      const persons = data.persons;
+      const totalDone = data.total_done || 0;
+      const totalPending = data.total_pending || 0;
+      const total = totalDone + totalPending;
+      const weekTotal = data.week_total || 0;
+      const weekDone = data.week_done || 0;
+
+      // 缩略模式
+      let collapsedHtml = '<div class="todo-collapsed">';
+      for (const [name, person] of Object.entries(persons)) {
+        const pending = person.pending || 0;
+        const done = person.done || 0;
+        const personTotal = pending + done;
+        const pct = personTotal > 0 ? Math.round(done / personTotal * 100) : 0;
+        collapsedHtml += '<div class="todo-person-row">';
+        collapsedHtml += '<span class="todo-person-name">👤 ' + escapeHtml(name) + '</span>';
+        collapsedHtml += '<div class="todo-person-bar"><div class="todo-person-bar-fill" style="width:' + pct + '%"></div></div>';
+        collapsedHtml += '<span class="todo-person-count">' + done + '/' + personTotal + '</span>';
+        collapsedHtml += '</div>';
+      }
+      collapsedHtml += '<div class="todo-week-summary">📅 本周: ' + weekDone + '/' + weekTotal + ' 待办</div>';
+      collapsedHtml += '<div class="todo-expand-hint" onclick="toggleCard(\'todo\', event)">展开查看详情 ▼</div>';
+      collapsedHtml += '</div>';
+
+      if (summaryEl) summaryEl.innerHTML = collapsedHtml;
+      bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
     }
 
 

@@ -2036,6 +2036,79 @@ def todos_by_person(person):
     })
 
 
+def _current_week_key(tz="Asia/Shanghai") -> str:
+    """返回当前 ISO 周标识（YYYY-Www）。"""
+    now = datetime.now(ZoneInfo(tz))
+    iso = now.isocalendar()
+    return f"{iso[0]}-W{iso[1]:02d}"
+
+
+def _is_in_week(date_str: str, week_key: str) -> bool:
+    """判断日期字符串是否属于指定 ISO 周。"""
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Shanghai"))
+        iso = dt.isocalendar()
+        return f"{iso[0]}-W{iso[1]:02d}" == week_key
+    except ValueError:
+        return False
+
+
+@app.route("/v1/api/daily/todos/week", methods=["GET"])
+@require_token
+def todos_weekly_view():
+    """GET /v1/api/daily/todos/week - 本周 Todo 视图。
+
+    将 daily 和 weekly 两类 Todo 合并展示，便于面板周视图使用。
+
+    查询参数:
+      - week:   指定周（YYYY-Www，默认当前周）
+      - person: 按人员过滤
+      - done:   true|false|any
+
+    返回:
+      {"ok":true, "week":"2026-W22", "daily": [...], "weekly": [...], "total": N}
+    """
+    week = request.args.get("week", "").strip()
+    if not week:
+        week = _current_week_key()
+
+    person = request.args.get("person", "").strip()
+    done_filter = request.args.get("done", "any").strip()
+
+    todos = _load_todos()
+    daily_items = []
+    weekly_items = []
+
+    persons_to_check: list[str] = [person] if person else list(todos.keys())
+
+    for p in persons_to_check:
+        if p not in todos:
+            continue
+
+        # Daily: 按日期匹配
+        for item in todos[p].get("daily", []):
+            if _is_in_week(item.get("date", ""), week):
+                daily_items.append({**item, "person": p})
+
+        # Weekly: 全部显示（weekly todos 属于整周的）
+        for item in todos[p].get("weekly", []):
+            weekly_items.append({**item, "person": p})
+
+    if done_filter in ("true", "false"):
+        want_done = (done_filter == "true")
+        daily_items = [i for i in daily_items if i.get("done", False) == want_done]
+        weekly_items = [i for i in weekly_items if i.get("done", False) == want_done]
+
+    total = len(daily_items) + len(weekly_items)
+    return jsonify({
+        "ok": True,
+        "week": week,
+        "daily": daily_items,
+        "weekly": weekly_items,
+        "total": total,
+    })
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

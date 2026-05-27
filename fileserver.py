@@ -1405,6 +1405,172 @@ def daily_command():
         return error_response(f"指令处理失败: {e}", 502)
 
 
+# ---- 每日 Dashboard: 面板配置 API (DB4) ----
+
+DASHBOARD_CONFIG_PATH = os.path.join(USER_DATA_DIR, "dashboard-config.json")
+
+DEFAULT_DASHBOARD_CONFIG = {
+    "layout": {
+        "columns": 3,
+        "order": ["news", "todo", "data", "recipe", "wishes"],
+        "gap": 16,
+    },
+    "disabledCards": [],
+    "cardSettings": {},
+}
+
+
+def _load_dashboard_config():
+    """读取面板配置，不存在或错误时返回默认值。"""
+    try:
+        if os.path.isfile(DASHBOARD_CONFIG_PATH) and os.path.getsize(DASHBOARD_CONFIG_PATH) > 0:
+            with open(DASHBOARD_CONFIG_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"dashboard-config.json 读取失败: {e}")
+    return DEFAULT_DASHBOARD_CONFIG.copy()
+
+
+def _save_dashboard_config(data: dict):
+    """写入面板配置。"""
+    os.makedirs(os.path.dirname(DASHBOARD_CONFIG_PATH), exist_ok=True)
+    with open(DASHBOARD_CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    logger.info("dashboard-config.json 已保存")
+
+
+@app.route("/v1/api/daily/config", methods=["GET"])
+@require_token
+def get_dashboard_config():
+    """GET /v1/api/daily/config — 读取面板完整配置。
+
+    合并卡片注册表与用户布局配置，返回：
+      - cards: 注册表中所有卡片（含 enabled/disabled 状态）
+      - layout: 用户布局偏好
+      - cardSettings: 各卡片自定义设置
+
+    若文件不存在则返回默认配置。
+    """
+    registry = _load_card_registry()
+    config = _load_dashboard_config()
+
+    # 合并 enabled 状态到每张卡片
+    cards_with_status = []
+    for card in registry.get("cards", []):
+        card_info = dict(card)
+        card_info["enabled"] = card["id"] not in config.get("disabledCards", [])
+        # 合并卡片级设置
+        card_settings = config.get("cardSettings", {}).get(card["id"], {})
+        card_info["settings"] = card_settings
+        cards_with_status.append(card_info)
+
+    return jsonify({
+        "cards": cards_with_status,
+        "layout": config.get("layout", {}),
+        "commandPrefixes": registry.get("commandPrefixes", []),
+    })
+
+
+@app.route("/v1/api/daily/config", methods=["PUT"])
+@require_token
+def put_dashboard_config():
+    """PUT /v1/api/daily/config — 更新面板配置。
+
+    请求体：部分或完整配置（layout、disabledCards、cardSettings）。
+    支持增量更新：只传 layout 则只改布局。
+    """
+    body = request.get_json(silent=True)
+    if not body:
+        return error_response("请求体必须是有效 JSON", 400)
+
+    current = _load_dashboard_config()
+
+    # 合并 layout（增量更新）
+    if "layout" in body:
+        current["layout"] = {**current["layout"], **body["layout"]}
+
+    # 替换 disabledCards
+    if "disabledCards" in body:
+        current["disabledCards"] = body["disabledCards"]
+
+    # 合并 cardSettings
+    if "cardSettings" in body:
+        current["cardSettings"] = {
+            **current.get("cardSettings", {}),
+            **body["cardSettings"],
+        }
+
+    try:
+        _save_dashboard_config(current)
+        return jsonify({"ok": True, "message": "面板配置已更新"})
+    except IOError as e:
+        return error_response(f"保存失败: {e}", 500)
+
+
+@app.route("/v1/api/daily/config/cards/<card_id>", methods=["PUT"])
+@require_token
+def put_card_config(card_id):
+    """PUT /v1/api/daily/config/cards/{id} — 启用/禁用/设置单张卡片。
+
+    请求体:
+      {"enabled": true/false}  — 启用或禁用
+      {"settings": {"width": "large"}}  — 更新卡片设置
+      {"order": 0}  — 调整排序位置
+
+    卡片必须存在于注册表中。
+    """
+    registry = _load_card_registry()
+    card_exists = any(c["id"] == card_id for c in registry.get("cards", []))
+    if not card_exists:
+        return error_response(f"卡片 '{card_id}' 不存在", 404)
+
+    body = request.get_json(silent=True)
+    if not body:
+        return error_response("请求体必须是有效 JSON", 400)
+
+    config = _load_dashboard_config()
+    changes = []
+
+    # 启用/禁用
+    if "enabled" in body:
+        disabled = config.get("disabledCards", [])
+        if body["enabled"]:
+            if card_id in disabled:
+                disabled.remove(card_id)
+                changes.append(f"已启用")
+        else:
+            if card_id not in disabled:
+                disabled.append(card_id)
+                changes.append(f"已禁用")
+        config["disabledCards"] = disabled
+
+    # 排序调整
+    if "order" is not None and "order" in body:
+        order = body["order"]
+        current_order = config.get("layout", {}).get("order", [])
+        if card_id in current_order:
+            current_order.remove(card_id)
+        current_order.insert(max(0, min(order, len(current_order))), card_id)
+        config.setdefault("layout", {})["order"] = current_order
+        changes.append(f"顺序调整到 #{order}")
+
+    # 卡片设置
+    if "settings" in body:
+        settings = config.get("cardSettings", {})
+        settings[card_id] = {**settings.get(card_id, {}), **body["settings"]}
+        config["cardSettings"] = settings
+        changes.append("设置已更新")
+
+    if not changes:
+        return error_response("没有可更新的字段", 400, "支持的字段: enabled, order, settings")
+
+    try:
+        _save_dashboard_config(config)
+        return jsonify({"ok": True, "card_id": card_id, "changes": changes})
+    except IOError as e:
+        return error_response(f"保存失败: {e}", 500)
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

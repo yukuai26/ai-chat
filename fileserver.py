@@ -18,6 +18,9 @@ from pathlib import Path
 from functools import wraps
 from flask import Flask, request, jsonify, send_file
 
+import bcrypt
+import jwt
+
 app = Flask(__name__)
 
 # ---- 日志 ----
@@ -79,6 +82,263 @@ CHAT_TIMEOUT = 120  # Gateway 调用超时（秒）
 SESSION_DIR = "/home/ubuntu/.openclaw/user-sessions"
 USER_FILES_DIR = "/home/ubuntu/.openclaw/user-files"
 USER_DATA_DIR = "/home/ubuntu/.openclaw/user-data"
+USERS_FILE = os.path.join(USER_DATA_DIR, "users.json")
+JWT_SECRET_FILE = "/home/ubuntu/.openclaw/jwt-secret"
+
+# ---- JWT 密钥 ----
+try:
+    with open(JWT_SECRET_FILE, "r") as f:
+        JWT_SECRET = f.read().strip()
+    logger.info("JWT secret loaded")
+except Exception:
+    JWT_SECRET = os.urandom(32).hex()
+    os.makedirs(os.path.dirname(JWT_SECRET_FILE), exist_ok=True)
+    with open(JWT_SECRET_FILE, "w") as f:
+        f.write(JWT_SECRET)
+    os.chmod(JWT_SECRET_FILE, 0o600)
+    logger.warning("JWT secret auto-generated")
+
+JWT_EXPIRE_HOURS = 24
+JWT_REMEMBER_HOURS = 168  # 7 days
+
+# ---- 用户数据 ----
+def _load_users() -> dict:
+    try:
+        if os.path.isfile(USERS_FILE) and os.path.getsize(USERS_FILE) > 0:
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"users.json read failed: {e}")
+    return {}
+
+def _save_users(data: dict):
+    os.makedirs(os.path.dirname(USERS_FILE), exist_ok=True)
+    with open(USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def make_token(user: dict, remember: bool = False) -> str:
+    """签发 JWT"""
+    exp_hours = JWT_REMEMBER_HOURS if remember else JWT_EXPIRE_HOURS
+    payload = {
+        "user": user["username"],
+        "display_name": user["display_name"],
+        "partner": user.get("partner", ""),
+        "exp": datetime.utcnow() + timedelta(hours=exp_hours)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+
+def auth_required(f):
+    """JWT 认证中间件。解析 Bearer token → 注入 request.user"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", "")
+        token = None
+
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+
+        if not token:
+            return jsonify({"ok": False, "error": "未登录或 token 缺失", "code": "UNAUTHORIZED"}), 401
+
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+            request.user = {
+                "username": payload.get("user", ""),
+                "display_name": payload.get("display_name", ""),
+                "partner": payload.get("partner", "")
+            }
+        except jwt.ExpiredSignatureError:
+            return jsonify({"ok": False, "error": "登录已过期，请重新登录", "code": "TOKEN_EXPIRED"}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"ok": False, "error": "无效的 token", "code": "INVALID_TOKEN"}), 401
+
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ---- 认证 API ----
+
+@app.route("/v1/api/auth/register", methods=["POST"])
+def auth_register():
+    """POST /v1/api/auth/register - 注册（需邀请码）"""
+    data = request.get_json(silent=True)
+    if not data or "username" not in data or "password" not in data:
+        return jsonify({"ok": False, "error": "缺少用户名或密码"}), 400
+
+    username = data["username"].strip().lower()
+    password = data["password"].strip()
+
+    if not username or not password:
+        return jsonify({"ok": False, "error": "用户名和密码不能为空"}), 400
+    if len(password) < 4:
+        return jsonify({"ok": False, "error": "密码至少 4 位"}), 400
+    if not username.isalnum():
+        return jsonify({"ok": False, "error": "用户名只能包含字母和数字"}), 400
+
+    users = _load_users()
+    if username in users:
+        return jsonify({"ok": False, "error": "用户已存在"}), 409
+
+    # 邀请码校验
+    invite_code = data.get("invite_code", "").strip()
+    invites = _load_invites()
+    if username != "admin":  # admin first user needs no invite
+        valid = False
+        for inv in invites.get("unused", []):
+            if inv.get("code") == invite_code:
+                valid = True
+                invites["unused"].remove(inv)
+                invites.setdefault("used", []).append(inv)
+                _save_invites(invites)
+                break
+        if not valid:
+            return jsonify({"ok": False, "error": "邀请码无效或已使用"}), 400
+
+    salt = bcrypt.gensalt()
+    pw_hash = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+    display_name = data.get("display_name", username).strip() or username
+    # First user is admin
+    if not users:
+        partner = data.get("partner", "").strip()
+        if not partner:
+            partner = "partner"
+        users[username] = {
+            "password_hash": pw_hash,
+            "display_name": display_name,
+            "partner": partner,
+            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+        }
+        # Auto-create partner account
+        partner_pw = os.urandom(8).hex()
+        partner_hash = bcrypt.hashpw(partner_pw.encode("utf-8"), salt).decode("utf-8")
+        users[partner] = {
+            "password_hash": partner_hash,
+            "display_name": "伴侣",
+            "partner": username,
+            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+        }
+        _save_users(users)
+        user_obj = {"username": username, "display_name": display_name, "partner": partner}
+        token = make_token(user_obj)
+        return jsonify({
+            "ok": True, "token": token, "user": user_obj,
+            "message": f"账号创建成功！伴侣账号: {partner}，密码: {partner_pw}（请告知伴侣尽快修改密码）",
+            "partner_initial_password": partner_pw
+        })
+    else:
+        users[username] = {
+            "password_hash": pw_hash,
+            "display_name": display_name,
+            "partner": "",
+            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+        }
+        _save_users(users)
+        user_obj = {"username": username, "display_name": display_name, "partner": ""}
+        token = make_token(user_obj)
+        return jsonify({"ok": True, "token": token, "user": user_obj, "message": "注册成功"})
+
+
+@app.route("/v1/api/auth/login", methods=["POST"])
+def auth_login():
+    """POST /v1/api/auth/login - 登录"""
+    data = request.get_json(silent=True)
+    if not data or "username" not in data or "password" not in data:
+        return jsonify({"ok": False, "error": "缺少用户名或密码"}), 400
+
+    username = data["username"].strip().lower()
+    password = data["password"].strip()
+    remember = data.get("remember", False)
+
+    users = _load_users()
+    user = users.get(username)
+    if not user:
+        return jsonify({"ok": False, "error": "用户名或密码错误"}), 401
+
+    stored_hash = user["password_hash"].encode("utf-8")
+    if not bcrypt.checkpw(password.encode("utf-8"), stored_hash):
+        return jsonify({"ok": False, "error": "用户名或密码错误"}), 401
+
+    user_obj = {
+        "username": username,
+        "display_name": user.get("display_name", username),
+        "partner": user.get("partner", "")
+    }
+    token = make_token(user_obj, remember=remember)
+    return jsonify({
+        "ok": True,
+        "token": token,
+        "user": user_obj,
+        "expires_in": JWT_REMEMBER_HOURS * 3600 if remember else JWT_EXPIRE_HOURS * 3600
+    })
+
+
+@app.route("/v1/api/auth/me", methods=["GET"])
+@auth_required
+def auth_me():
+    """GET /v1/api/auth/me - 获取当前用户信息"""
+    partner_name = request.user.get("partner", "")
+    partner_info = {}
+    if partner_name:
+        users = _load_users()
+        partner = users.get(partner_name, {})
+        partner_info = {
+            "username": partner_name,
+            "display_name": partner.get("display_name", partner_name)
+        }
+    return jsonify({"ok": True, "user": request.user, "partner": partner_info})
+
+
+@app.route("/v1/api/auth/logout", methods=["POST"])
+@auth_required
+def auth_logout():
+    """POST /v1/api/auth/logout - 退出登录"""
+    return jsonify({"ok": True, "message": "已退出"})
+
+
+# ---- 邀请码机制 ----
+
+INVITES_FILE = os.path.join(USER_DATA_DIR, "invites.json")
+
+def _load_invites() -> dict:
+    try:
+        if os.path.isfile(INVITES_FILE) and os.path.getsize(INVITES_FILE) > 0:
+            with open(INVITES_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {"unused": [], "used": []}
+
+def _save_invites(data: dict):
+    os.makedirs(os.path.dirname(INVITES_FILE), exist_ok=True)
+    with open(INVITES_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+@app.route("/v1/api/auth/invites", methods=["GET", "POST"])
+@auth_required
+def auth_invites():
+    """GET/POST /v1/api/auth/invites - 管理邀请码（管理员）"""
+    if request.user.get("username") != "admin":
+        return jsonify({"ok": False, "error": "仅管理员可操作"}), 403
+
+    if request.method == "GET":
+        invites = _load_invites()
+        return jsonify({"ok": True, "unused": invites.get("unused", []), "used": invites.get("used", [])})
+
+    if request.method == "POST":
+        import secrets
+        code = secrets.token_hex(4)
+        invites = _load_invites()
+        invites.setdefault("unused", []).append({
+            "code": code,
+            "generated_by": request.user.get("display_name", ""),
+            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
+        })
+        _save_invites(invites)
+        return jsonify({"ok": True, "invite_code": code, "message": "邀请码已生成"})
 
 logger.info(f"fileserver 启动，白名单目录: {WHITELIST}")
 

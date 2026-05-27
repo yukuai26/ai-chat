@@ -2926,6 +2926,131 @@ def weekly_summary():
     return jsonify(result)
 
 
+# ============================================================
+#  月统计汇总 API (DB21)
+# ============================================================
+
+def _is_in_month(date_str: str, month_key: str) -> bool:
+    """判断日期是否在指定月份内。month_key: YYYY-MM"""
+    try:
+        if len(date_str) >= 7:
+            return date_str[:7] == month_key
+        return False
+    except Exception:
+        return False
+
+
+@app.route("/v1/api/daily/summary/month", methods=["GET"])
+@require_token
+def monthly_summary():
+    """GET /v1/api/daily/summary/month - 本月统计汇总。
+
+    查询参数:
+      - month: 指定月份（YYYY-MM，默认当前月）
+
+    返回:
+      {"ok":true, "month":"2026-05",
+       "exercise": {"days":12, "total_min":480},
+       "todo": {"completion_rate":65.0, "done":18, "total":28, "persons":{...}},
+       "data_trends": {...}}
+    """
+    tz = ZoneInfo("Asia/Shanghai")
+    now = datetime.now(tz)
+    month_key = request.args.get("month", now.strftime("%Y-%m")).strip()
+
+    result = {
+        "ok": True,
+        "month": month_key,
+        "generated_at": now.isoformat(),
+    }
+
+    # ---- 运动统计 ----
+    all_exercise_dates: set[str] = set()
+    all_exercise_min = 0
+    for person in ["管理员", "伴侣"]:
+        person_data = _load_person_data(person)
+        for entry in person_data.get("exercise", []):
+            if _is_in_month(entry.get("date", ""), month_key):
+                all_exercise_dates.add(entry.get("date", ""))
+                if isinstance(entry.get("duration"), str):
+                    nums = re.findall(r"(\d+)", entry["duration"])
+                    if nums:
+                        all_exercise_min += int(nums[0])
+                elif isinstance(entry.get("duration"), (int, float)):
+                    all_exercise_min += int(entry["duration"])
+
+    result["exercise"] = {
+        "days": len(all_exercise_dates),
+        "total_min": all_exercise_min,
+    }
+
+    # ---- Todo 统计 ----
+    todos = _load_todos()
+    month_done = 0
+    month_total = 0
+    persons_stats = {}
+    for person, data in todos.items():
+        p_done = 0
+        p_total = 0
+        for item in data.get("daily", []):
+            if _is_in_month(item.get("date", ""), month_key):
+                p_total += 1
+                if item.get("done"):
+                    p_done += 1
+        # Weekly todos also count for the month they were created
+        for item in data.get("weekly", []):
+            created = item.get("created_at", "")
+            if created and _is_in_month(created, month_key):
+                p_total += 1
+                if item.get("done"):
+                    p_done += 1
+        month_done += p_done
+        month_total += p_total
+        persons_stats[person] = {"done": p_done, "total": p_total}
+    month_rate = round(month_done / month_total * 100, 1) if month_total > 0 else 0
+    result["todo"] = {
+        "completion_rate": month_rate,
+        "done": month_done,
+        "total": month_total,
+        "persons": persons_stats,
+    }
+
+    # ---- 数据趋势 ----
+    data_trends = {}
+    fields_to_trend = ["weight", "water", "sleep", "exercise"]
+    for person in ["管理员", "伴侣"]:
+        person_data = _load_person_data(person)
+        person_trends = {}
+        for field in fields_to_trend:
+            entries = person_data.get(field, [])
+            month_entries = [e for e in entries if _is_in_month(e.get("date", ""), month_key)]
+            month_entries.sort(key=lambda e: e.get("date", ""))
+
+            simplified = []
+            for e in month_entries:
+                entry_summary = {"date": e.get("date", "")}
+                if field == "weight":
+                    entry_summary["value"] = e.get("value")
+                elif field == "water":
+                    entry_summary["cups"] = e.get("cups")
+                elif field == "sleep":
+                    entry_summary["hours"] = e.get("hours")
+                elif field == "exercise":
+                    entry_summary["type"] = e.get("type", "")
+                    entry_summary["duration"] = e.get("duration", "")
+                    entry_summary["calories"] = e.get("calories", 0)
+                simplified.append(entry_summary)
+
+            if simplified:
+                person_trends[field] = simplified
+        if person_trends:
+            data_trends[person] = person_trends
+
+    result["data_trends"] = data_trends
+
+    return jsonify(result)
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

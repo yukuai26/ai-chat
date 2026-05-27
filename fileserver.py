@@ -2851,21 +2851,45 @@ def bookmarks_list():
                 new_id = item["id"] + 1
 
         title = data.get("title", "").strip()
+        description = data.get("description", "").strip()
+        favicon = data.get("favicon", "").strip()
         if not title:
             try:
                 import requests as req_lib
-                r = req_lib.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
-                detail_re = re.search(r"<title[^>]*>([^<]+)</title>", r.text, re.I)
-                title = detail_re.group(1).strip() if detail_re else url
+                from bs4 import BeautifulSoup
+                r = req_lib.get(url, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
+                r.encoding = r.apparent_encoding or "utf-8"
+                soup = BeautifulSoup(r.text, "html.parser")
+                # 标题
+                tag_title = soup.find("title")
+                title = tag_title.get_text(strip=True) if tag_title else url
+                # 摘要
+                if not description:
+                    for meta in soup.find_all("meta"):
+                        if meta.get("name", "").lower() in ("description", "og:description"):
+                            desc = meta.get("content", "").strip()
+                            if desc:
+                                description = desc[:300]
+                                break
+                # favicon
+                if not favicon:
+                    icon_link = soup.find("link", rel=lambda v: v and "icon" in v)
+                    if icon_link and icon_link.get("href"):
+                        fav_url = icon_link["href"]
+                        if fav_url.startswith("//"):
+                            favicon = "https:" + fav_url
+                        elif not fav_url.startswith("http"):
+                            from urllib.parse import urljoin
+                            favicon = urljoin(url, fav_url)
             except Exception:
-                title = url
+                title = title or url
 
         bookmark = {
             "id": new_id,
             "url": url,
             "title": title,
-            "description": data.get("description", ""),
-            "favicon": data.get("favicon", ""),
+            "description": description,
+            "favicon": favicon,
             "tags": data.get("tags", []),
             "created": now_str,
             "read": False,
@@ -2917,6 +2941,58 @@ def bookmarks_item(bookmark_id):
 
         _save_bookmarks(bookmarks)
         return jsonify({"ok": True, "bookmark": found, "message": "已更新"})
+
+
+@app.route("/v1/api/daily/bookmarks/fetch", methods=["POST"])
+@require_token
+def bookmarks_fetch():
+    """POST /v1/api/daily/bookmarks/fetch - 抓取 URL 元数据。
+
+    请求体: {"url": "https://..."}
+    返回: {"ok": true, "data": {"title": "...", "description": "...", "favicon": "..."}}
+    """
+    data = request.get_json(silent=True)
+    if not data or "url" not in data:
+        return error_response("缺少必填字段 url", 400)
+
+    url = data["url"].strip()
+    if not url.startswith("http"):
+        return error_response("URL 必须以 http 开头", 400)
+
+    try:
+        import requests as req_lib
+        from bs4 import BeautifulSoup
+        r = req_lib.get(url, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
+        r.encoding = r.apparent_encoding or "utf-8"
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        title_tag = soup.find("title")
+        title = title_tag.get_text(strip=True) if title_tag else url
+
+        description = ""
+        for meta in soup.find_all("meta"):
+            if meta.get("name", "").lower() in ("description", "og:description"):
+                description = meta.get("content", "").strip()[:300]
+                break
+            if meta.get("property", "").lower() == "og:description":
+                description = meta.get("content", "").strip()[:300]
+                break
+
+        favicon = ""
+        icon_link = soup.find("link", rel=lambda v: v and "icon" in v if v else False)
+        if icon_link and icon_link.get("href"):
+            from urllib.parse import urljoin
+            fav_url = icon_link["href"]
+            if fav_url.startswith("//"):
+                favicon = "https:" + fav_url
+            elif not fav_url.startswith("http"):
+                favicon = urljoin(url, fav_url)
+            else:
+                favicon = fav_url
+
+        return jsonify({"ok": True, "data": {"title": title, "description": description, "favicon": favicon}})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 502
 
 
 def _next_wish_id(wishes: list) -> int:

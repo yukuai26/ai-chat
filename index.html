@@ -817,8 +817,21 @@
     .todo-expanded .todo-stats {
       font-size: 11px;
       color: var(--text-secondary);
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       text-align: center;
+    }
+    .todo-stats-bar {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      margin: 0 0 10px 0;
+      overflow: hidden;
+    }
+    .todo-stats-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--accent);
+      transition: width 0.4s ease;
     }
     .todo-expanded .todo-item {
       display: flex;
@@ -845,6 +858,19 @@
       text-decoration: line-through;
       color: var(--text-secondary);
       opacity: 0.6;
+      transition: all 0.3s ease;
+    }
+    /* DF19: 勾选动画 */
+    .todo-expanded .todo-item {
+      transition: opacity 0.3s ease;
+    }
+    .todo-expanded .todo-item.check-anim {
+      animation: checkPulse 0.5s ease;
+    }
+    @keyframes checkPulse {
+      0% { background: transparent; }
+      50% { background: var(--accent); opacity: 0.3; }
+      100% { background: transparent; opacity: 1; }
     }
     .todo-expanded .todo-item-delete {
       background: none;
@@ -5607,6 +5633,7 @@
       const total = done + pending;
       const pct = total > 0 ? Math.round(done / total * 100) : 0;
       html += '<div class="todo-stats">✅ ' + done + ' / ' + total + ' 已完成 (' + pct + '%)</div>';
+      html += '<div class="todo-stats-bar"><div class="todo-stats-bar-fill" style="width:' + pct + '%"></div></div>';
 
       // Todo 列表
       html += '<div id="todoItemList">';
@@ -5658,7 +5685,7 @@
           const text = escapeHtml(item.text || '');
           const isDone = item.done;
           const id = item.id;
-          return '<div class="todo-item">' +
+          return '<div class="todo-item" data-id="' + id + '">' +
             '<input type="checkbox" class="todo-checkbox"' + (isDone ? ' checked' : '') + ' onchange="toggleTodoDone(' + id + ', this.checked)" title="完成">' +
             '<span class="todo-item-text' + (isDone ? ' done' : '') + '">' + text + '</span>' +
             '<button class="todo-item-delete" onclick="deleteTodoItem(' + id + ')" title="删除">🗑</button>' +
@@ -5695,18 +5722,46 @@
           body: JSON.stringify({ done: checked ? 1 : 0 })
         });
         if (resp.ok) {
-          // 刷新缓存 + 重新渲染
+          // DF19: 即时动画 - 更新被勾选的条目
+          const itemEl = document.querySelector('.todo-item[data-id="' + id + '"]');
+          if (itemEl) {
+            if (checked) {
+              itemEl.classList.add('check-anim');
+              itemEl.querySelector('.todo-item-text').classList.add('done');
+            } else {
+              itemEl.querySelector('.todo-item-text').classList.remove('done');
+            }
+            setTimeout(function() { itemEl.classList.remove('check-anim'); }, 500);
+            updateTodoStats();
+          }
+
+          // 后台刷新缓存
           cachedTodoData = null;
           const todoCard = document.querySelector('[data-card-id="todo"]');
-          if (todoCard) await loadTodoCard(todoCard);
-          const body = todoCard ? todoCard.querySelector('.card-body') : null;
-          if (body && todoCard.classList.contains('expanded')) {
-            renderTodoCardExpanded(body, cachedTodoData);
+          if (todoCard) {
+            await loadTodoCard(todoCard);
+            const body = todoCard ? todoCard.querySelector('.card-body') : null;
+            if (body && todoCard.classList.contains('expanded')) {
+              loadTodoItems(); // 重新加载列表
+            }
           }
         }
       } catch (e) {
         console.error('Toggle todo failed:', e);
       }
+    }
+
+    /** DF19: 即时更新统计栏 */
+    function updateTodoStats() {
+      const items = document.querySelectorAll('#todoItemList .todo-item');
+      if (!items.length) return;
+      const total = items.length;
+      const done = document.querySelectorAll('#todoItemList .todo-item .todo-item-text.done').length;
+      const pct = Math.round(done / total * 100);
+      const stats = document.querySelector('.todo-expanded .todo-stats');
+      const bar = document.querySelector('.todo-stats-bar-fill');
+      if (stats) stats.textContent = '✅ ' + done + ' / ' + total + ' 已完成 (' + pct + '%)';
+      if (bar) bar.style.width = pct + '%';
     }
 
     async function deleteTodoItem(id) {

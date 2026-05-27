@@ -225,24 +225,29 @@
     }
     .message {
       max-width: 80%;
-      padding: 12px 16px;
-      border-radius: 12px;
+      padding: 0 0 4px 0;
+      border-radius: 0;
       line-height: 1.6;
       font-size: 14px;
       white-space: pre-wrap;
       word-break: break-word;
       position: relative;
+      display: flex;
+      flex-direction: column;
     }
     .message.user {
       align-self: flex-end;
-      background: var(--message-user);
-      border-bottom-right-radius: 4px;
+      background: var(--bg-hover);
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      border-bottom-right-radius: 2px;
     }
     .message.assistant {
       align-self: flex-start;
-      background: var(--message-assistant);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 4px;
+      background: none;
+      border: none;
+      padding: 4px 0;
+      border-radius: 0;
     }
     .message .msg-header {
       display: flex;
@@ -252,20 +257,22 @@
     }
     .message.user .msg-header { flex-direction: row-reverse; }
     .message .msg-avatar {
-      width: 24px; height: 24px;
+      width: 20px; height: 20px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 13px;
+      font-size: 11px;
       flex-shrink: 0;
+      background: none;
+      opacity: 0.5;
     }
-    .message.user .msg-avatar { background: #2a3a5c; }
-    .message.assistant .msg-avatar { background: #2a3a5c; }
+    .message.user .msg-avatar { opacity: 0.4; }
+    .message.assistant .msg-avatar { opacity: 0.4; }
     .message .role {
       font-size: 11px;
-      color: var(--text-secondary);
-      font-weight: 600;
+      color: var(--text-tertiary);
+      font-weight: 400;
     }
     .message .msg-time {
       font-size: 10px;
@@ -293,7 +300,7 @@
     }
     .message .content pre code { padding: 0; background: none; }
     .message .content .error-msg {
-      color: #f87171;
+      color: var(--danger);
       font-style: italic;
     }
     /* 附件/文件标签 */
@@ -308,9 +315,9 @@
       align-items: center;
       gap: 4px;
       padding: 3px 8px;
-      border-radius: 6px;
+      border-radius: var(--radius-sm);
       font-size: 11px;
-      background: rgba(255,255,255,0.08);
+      background: var(--bg-hover);
       border: 1px solid var(--border);
       color: var(--text-secondary);
     }

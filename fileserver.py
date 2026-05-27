@@ -1579,6 +1579,94 @@ def put_card_config(card_id):
         return error_response(f"保存失败: {e}", 500)
 
 
+# ============================================================
+#  新闻 API (DB5)
+# ============================================================
+
+NEWS_DIR = os.path.join(USER_DATA_DIR, "news")
+DEFAULT_SOURCES_PATH = os.path.join(NEWS_DIR, "sources.json")
+
+DEFAULT_NEWS_SOURCES = [
+    {"name": "36氪", "url": "https://36kr.com", "type": "rss", "enabled": True, "category": "科技"},
+    {"name": "知乎日报", "url": "https://daily.zhihu.com", "type": "rss", "enabled": True, "category": "综合"},
+    {"name": "财新网", "url": "https://www.caixin.com", "type": "rss", "enabled": True, "category": "财经"},
+    {"name": "豆瓣电影", "url": "https://movie.douban.com", "type": "rss", "enabled": True, "category": "娱乐"},
+]
+
+
+def _load_news_sources() -> list:
+    """读取新闻源配置，不存在时使用默认值。"""
+    try:
+        if os.path.isfile(DEFAULT_SOURCES_PATH) and os.path.getsize(DEFAULT_SOURCES_PATH) > 0:
+            with open(DEFAULT_SOURCES_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"news/sources.json 读取失败: {e}")
+    return DEFAULT_NEWS_SOURCES[:]
+
+
+def _today_news_path(tz: str = "Asia/Shanghai") -> str:
+    """返回今日新闻缓存文件路径。"""
+    today = datetime.now(ZoneInfo(tz)).strftime("%Y-%m-%d")
+    return os.path.join(NEWS_DIR, f"{today}.json")
+
+
+def _load_today_news_cache() -> dict:
+    """读取今日新闻缓存，不存在或损坏时返回空结构。"""
+    path = _today_news_path()
+    try:
+        if os.path.isfile(path) and os.path.getsize(path) > 0:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"新闻缓存读取失败: {e}")
+    return {
+        "date": datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d"),
+        "updated": None,
+        "categories": {},
+        "total": 0,
+    }
+
+
+@app.route("/v1/api/daily/news", methods=["GET"])
+@require_token
+def get_news():
+    """GET /v1/api/daily/news - 读取今日新闻。
+
+    可选查询参数:
+      - category: 按分类过滤（如 ?category=科技）
+      - limit:   最大返回条数（如 ?limit=5）
+
+    返回:
+      { "date": "2026-05-27", "total": 12, "categories": { ... } }
+    """
+    cache = _load_today_news_cache()
+    category_filter = request.args.get("category", "").strip()
+    limit_str = request.args.get("limit", "")
+    limit = int(limit_str) if limit_str.isdigit() else None
+
+    if category_filter and category_filter in cache.get("categories", {}):
+        items = cache["categories"][category_filter][:limit] if limit else cache["categories"][category_filter]
+        return jsonify({
+            "ok": True,
+            "date": cache["date"],
+            "category": category_filter,
+            "items": items,
+            "total": len(items),
+        })
+
+    categories = cache.get("categories", {})
+    total = cache.get("total", sum(len(v) for v in categories.values()))
+
+    return jsonify({
+        "ok": True,
+        "date": cache.get("date"),
+        "updated": cache.get("updated"),
+        "categories": categories,
+        "total": total,
+    })
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

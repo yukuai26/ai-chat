@@ -3571,30 +3571,36 @@
       <button class="settings-drawer-close" onclick="togglePanelRight()" aria-label="关闭">×</button>
     </div>
     <h2>⚙️ 设置</h2>
-    <div>
-      <label>API 地址</label>
-      <input type="text" id="apiUrl" placeholder="https://xxx.trycloudflare.com" value="https://named-travelers-extraction-attractions.trycloudflare.com" />
-    </div>
-    <div>
-      <label>Token</label>
-      <input type="password" id="token" placeholder="输入你的 token" />
-    </div>
-    <div>
-      <label>Agent</label>
-      <select id="agentId">
-        <option value="assistant">assistant</option>
-        <option value="main">main</option>
-        <option value="dev-cat">dev-cat</option>
-        <option value="pm-cat">pm-cat</option>
-        <option value="domain-cat">domain-cat</option>
-      </select>
-    </div>
     <div class="status">
       <span class="status-dot" id="statusDot"></span>
       <span id="statusText">未连接</span>
     </div>
     <button class="btn-connect" id="btnConnect" onclick="connect()">连接</button>
     <div class="hint">
+      💡 首次使用直接登录即可，无需配置。
+    </div>
+    <details style="margin-top:12px;font-size:12px;" id="advSettingsDetails">
+      <summary style="cursor:pointer;color:var(--text-tertiary);">⚙️ 高级设置</summary>
+      <div style="margin-top:8px;">
+        <label>API 地址</label>
+        <input type="text" id="apiUrl" placeholder="https://xxx.trycloudflare.com" value="https://named-travelers-extraction-attractions.trycloudflare.com" />
+      </div>
+      <div>
+        <label>Token</label>
+        <input type="password" id="token" placeholder="输入你的 token" />
+      </div>
+      <div>
+        <label>Agent</label>
+        <select id="agentId">
+          <option value="assistant">assistant</option>
+          <option value="main">main</option>
+          <option value="dev-cat">dev-cat</option>
+          <option value="pm-cat">pm-cat</option>
+          <option value="domain-cat">domain-cat</option>
+        </select>
+      </div>
+    </details>
+    <div class="hint" style="margin-top:8px;">
       💡 Token 保存在你浏览器本地，不会上传。
     </div>
   </div>
@@ -3845,6 +3851,21 @@
     }
 
     window.onload = () => {
+      // BUG12: 初始加载逻辑
+      // 检查是否有已保存的配置
+      const saved = JSON.parse(localStorage.getItem('aichat_config') || '{}');
+      const hasSavedConfig = !!(saved.apiUrl && saved.token);
+
+      // Pre-fill form values from localStorage (or defaults)
+      if (saved.apiUrl) document.getElementById('apiUrl').value = saved.apiUrl;
+      if (saved.token) document.getElementById('token').value = saved.token;
+      if (saved.agentId) document.getElementById('agentId').value = saved.agentId;
+
+      // Always collapse settings panel on initial load (desktop)
+      if (!isMobileView()) {
+        document.getElementById('settingsPanel').classList.add('collapsed');
+      }
+
       // Check JWT
       if (authJwt) {
         // Validate JWT first
@@ -3860,13 +3881,11 @@
           document.getElementById('loginOverlay').style.display = 'flex';
         });
       } else {
+        // BUG12: No JWT → show login overlay
         document.getElementById('loginOverlay').style.display = 'flex';
       }
 
-      const saved = JSON.parse(localStorage.getItem('aichat_config') || '{}');
-      if (saved.apiUrl) document.getElementById('apiUrl').value = saved.apiUrl;
-      if (saved.token) document.getElementById('token').value = saved.token;
-      if (saved.agentId) document.getElementById('agentId').value = saved.agentId;
+
 
       if (!isMobileView()) {
         const panelState = JSON.parse(localStorage.getItem('aichat_panels') || '{}');

@@ -2493,6 +2493,43 @@ def get_today_recipe():
 
 
 
+
+
+@app.route("/v1/api/daily/recipe/week", methods=["GET"])
+@require_token
+def get_week_recipe():
+    """GET /v1/api/daily/recipe/week - 整周食谱。
+
+    返回当前周全部 7 天的食谱数据。
+
+    返回:
+      {"ok":true, "days":
+        {"1": {"dayName":"周一","lunch":"沙拉","dinner":"鱼"}, ...}}
+    """
+    recipe_data = _load_recipe()
+    day_names = ["", "周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    days = {}
+
+    for d in range(1, 8):
+        dk = str(d)
+        raw = recipe_data.get(dk, {})
+        days[dk] = {
+            "dayName": day_names[d],
+            "breakfast": raw.get("breakfast", ""),
+            "lunch": raw.get("lunch", ""),
+            "dinner": raw.get("dinner", ""),
+        }
+
+    filled = sum(1 for v in days.values() if any(x for x in [v["breakfast"], v["lunch"], v["dinner"]] if x))
+
+    return jsonify({
+        "ok": True,
+        "days": days,
+        "filledDays": filled,
+    })
+
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

@@ -5360,6 +5360,8 @@
         if (recipeCard) loadRecipeCard(recipeCard);
         const wishesCard = document.querySelector('[data-card-id="wishes"]');
         if (wishesCard) loadWishesCard(wishesCard);
+        const notesCard = document.querySelector('[data-card-id="notes"]');
+        if (notesCard) loadNotesCard(notesCard);
         const summaryCard = document.querySelector('[data-card-id="summary"]');
         if (summaryCard) loadSummaryCard(summaryCard);
         dashboardLoaded = true;
@@ -5773,13 +5775,13 @@
         journal: '📝 日记随笔',
         finance: '💰 财务记录',
         meal: '🥗 饮食记录',
-        events: '📅 日程备忘',
+        notes: '📝 随手记 · 灵感碎片',
       };
       return summaries[card.id] || '卡片数据加载中...';
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -6989,6 +6991,104 @@
       if (overlay) overlay.remove();
     }
 
+
+    /* ===== N2+ N3: 随手记 Notes Card ===== */
+    let cachedNotesData = null;
+
+    async function loadNotesCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+
+      const token = document.getElementById('token').value;
+      if (!token) {
+        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
+        return;
+      }
+
+      try {
+        if (!cachedNotesData) {
+          const resp = await fetch('/v1/api/daily/notes', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          cachedNotesData = await resp.json();
+        }
+
+        renderNotesCardCollapsed(summary, body, cachedNotesData);
+        // N3: 展开视图预渲染
+        renderNotesCardExpanded(body, cachedNotesData);
+      } catch (e) {
+        console.error('加载随手记失败:', e);
+        body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>';
+      }
+    }
+
+    function renderNotesCardCollapsed(summaryEl, bodyEl, data) {
+      const notes = data && data.notes ? data.notes : [];
+      const total = data && data.total != null ? data.total : notes.length;
+
+      if (!total) {
+        if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">📝 暂无随手记</div></div>';
+        bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
+        return;
+      }
+
+      let html = '<div class="wishes-collapsed">';
+      html += '<div class="wishes-total">📝 共 <strong>' + total + '</strong> 条随手记</div>';
+      html += '<div class="wishes-status-list" style="flex-direction:column;align-items:stretch;">';
+
+      const latest = notes.slice(0, 3);
+      for (const note of latest) {
+        const mood = note.mood || '';
+        const text = note.text || '';
+        const preview = text.length > 50 ? text.slice(0, 50) + '...' : text;
+        const time = (note.created || '').slice(0, 16).replace('T', ' ');
+        html += '<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
+        html += mood + ' ' + escapeHtml(preview) + ' <span style="font-size:10px;color:var(--text-tertiary);">' + time + '</span>';
+        html += '</div>';
+      }
+
+      html += '</div>';
+      html += '<div class="wishes-expand-hint" onclick="toggleCard(\'notes\', event)">展开查看 ▼</div>';
+      html += '</div>';
+
+      if (summaryEl) summaryEl.innerHTML = html;
+    }
+
+    function renderNotesCardExpanded(bodyEl, data) {
+      const notes = data && data.notes ? data.notes : [];
+      const total = data && data.total != null ? data.total : notes.length;
+
+      let html = '<div>' +
+        '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;">已展开 · 共 ' + total + ' 条</div>';
+
+      if (!notes.length) {
+        html += '<div style="text-align:center;color:var(--text-secondary);padding:16px;">📝 暂无随手记</div>';
+      } else {
+        for (const note of notes) {
+          const mood = note.mood || '';
+          const tags = (note.tags || []).map(t => '<span style="color:var(--text-secondary);font-size:10px;background:var(--bg-hover);padding:1px 6px;border-radius:3px;">#' + escapeHtml(t) + '</span>').join(' ');
+          const time = (note.created || '').slice(0, 16).replace('T', ' ');
+          const text = note.text || '';
+
+          html += '<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">';
+          html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">';
+          html += '<span style="font-size:18px;">' + mood + '</span>';
+          html += '<span style="font-size:11px;color:var(--text-tertiary);">' + time + '</span>';
+          html += '</div>';
+          html += '<div style="font-size:13px;color:var(--text-primary);line-height:1.6;">' + escapeHtml(text) + '</div>';
+          if (tags) {
+            html += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">' + tags + '</div>';
+          }
+          html += '</div>';
+        }
+      }
+
+      html += '</div>';
+      bodyEl.innerHTML = html;
+    }
 
     /* ===== DF27: 图表组件 ===== */
     let cachedSummaryData = null;

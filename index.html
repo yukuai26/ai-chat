@@ -691,6 +691,98 @@
     .news-collapsed .news-expand-hint:hover {
       text-decoration: underline;
     }
+    /* DF13: NewsCard 展开模式 */
+    .card-body .news-expanded {
+      padding: 12px 16px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .news-expanded .news-category-group {
+      margin-bottom: 12px;
+    }
+    .news-expanded .news-category-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 4px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .news-expanded .news-article-item {
+      padding: 6px 0;
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
+      transition: background 0.15s;
+    }
+    .news-expanded .news-article-item:hover {
+      color: var(--accent);
+    }
+    .news-expanded .news-article-source {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-left: 4px;
+    }
+    /* DF13: 新闻详情弹窗 */
+    .news-detail-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 600;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.15s ease;
+    }
+    .news-detail-dialog {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 560px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .news-detail-dialog h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+    .news-detail-dialog .news-detail-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .news-detail-dialog .news-detail-summary {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .news-detail-dialog .news-detail-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .news-detail-dialog .btn-close-detail {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 16px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
     /* 拖拽排序 */
     .card-placeholder .drag-handle {
       display: none;
@@ -5072,8 +5164,83 @@
 
       if (summaryEl) summaryEl.innerHTML = collapsedHtml;
 
-      // 展开占位（DF13 实现）
-      bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
+      // 展开模式：按分类分组显示
+      renderNewsCardExpanded(bodyEl, data);
+    }
+
+
+    function renderNewsCardExpanded(bodyEl, data) {
+      if (!data || !data.articles || !data.articles.length) {
+        bodyEl.innerHTML = '<div class="card-body-placeholder">📰 暂无新闻数据</div>';
+        return;
+      }
+
+      const articles = data.articles;
+      // 按 category 分组
+      const groups = {};
+      for (const a of articles) {
+        const cat = a.category || '未分类';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(a);
+      }
+
+      const categories = Object.keys(groups).sort();
+      let html = '<div class="news-expanded">';
+      for (const cat of categories) {
+        html += '<div class="news-category-group">';
+        html += '<div class="news-category-title">📌 ' + escapeHtml(cat) + '（' + groups[cat].length + '）</div>';
+        for (const a of groups[cat]) {
+          const title = escapeHtml(a.title || '(无标题)');
+          const source = a.source ? '<span class="news-article-source">' + escapeHtml(a.source) + '</span>' : '';
+          const dataStr = JSON.stringify(a).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+          html += '<div class="news-article-item" onclick="showNewsDetail(JSON.parse(decodeURIComponent(\'' + encodeURIComponent(JSON.stringify(a)) + '\')))" title="点击查看详情">' + title + source + '</div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+      bodyEl.innerHTML = html;
+    }
+
+    function showNewsDetail(article) {
+      // 移除已有弹窗
+      const existing = document.getElementById('newsDetailOverlay');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.className = 'news-detail-overlay';
+      overlay.id = 'newsDetailOverlay';
+      overlay.onclick = function(e) {
+        if (e.target === overlay) closeNewsDetail();
+      };
+
+      const title = escapeHtml(article.title || '');
+      const summary = escapeHtml(article.summary || article.description || '暂无摘要');
+      const source = escapeHtml(article.source || article.feed_title || '');
+      const link = article.link || '';
+      const category = escapeHtml(article.category || '');
+      const published = escapeHtml(article.published || '');
+
+      overlay.innerHTML =
+        '<div class="news-detail-dialog">' +
+          '<h3>' + title + '</h3>' +
+          '<div class="news-detail-meta">' +
+            (source ? '<span>📰 ' + source + '</span>' : '') +
+            (category ? '<span>📂 ' + category + '</span>' : '') +
+            (published ? '<span>🕐 ' + published + '</span>' : '') +
+          '</div>' +
+          '<div class="news-detail-summary">' + summary + '</div>' +
+          '<div class="news-detail-actions">' +
+            '<button class="btn-close-detail" onclick="closeNewsDetail()">关闭</button>' +
+            (link ? '<a href="' + link + '" target="_blank" class="btn-close-detail" style="text-decoration:none;display:inline-block;">🔗 查看原文</a>' : '') +
+          '</div>' +
+        '</div>';
+
+      document.body.appendChild(overlay);
+    }
+
+    function closeNewsDetail() {
+      const overlay = document.getElementById('newsDetailOverlay');
+      if (overlay) overlay.remove();
     }
 
 

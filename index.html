@@ -2978,6 +2978,40 @@
   </style>
 </head>
 <body>
+  <!-- 登录页覆盖层 (AU11: 登录页) -->
+  <div class="login-overlay" id="loginOverlay" style="display:none;">
+    <div class="login-card">
+      <div class="login-logo">📊 小助手</div>
+      <div class="login-subtitle">登录以访问个人数据</div>
+      <input type="text" id="loginUser" class="login-input" placeholder="用户名" autocomplete="username">
+      <input type="password" id="loginPass" class="login-input" placeholder="密码" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="login-remember">
+        <input type="checkbox" id="loginRemember"><label for="loginRemember" style="font-size:12px;color:var(--text-secondary);cursor:pointer;">记住我（7 天免登录）</label>
+      </div>
+      <button class="login-btn" onclick="doLogin()">登 录</button>
+      <div class="login-error" id="loginError"></div>
+      <div class="login-footer">
+        没有账号？<a href="#" onclick="showRegisterModal(event)" style="color:var(--accent);">注册</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 注册页弹窗 (AU16) -->
+  <div class="login-overlay" id="registerOverlay" style="display:none;">
+    <div class="login-card">
+      <div class="login-logo">✨ 注册</div>
+      <div class="login-subtitle">输入邀请码创建账号</div>
+      <input type="text" id="registerCode" class="login-input" placeholder="邀请码">
+      <input type="text" id="registerUser" class="login-input" placeholder="用户名（字母+数字）" autocomplete="username">
+      <input type="password" id="registerPass" class="login-input" placeholder="密码（至少4位）" autocomplete="new-password">
+      <button class="login-btn" onclick="doRegister()">注 册</button>
+      <div class="login-error" id="registerError"></div>
+      <div class="login-footer">
+        已有账号？<a href="#" onclick="showLoginOnly()" style="color:var(--accent);">返回登录</a>
+      </div>
+    </div>
+  </div>
+
   <!-- 左栏 — 会话列表 -->
   <div class="conv-panel" id="convPanel">
     <div class="conv-drawer-header">
@@ -3001,6 +3035,16 @@
       <h1>AI Chat</h1>
       <span class="model-badge" id="modelBadge">DeepSeek V4 Pro</span>
       <button class="panel-toggle" id="toggleSettingsPanel" onclick="togglePanelRight()" title="切换设置面板">⚙️</button>
+      <div class="user-info" id="userInfo" style="display:none;margin-left:auto;display:none;align-items:center;gap:6px;padding:0 8px;cursor:pointer;" onclick="toggleUserMenu(event)">
+        <span class="user-avatar" id="userAvatar" style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;"></span>
+        <span class="user-name" id="userName" style="font-size:12px;color:var(--text-primary);"></span>
+        <span style="font-size:10px;color:var(--text-tertiary);">▼</span>
+      </div>
+      <div class="user-menu" id="userMenu" style="display:none;position:absolute;top:42px;right:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(0,0,0,0.1);z-index:100;min-width:140px;padding:4px 0;">
+        <div style="padding:8px 14px;font-size:11px;color:var(--text-tertiary);border-bottom:1px solid var(--border);">伴侣: <span id="partnerName">-</span></div>
+        <button onclick="generateInviteCode()" style="display:block;width:100%;text-align:left;padding:8px 14px;border:none;background:none;cursor:pointer;font-size:12px;color:var(--text-primary);">🎫 生成邀请码</button>
+        <button onclick="doLogout()" style="display:block;width:100%;text-align:left;padding:8px 14px;border:none;background:none;cursor:pointer;font-size:12px;color:var(--text-primary);">🚪 退出登录</button>
+      </div>
     </div>
     <div class="tab-bar" id="tabBar">
       <button class="tab-btn active" data-tab="chat" onclick="switchTab('chat')">Chat</button>
@@ -3182,13 +3226,231 @@
     let token = '';
     let agentId = 'assistant';
 
+    // ==================== AU11-AU17: 用户系统 ====================
+    let authJwt = localStorage.getItem('aichat_jwt') || '';
+    let authUser = null;
+
+    function getAuthHeaders() {
+      if (authJwt) return { 'Authorization': 'Bearer ' + authJwt };
+      return {};
+    }
+
+    // AU14: 401 拦截 wrapper
+    async function authFetch(url, opts) {
+      opts = opts || {};
+      opts.headers = Object.assign(opts.headers || {}, getAuthHeaders());
+      const resp = await fetch(url, opts);
+      if (resp.status === 401 && authJwt) {
+        clearAuth();
+        showLoginOnly();
+        throw new Error('登录已过期');
+      }
+      return resp;
+    }
+
+    function clearAuth() {
+      authJwt = '';
+      authUser = null;
+      localStorage.removeItem('aichat_jwt');
+    }
+
+    function saveAuth(jwt, user) {
+      authJwt = jwt;
+      authUser = user;
+      localStorage.setItem('aichat_jwt', jwt);
+    }
+
+    // AU14: Global 401 interceptor for existing fetch-based code
+    const origFetch = window.fetch;
+    window.fetch = function(url, opts) {
+      opts = opts || {};
+      opts.headers = Object.assign(opts.headers || {}, getAuthHeaders());
+      return origFetch(url, opts).then(function(r) {
+        if (r.status === 401 && authJwt) {
+          clearAuth();
+          showLoginOnly();
+        }
+        return r;
+      });
+    };
+
+    // AU11+AU12: 登录
+    async function doLogin() {
+      const user = document.getElementById('loginUser').value.trim();
+      const pass = document.getElementById('loginPass').value;
+      const remember = document.getElementById('loginRemember').checked;
+      const errEl = document.getElementById('loginError');
+      errEl.textContent = '';
+
+      if (!user || !pass) { errEl.textContent = '请输入用户名和密码'; return; }
+
+      try {
+        const resp = await fetch('/v1/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass, remember: remember })
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) {
+          errEl.textContent = data.error || '登录失败';
+          document.getElementById('loginCard').classList.add('login-shake');
+          setTimeout(function(){ document.getElementById('loginCard').classList.remove('login-shake'); }, 300);
+          return;
+        }
+        saveAuth(data.token, data.user);
+        document.getElementById('loginOverlay').style.display = 'none';
+        initAfterLogin();
+      } catch(e) {
+        errEl.textContent = '网络错误，请稍后重试';
+      }
+    }
+
+    // AU16: 注册
+    async function doRegister() {
+      const code = document.getElementById('registerCode').value.trim();
+      const user = document.getElementById('registerUser').value.trim();
+      const pass = document.getElementById('registerPass').value;
+      const errEl = document.getElementById('registerError');
+      errEl.textContent = '';
+
+      if (!code || !user || !pass) { errEl.textContent = '请填写所有字段'; return; }
+      if (pass.length < 4) { errEl.textContent = '密码至少 4 位'; return; }
+      if (!/^[a-zA-Z0-9]+$/.test(user)) { errEl.textContent = '用户名只能包含字母和数字'; return; }
+
+      try {
+        const resp = await fetch('/v1/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass, invite_code: code, display_name: user })
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) {
+          errEl.textContent = data.error || '注册失败';
+          return;
+        }
+        saveAuth(data.token, data.user);
+        document.getElementById('registerOverlay').style.display = 'none';
+        if (data.partner_initial_password) {
+          alert('伴侣账号初始密码: ' + data.partner_initial_password + '\n请告知伴侣尽快修改密码。');
+        }
+        initAfterLogin();
+      } catch(e) {
+        errEl.textContent = '网络错误';
+      }
+    }
+
+    // AU15: 退出登录
+    function doLogout() {
+      clearAuth();
+      document.getElementById('loginOverlay').style.display = 'flex';
+      document.getElementById('userInfo').style.display = 'none';
+      document.getElementById('userMenu').style.display = 'none';
+      // Reset
+      document.getElementById('loginUser').value = '';
+      document.getElementById('loginPass').value = '';
+    }
+
+    function showRegisterModal(e) { e.preventDefault();
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('registerOverlay').style.display = 'flex';
+    }
+    function showLoginOnly() {
+      document.getElementById('registerOverlay').style.display = 'none';
+      document.getElementById('loginOverlay').style.display = 'flex';
+    }
+
+    function toggleUserMenu(e) { e.stopPropagation();
+      const menu = document.getElementById('userMenu');
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
+    document.addEventListener('click', function() {
+      document.getElementById('userMenu').style.display = 'none';
+    });
+
+    async function generateInviteCode() {
+      try {
+        const resp = await authFetch('/v1/api/auth/invites', { method: 'POST' });
+        const data = await resp.json();
+        if (data.ok) {
+          prompt('复制邀请码发给伴侣（一次性使用）：', data.invite_code);
+        } else {
+          alert(data.error || '生成失败');
+        }
+      } catch(e) { alert('网络错误'); }
+    }
+
+    // AU13: 初始化后加载用户信息
+    async function initAfterLogin() {
+      try {
+        const resp = await authFetch('/v1/api/auth/me');
+        const data = await resp.json();
+        if (data.ok) {
+          authUser = data.user;
+          updateUserDisplay();
+        }
+      } catch(e) {}
+      // Check for JWT on load: if valid, skip token config, go straight to connect
+      initExistingApp();
+    }
+
+    function updateUserDisplay() {
+      if (!authUser) return;
+      const disp = authUser.display_name || authUser.username || '';
+      document.getElementById('userAvatar').textContent = disp.charAt(0).toUpperCase();
+      document.getElementById('userName').textContent = disp;
+      document.getElementById('userInfo').style.display = 'flex';
+      // Update partner (from /me endpoint)
+      authFetch('/v1/api/auth/me').then(function(r){ return r.json(); }).then(function(d) {
+        if (d.ok && d.partner) document.getElementById('partnerName').textContent = d.partner.display_name || d.partner.username || '-';
+      }).catch(function(){});
+    }
+
+    function initExistingApp() {
+      // Skip old token connect flow — JWT auth handles it
+      token = authJwt;
+      apiUrl = 'http://localhost:11451';
+      // Auto-connect using saved config
+      const saved = JSON.parse(localStorage.getItem('aichat_config') || '{}');
+      if (saved.agentId) agentId = saved.agentId;
+      // Directly set connected state (JWT already verified)
+      connected = true;
+      setStatus(true, '已连接');
+      document.getElementById('sendBtn').disabled = false;
+      document.getElementById('modelBadge').textContent = 'DeepSeek V4 Pro (' + agentId + ')';
+      // Clear login overlay
+      document.getElementById('loginOverlay').style.display = 'none';
+      // Update user display
+      updateUserDisplay();
+      // Skip old connect API call — just load UI directly
+      loadConversations();
+      const activeTab = document.querySelector('.tab-btn.active');
+      if (activeTab && activeTab.dataset.tab === 'daily') { loadDashboard(); }
+    }
+
     window.onload = () => {
+      // Check JWT
+      if (authJwt) {
+        // Validate JWT first
+        authFetch('/v1/api/auth/me').then(function(r) {
+          if (r.ok) {
+            document.getElementById('loginOverlay').style.display = 'none';
+            initAfterLogin();
+          } else {
+            clearAuth();
+            document.getElementById('loginOverlay').style.display = 'flex';
+          }
+        }).catch(function() {
+          document.getElementById('loginOverlay').style.display = 'flex';
+        });
+      } else {
+        document.getElementById('loginOverlay').style.display = 'flex';
+      }
+
       const saved = JSON.parse(localStorage.getItem('aichat_config') || '{}');
       if (saved.apiUrl) document.getElementById('apiUrl').value = saved.apiUrl;
       if (saved.token) document.getElementById('token').value = saved.token;
       if (saved.agentId) document.getElementById('agentId').value = saved.agentId;
 
-      // 恢复面板折叠状态（仅桌面端）
       if (!isMobileView()) {
         const panelState = JSON.parse(localStorage.getItem('aichat_panels') || '{}');
         if (panelState.convCollapsed) togglePanelLeft(false);

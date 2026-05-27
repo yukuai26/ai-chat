@@ -3075,6 +3075,23 @@ def photos_list():
             filepath = os.path.join(photos_dir, filename)
             f.save(filepath)
 
+            # 生成缩略图（P2: Pillow 200px）
+            thumbnail = ""
+            try:
+                from PIL import Image
+                img = Image.open(filepath)
+                img.thumbnail((200, 200), Image.LANCZOS)
+                thumb_dir = os.path.join(photos_dir, "thumbnails")
+                os.makedirs(thumb_dir, exist_ok=True)
+                thumb_filename = f"thumb_{filename}"
+                thumb_path = os.path.join(thumb_dir, thumb_filename)
+                img.save(thumb_path, quality=85)
+                thumbnail = f"/user-files/photos/thumbnails/{thumb_filename}"
+            except ImportError:
+                logger.warning("Pillow 未安装，跳过缩略图生成")
+            except Exception as e:
+                logger.warning(f"缩略图生成失败: {e}")
+
             rel_path = f"/user-files/photos/{filename}"
             caption = request.form.get("caption", "").strip()
             tags = request.form.get("tags", "").strip()
@@ -3090,6 +3107,7 @@ def photos_list():
             record = {
                 "id": new_id,
                 "image": rel_path,
+                "thumbnail": thumbnail,
                 "caption": caption,
                 "likes": [],
                 "comments": [],
@@ -3116,6 +3134,7 @@ def photos_list():
 
         record = {
             "id": new_id,
+            "thumbnail": data.get("thumbnail", ""),
             "image": data["image"],
             "caption": data.get("caption", "").strip(),
             "likes": [],

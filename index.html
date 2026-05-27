@@ -67,7 +67,7 @@
       flex-direction: column;
       border-right: 1px solid var(--border);
       overflow: hidden;
-      transition: width 0.28s ease, min-width 0.28s ease;
+      transition: width 0.15s ease, min-width 0.15s ease;
     }
     .conv-panel.collapsed {
       width: 0;
@@ -179,7 +179,7 @@
       padding: 4px 8px;
       border-radius: 6px;
       line-height: 1;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
       flex-shrink: 0;
     }
     .panel-toggle:hover {
@@ -436,7 +436,7 @@
       resize: none;
       min-height: 48px;
       max-height: 160px;
-      transition: border-color 0.2s;
+      transition: border-color 0.15s ease;
     }
     .input-area textarea:focus { border-color: var(--accent); }
     .input-area .attach-btn {
@@ -449,7 +449,7 @@
       color: var(--text-secondary);
       font-size: 18px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -471,7 +471,7 @@
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.15s ease;
       align-self: flex-end;
     }
     .input-area button:hover:not(:disabled) { background: var(--accent-hover); }
@@ -628,7 +628,7 @@
     .card-placeholder .card-expand-btn {
       font-size: 18px;
       color: var(--text-secondary);
-      transition: transform 0.25s;
+      transition: transform 0.15s ease;
       flex-shrink: 0;
       margin-left: 4px;
       background: none;
@@ -788,7 +788,7 @@
       height: 100%;
       border-radius: 3px;
       background: var(--accent);
-      transition: width 0.3s ease;
+      transition: width 0.15s ease;
     }
     .todo-collapsed .todo-week-summary {
       margin-top: 8px;
@@ -873,7 +873,7 @@
       height: 100%;
       border-radius: 3px;
       background: var(--accent);
-      transition: width 0.4s ease;
+      transition: width 0.15s ease;
     }
     .todo-expanded .todo-item {
       display: flex;
@@ -900,11 +900,11 @@
       text-decoration: line-through;
       color: var(--text-secondary);
       opacity: 0.6;
-      transition: all 0.3s ease;
+      transition: all 0.15s ease;
     }
     /* DF19: 勾选动画 */
     .todo-expanded .todo-item {
-      transition: opacity 0.3s ease;
+      transition: opacity 0.15s ease;
     }
     .todo-expanded .todo-item.check-anim {
       animation: checkPulse 0.5s ease;
@@ -1760,7 +1760,7 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
+      transition: border-color 0.15s ease, background 0.15s ease;
       min-height: 120px;
       color: var(--text-secondary);
       font-size: 14px;
@@ -1946,7 +1946,7 @@
     }
     .tree-children {
       overflow: hidden;
-      transition: max-height 0.2s ease;
+      transition: max-height 0.15s ease;
     }
     .tree-children.collapsed {
       max-height: 0 !important;
@@ -1961,7 +1961,7 @@
       text-align: center;
       color: var(--text-secondary);
       font-size: 12px;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
       cursor: default;
       user-select: none;
     }
@@ -2063,7 +2063,7 @@
       background: rgba(0,0,0,0.55);
       z-index: 99;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.15s ease;
     }
     .tree-backdrop.show { display: block; opacity: 1; }
     .breadcrumb {
@@ -2338,7 +2338,7 @@
       animation: toastSlideIn 0.3s ease;
       opacity: 1;
       word-break: break-word;
-      transition: opacity 0.25s ease, transform 0.25s ease;
+      transition: opacity 0.15s ease, transform 0.15s ease;
     }
     .toast-item.removing {
       opacity: 0;
@@ -2421,7 +2421,7 @@
         height: 100dvh;
         z-index: 100;
         transform: translateX(-100%);
-        transition: transform 0.28s ease;
+        transition: transform 0.15s ease;
         border-right: 1px solid var(--border);
         box-shadow: 4px 0 24px rgba(0,0,0,0.4);
       }
@@ -2457,7 +2457,7 @@
         height: 100dvh;
         z-index: 100;
         transform: translateX(100%);
-        transition: transform 0.28s ease;
+        transition: transform 0.15s ease;
         border-left: 1px solid var(--border);
         box-shadow: -4px 0 24px rgba(0,0,0,0.4);
         padding: 0;
@@ -2500,7 +2500,7 @@
         background: rgba(0,0,0,0.55);
         z-index: 99;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.15s ease;
       }
       .panel-backdrop.show { display: block; opacity: 1; }
 
@@ -2519,7 +2519,7 @@
         max-width: 300px;
         z-index: 100;
         transform: translateX(-100%);
-        transition: transform 0.28s ease;
+        transition: transform 0.15s ease;
         border-right: 1px solid var(--border);
         box-shadow: 4px 0 24px rgba(0,0,0,0.4);
       }
@@ -2622,7 +2622,7 @@
       align-items: center;
       justify-content: center;
       opacity: 1;
-      transition: opacity 0.2s;
+      transition: opacity 0.15s ease;
     }
     .modal-backdrop.hidden { display: none; opacity: 0; }
     .modal-dialog {
@@ -2675,7 +2675,7 @@
       align-items: center;
       justify-content: center;
       opacity: 1;
-      transition: opacity 0.2s;
+      transition: opacity 0.15s ease;
     }
     .file-picker-backdrop.hidden { display: none; opacity: 0; }
     .file-picker-dialog {
@@ -2726,7 +2726,7 @@
       color: var(--text-primary);
       font-size: 13px;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.15s ease;
       box-sizing: border-box;
     }
     .file-picker-search input:focus {
@@ -2940,7 +2940,7 @@
       min-width: 130px;
       opacity: 0;
       transform: scale(0.92);
-      transition: opacity 0.12s, transform 0.12s;
+      transition: opacity 0.15s ease, transform 0.15s ease;
       pointer-events: none;
     }
     .conv-context-menu.show {
@@ -2954,7 +2954,7 @@
       cursor: pointer;
       border-radius: 6px;
       color: var(--text-primary);
-      transition: background 0.12s;
+      transition: background 0.15s ease;
       display: flex;
       align-items: center;
       gap: 8px;

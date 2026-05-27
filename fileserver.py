@@ -2146,7 +2146,15 @@ def _load_person_data(person: str) -> dict:
     return dict(DEFAULT_PERSON_DATA)
 
 
-@app.route("/v1/api/daily/data/<person>", methods=["GET"])
+def _save_person_data(person: str, data: dict):
+    """保存个人数据文件。"""
+    os.makedirs(PROFILES_DIR, exist_ok=True)
+    path = _profile_path(person)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+@app.route("/v1/api/daily/data/<person>", methods=["GET", "POST"])
 @require_token
 def get_person_data(person):
     """GET /v1/api/daily/data/{person} - 读取个人数据。
@@ -2163,38 +2171,103 @@ def get_person_data(person):
         return error_response(f"未知用户: {person}", 400)
 
     data = _load_person_data(person)
-    fields_str = request.args.get("fields", "").strip()
-    days_str = request.args.get("days", "")
-    date_str = request.args.get("date", "").strip()
-
-    # 选择字段
-    if fields_str:
-        fields = [f.strip() for f in fields_str.split(",") if f.strip()]
-        invalid = set(fields) - set(data.keys())
-        if invalid:
-            return error_response(f"无效字段: {', '.join(invalid)}, 可用: {', '.join(sorted(data.keys()))}", 400)
-        filtered = {k: data.get(k, []) for k in fields}
-    else:
-        filtered = dict(data)
-
-    # 按日期过滤（date 优先于 days）
     tz = ZoneInfo("Asia/Shanghai")
     now = datetime.now(tz)
-    if date_str:
-        for k in filtered:
-            filtered[k] = [r for r in filtered[k] if r.get("date") == date_str]
-    elif days_str and days_str.isdigit():
-        cutoff = (now - timedelta(days=int(days_str))).strftime("%Y-%m-%d")
-        for k in filtered:
-            filtered[k] = [r for r in filtered[k] if r.get("date", "") >= cutoff]
 
-    total_records = sum(len(v) for v in filtered.values())
-    return jsonify({
-        "ok": True,
-        "person": person,
-        "data": filtered,
-        "total": total_records,
-    })
+    # ===== GET =====
+    if request.method == "GET":
+        fields_str = request.args.get("fields", "").strip()
+        days_str = request.args.get("days", "")
+        date_str = request.args.get("date", "").strip()
+
+        # 选择字段
+        if fields_str:
+            fields = [f.strip() for f in fields_str.split(",") if f.strip()]
+            invalid = set(fields) - set(data.keys())
+            if invalid:
+                return error_response(f"无效字段: {', '.join(invalid)}, 可用: {', '.join(sorted(data.keys()))}", 400)
+            filtered = {k: data.get(k, []) for k in fields}
+        else:
+            filtered = dict(data)
+
+        # 按日期过滤（date 优先于 days）
+        if date_str:
+            for k in filtered:
+                filtered[k] = [r for r in filtered[k] if r.get("date") == date_str]
+        elif days_str and days_str.isdigit():
+            cutoff = (now - timedelta(days=int(days_str))).strftime("%Y-%m-%d")
+            for k in filtered:
+                filtered[k] = [r for r in filtered[k] if r.get("date", "") >= cutoff]
+
+        total_records = sum(len(v) for v in filtered.values())
+        return jsonify({
+            "ok": True,
+            "person": person,
+            "data": filtered,
+            "total": total_records,
+        })
+
+    # — POST 处理 —
+    if request.method == "POST":
+        body = request.get_json(silent=True)
+        if not body or "field" not in body:
+            return error_response("缺少必填字段 field", 400)
+        field = body["field"].strip()
+        if field not in data:
+            return error_response(f"无效字段: {field}, 可用: {', '.join(sorted(data.keys()))}", 400)
+
+        # 按字段类型处理 value
+        if field in ("weight",):
+            # 数值类字段: {value: 70.5}
+            value = body.get("value")
+            if value is None and "weight_value" not in body:
+                return error_response(f"{field} 字段需要 value", 400)
+            entry = {
+                "date": body.get("date", now.strftime("%Y-%m-%d")),
+                "value": float(value) if value is not None else float(body.get("weight_value", 0)),
+            }
+        elif field == "water":
+            cups = body.get("cups", body.get("value", 0))
+            entry = {
+                "date": body.get("date", now.strftime("%Y-%m-%d")),
+                "cups": int(cups),
+                "total_ml": int(cups) * 250,
+            }
+        elif field == "sleep":
+            entry = {
+                "date": body.get("date", now.strftime("%Y-%m-%d")),
+                "hours": float(body.get("hours", body.get("value", 0))),
+                "quality": body.get("quality", ""),
+            }
+        elif field == "exercise":
+            entry = {
+                "date": body.get("date", now.strftime("%Y-%m-%d")),
+                "type": body.get("type", "运动"),
+                "duration": int(body.get("duration", 0)),
+                "calories": int(body.get("calories", body.get("value", 0))),
+            }
+        else:
+            # 通用字段: 记录整个 body（排除 field 键）
+            entry = {k: v for k, v in body.items() if k != "field"}
+            entry.setdefault("date", now.strftime("%Y-%m-%d"))
+
+        old = data[field][-1] if data[field] else None
+        data[field].append(entry)
+
+        try:
+            _save_person_data(person, data)
+        except IOError as e:
+            return error_response(f"保存失败: {e}", 500)
+
+        return jsonify({
+            "ok": True,
+            "person": person,
+            "field": field,
+            "entry": entry,
+            "old": old,
+            "total": len(data[field]),
+            "message": f"已记录 {person} {field} 数据",
+        })
 
 
 # ---- 错误处理 ----

@@ -8512,7 +8512,137 @@
       origSwitchTab2(tabName);
       if (tabName === 'daily') { loadDashboard(); }
     };
-n    /* ===== GS4-GS7: 全局搜索 ===== */    let searchDebounce = null;    let searchIndex = -1;    let searchResultItems = [];    function openSearch() {      document.getElementById("searchBackdrop").style.display = "block";      document.getElementById("searchPanel").style.display = "flex";      document.getElementById("searchInput").focus();      searchIndex = -1; searchResultItems = [];      document.getElementById("searchResults").innerHTML = '<div class="search-empty">输入关键字开始搜索...</div>';    }    function closeSearch() {      document.getElementById("searchBackdrop").style.display = "none";      document.getElementById("searchPanel").style.display = "none";      document.getElementById("searchInput").value = "";    }    function onSearchInput() {      clearTimeout(searchDebounce);      searchDebounce = setTimeout(doSearch, 200);    }    async function doSearch() {      const q = document.getElementById("searchInput").value.trim();      const container = document.getElementById("searchResults");      if (!q) { container.innerHTML = '<div class="search-empty">输入关键字开始搜索...</div>'; return; }      container.innerHTML = '<div class="search-loading">搜索中...</div>';      try {        const resp = await authFetch('/v1/api/search?q=' + encodeURIComponent(q) + '&limit=20');        const data = await resp.json();        if (!data.ok) { container.innerHTML = '<div class="search-empty">搜索失败</div>'; return; }        renderSearchResults(data, q);      } catch(e) { container.innerHTML = '<div class="search-empty">搜索失败</div>'; }    }    function highlightText(text, query) {      if (!text || !query) return text;      var idx = text.toLowerCase().indexOf(query.toLowerCase());      if (idx < 0) return text;      var before = text.substring(0, idx);      var match = text.substring(idx, idx + query.length);      var after = text.substring(idx + query.length);      return before + '<span class="search-highlight">' + match + '</span>' + after;    }    function renderSearchResults(data, query) {      const container = document.getElementById("searchResults");      const results = data.results || [];      const total = data.total || 0;      if (!total) {        container.innerHTML = '<div class="search-empty">未找到与「' + query + '」相关的内容</div>';        return;      }      let html = '';      searchResultItems = [];      for (var gi = 0; gi < results.length; gi++) {        var group = results[gi];        html += '<div class="search-group">';        html += '<div class="search-group-label">' + group.icon + ' ' + group.group + ' (' + group.items.length + ')</div>';        for (var ii = 0; ii < group.items.length; ii++) {          var item = group.items[ii];          var index = searchResultItems.length;          searchResultItems.push(item);          html += '<div class="search-item" data-index="' + index + '" onclick="openSearchResult(' + index + ')">';          html += '<span class="search-item-icon">' + group.icon + '</span>';          html += '<div class="search-item-content">';          html += '<div class="search-item-title">' + highlightText(item.title || '', query) + '</div>';          html += '<div class="search-item-subtitle">' + (item.subtitle || '') + '</div>';          html += '</div></div>';        }        html += '</div>';      }      container.innerHTML = html;      container.scrollTop = 0;      searchIndex = -1;    }    function onSearchKeydown(e) {      if (e.key === 'Escape') { closeSearch(); return; }      if (e.key === 'ArrowDown') { e.preventDefault(); moveSearchSelection(1); return; }      if (e.key === 'ArrowUp') { e.preventDefault(); moveSearchSelection(-1); return; }      if (e.key === 'Enter') {        e.preventDefault();        if (searchIndex >= 0 && searchIndex < searchResultItems.length) {          openSearchResult(searchIndex);        }      }    }    function moveSearchSelection(delta) {      var items = document.querySelectorAll('.search-item');      if (!items.length) return;      for (var i = 0; i < items.length; i++) items[i].classList.remove('active');      searchIndex = Math.max(0, Math.min(items.length - 1, searchIndex + delta));      items[searchIndex].classList.add('active');      items[searchIndex].scrollIntoView({ block: 'nearest' });    }    function openSearchResult(index) {      var item = searchResultItems[index];      if (!item) return;      closeSearch();      if (item.action === 'open_card') {        switchTab('daily');        setTimeout(function() {          var card = document.querySelector('[data-card-id="' + item.action_data + '"]');          if (card) {            var expanded = card.querySelector('.card-body[style*="display:block"]');            if (!expanded) toggleCard(item.action_data);            card.scrollIntoView({ behavior: 'smooth' });          }        }, 300);      } else if (item.action === 'open_file') {        var path = item.action_data;        if (path.startsWith('/v1/files/')) path = path.replace('/v1/files/', '/user-files/');        openFile(path);      } else if (item.action === 'open_session') {        loadConversation(item.action_data);      }    }    // Cmd/Ctrl+K 快捷键    document.addEventListener('keydown', function(e) {      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {        e.preventDefault();        openSearch();      }    });
+
+    /* ===== GS4-GS7: 全局搜索 ===== */
+    let searchDebounce = null;
+    let searchIndex = -1;
+    let searchResultItems = [];
+
+    function openSearch() {
+      document.getElementById("searchBackdrop").style.display = "block";
+      document.getElementById("searchPanel").style.display = "flex";
+      document.getElementById("searchInput").focus();
+      searchIndex = -1; searchResultItems = [];
+      document.getElementById("searchResults").innerHTML = '<div class="search-empty">输入关键字开始搜索...</div>';
+    }
+
+    function closeSearch() {
+      document.getElementById("searchBackdrop").style.display = "none";
+      document.getElementById("searchPanel").style.display = "none";
+      document.getElementById("searchInput").value = "";
+    }
+
+    function onSearchInput() {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(doSearch, 200);
+    }
+
+    async function doSearch() {
+      const q = document.getElementById("searchInput").value.trim();
+      const container = document.getElementById("searchResults");
+      if (!q) { container.innerHTML = '<div class="search-empty">输入关键字开始搜索...</div>'; return; }
+      container.innerHTML = '<div class="search-loading">搜索中...</div>';
+      try {
+        const resp = await authFetch('/v1/api/search?q=' + encodeURIComponent(q) + '&limit=20');
+        const data = await resp.json();
+        if (!data.ok) { container.innerHTML = '<div class="search-empty">搜索失败</div>'; return; }
+        renderSearchResults(data, q);
+      } catch(e) { container.innerHTML = '<div class="search-empty">搜索失败</div>'; }
+    }
+
+    function highlightText(text, query) {
+      if (!text || !query) return text;
+      var idx = text.toLowerCase().indexOf(query.toLowerCase());
+      if (idx < 0) return text;
+      var before = text.substring(0, idx);
+      var match = text.substring(idx, idx + query.length);
+      var after = text.substring(idx + query.length);
+      return before + '<span class="search-highlight">' + match + '</span>' + after;
+    }
+
+    function renderSearchResults(data, query) {
+      const container = document.getElementById("searchResults");
+      const results = data.results || [];
+      const total = data.total || 0;
+      if (!total) {
+        container.innerHTML = '<div class="search-empty">未找到与"' + query + '"相关的内容</div>';
+        return;
+      }
+      let html = '';
+      searchResultItems = [];
+      for (var gi = 0; gi < results.length; gi++) {
+        var group = results[gi];
+        html += '<div class="search-group">';
+        html += '<div class="search-group-label">' + group.icon + ' ' + group.group + ' (' + group.items.length + ')</div>';
+        for (var ii = 0; ii < group.items.length; ii++) {
+          var item = group.items[ii];
+          var index = searchResultItems.length;
+          searchResultItems.push(item);
+          html += '<div class="search-item" data-index="' + index + '" onclick="openSearchResult(' + index + ')">';
+          html += '<span class="search-item-icon">' + group.icon + '</span>';
+          html += '<div class="search-item-content">';
+          html += '<div class="search-item-title">' + highlightText(item.title || '', query) + '</div>';
+          html += '<div class="search-item-subtitle">' + (item.subtitle || '') + '</div>';
+          html += '</div></div>';
+        }
+        html += '</div>';
+      }
+      container.innerHTML = html;
+      container.scrollTop = 0;
+      searchIndex = -1;
+    }
+
+    function onSearchKeydown(e) {
+      if (e.key === 'Escape') { closeSearch(); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); moveSearchSelection(1); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); moveSearchSelection(-1); return; }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (searchIndex >= 0 && searchIndex < searchResultItems.length) {
+          openSearchResult(searchIndex);
+        }
+      }
+    }
+
+    function moveSearchSelection(delta) {
+      var items = document.querySelectorAll('.search-item');
+      if (!items.length) return;
+      for (var i = 0; i < items.length; i++) items[i].classList.remove('active');
+      searchIndex = Math.max(0, Math.min(items.length - 1, searchIndex + delta));
+      items[searchIndex].classList.add('active');
+      items[searchIndex].scrollIntoView({ block: 'nearest' });
+    }
+
+    function openSearchResult(index) {
+      var item = searchResultItems[index];
+      if (!item) return;
+      closeSearch();
+      if (item.action === 'open_card') {
+        switchTab('daily');
+        setTimeout(function() {
+          var card = document.querySelector('[data-card-id="' + item.action_data + '"]');
+          if (card) {
+            var expanded = card.querySelector('.card-body[style*="display:block"]');
+            if (!expanded) toggleCard(item.action_data);
+            card.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 300);
+      } else if (item.action === 'open_file') {
+        var path = item.action_data;
+        if (path.startsWith('/v1/files/')) path = path.replace('/v1/files/', '/user-files/');
+        openFile(path);
+      } else if (item.action === 'open_session') {
+        loadConversation(item.action_data);
+      }
+    }
+
+    // Cmd/Ctrl+K 快捷键
+    document.addEventListener('keydown', function(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        openSearch();
+      }
+    });
 
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>

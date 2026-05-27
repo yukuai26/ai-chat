@@ -1105,11 +1105,20 @@ DEFAULT_CARD_REGISTRY = {
             "enabled": True,
             "api": "/v1/api/daily/wishes",
             "expandable": True
+        },
+        {
+            "id": "notes",
+            "name": "📝 随手记",
+            "width": "medium",
+            "enabled": True,
+            "api": "/v1/api/daily/notes",
+            "persons": ["管理员", "伴侣"],
+            "expandable": True
         }
     ],
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes"],
         "gap": 16
     },
     "commandPrefixes": [
@@ -1214,6 +1223,7 @@ KNOWN_PERSONS = ["管理员", "伴侣"]
 TODOS_PATH = os.path.join(USER_DATA_DIR, "todos.json")
 RECIPE_PATH = os.path.join(USER_DATA_DIR, "recipe.json")
 WISHES_PATH = os.path.join(USER_DATA_DIR, "wishes.json")
+NOTES_PATH = os.path.join(USER_DATA_DIR, "notes.json")
 
 
 def _load_todos():
@@ -1423,7 +1433,7 @@ DASHBOARD_CONFIG_PATH = os.path.join(USER_DATA_DIR, "dashboard-config.json")
 DEFAULT_DASHBOARD_CONFIG = {
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes"],
         "gap": 16,
     },
     "disabledCards": [],
@@ -2579,6 +2589,177 @@ def _save_wishes(data: list):
     os.makedirs(os.path.dirname(WISHES_PATH), exist_ok=True)
     with open(WISHES_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+# ---- 随手记 Notes API ----
+
+def _load_notes() -> dict:
+    """读取随手记文件，不存在或错误时返回空字典。"""
+    try:
+        if os.path.isfile(NOTES_PATH) and os.path.getsize(NOTES_PATH) > 0:
+            with open(NOTES_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"notes.json 读取失败: {e}")
+    return {}
+
+
+def _save_notes(data: dict):
+    """写入随手记文件。"""
+    os.makedirs(os.path.dirname(NOTES_PATH), exist_ok=True)
+    with open(NOTES_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+@app.route("/v1/api/daily/notes", methods=["GET", "POST"])
+@require_token
+def notes_list():
+    """GET/POST /v1/api/daily/notes - 随手记列表和创建。
+
+    GET 查询参数:
+      - person: 按人员过滤（管理员/伴侣）
+
+    POST 请求体:
+      {"person":"管理员", "text":"内容", "mood":"💡", "tags":["工作","想法"]}
+
+    返回:
+      GET  → {"ok":true, "notes": [...], "total": N}
+      POST → {"ok":true, "note": {...}, "message": "已保存"}
+    """
+    if request.method == "GET":
+        notes = _load_notes()
+        person = request.args.get("person", "").strip()
+
+        if person:
+            items = notes.get(person, [])
+        else:
+            items = []
+            for person_notes in notes.values():
+                if isinstance(person_notes, list):
+                    items.extend(person_notes)
+            items.sort(key=lambda x: x.get("created", ""), reverse=True)
+
+        # Sort by created desc (newest first)
+        if person:
+            items = sorted(items, key=lambda x: x.get("created", ""), reverse=True)
+
+        return jsonify({"ok": True, "notes": items, "total": len(items)})
+
+    if request.method == "POST":
+        data = request.get_json(silent=True)
+        if not data or "text" not in data:
+            return error_response("缺少必填字段 text", 400)
+        text = data["text"].strip()
+        if len(text) < 1:
+            return error_response("内容不能为空", 400)
+
+        person = data.get("person", "管理员").strip()
+        if person not in KNOWN_PERSONS:
+            return error_response(f"未知用户: {person}", 400)
+
+        notes = _load_notes()
+        notes.setdefault(person, [])
+
+        tz = ZoneInfo("Asia/Shanghai")
+        now_str = datetime.now(tz).isoformat()
+
+        new_id = 1
+        for item in notes[person]:
+            id_num = 0
+            if isinstance(item.get("id"), str) and item["id"].startswith("n"):
+                try:
+                    id_num = int(item["id"][1:])
+                except ValueError:
+                    pass
+            elif isinstance(item.get("id"), int):
+                id_num = item["id"]
+            if id_num >= new_id:
+                new_id = id_num + 1
+
+        note = {
+            "id": f"n{new_id}",
+            "text": text,
+            "images": data.get("images", []),
+            "mood": data.get("mood", ""),
+            "tags": data.get("tags", []),
+            "created": now_str,
+        }
+        notes[person].append(note)
+        _save_notes(notes)
+
+        return jsonify({"ok": True, "note": note, "message": "随手记已保存"})
+
+
+@app.route("/v1/api/daily/notes/<note_id>", methods=["PUT", "DELETE"])
+@require_token
+def notes_item(note_id):
+    """PUT/DELETE /v1/api/daily/notes/{id} - 编辑/删除随手记。
+
+    PUT  请求体: {"text":"新内容", "mood":"😊", "tags":["新标签"]}
+    DELETE 需要 ?person= 参数。
+    """
+    notes = _load_notes()
+
+    # 查找 note
+    found = None
+    found_person = None
+    for person, items in notes.items():
+        for item in items:
+            if str(item.get("id", "")) == str(note_id):
+                found = item
+                found_person = person
+                break
+        if found:
+            break
+
+    if not found:
+        return error_response(f"随手记 {note_id} 不存在", 404)
+
+    if request.method == "DELETE":
+        notes[found_person] = [i for i in notes[found_person] if str(i.get("id", "")) != str(note_id)]
+        _save_notes(notes)
+        return jsonify({"ok": True, "message": f"已删除随手记 {note_id}"})
+
+    if request.method == "PUT":
+        data = request.get_json(silent=True)
+        if not data:
+            return error_response("请求体不能为空", 400)
+
+        if "text" in data:
+            found["text"] = data["text"].strip()
+        if "mood" in data:
+            found["mood"] = data["mood"]
+        if "tags" in data:
+            found["tags"] = data["tags"]
+
+        _save_notes(notes)
+        return jsonify({"ok": True, "note": found, "message": "已更新"})
+
+
+@app.route("/v1/api/daily/notes/search", methods=["GET"])
+@require_token
+def notes_search():
+    """GET /v1/api/daily/notes/search?q=关键词&person=管理员
+    全文搜索随手记内容。
+    """
+    q = request.args.get("q", "").strip()
+    if not q:
+        return error_response("缺少搜索关键词 q", 400)
+
+    person = request.args.get("person", "").strip()
+    notes = _load_notes()
+    results = []
+
+    persons_to_search = [person] if person and person in notes else list(notes.keys())
+    for p in persons_to_search:
+        for item in notes.get(p, []):
+            text = item.get("text", "")
+            tags = " ".join(item.get("tags", []))
+            if q.lower() in text.lower() or q.lower() in tags.lower():
+                results.append(item)
+
+    results.sort(key=lambda x: x.get("created", ""), reverse=True)
+    return jsonify({"ok": True, "results": results, "total": len(results), "query": q})
 
 
 def _next_wish_id(wishes: list) -> int:

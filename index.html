@@ -5364,6 +5364,8 @@
         if (notesCard) loadNotesCard(notesCard);
         const bookmarksCard = document.querySelector('[data-card-id="bookmarks"]');
         if (bookmarksCard) loadBookmarksCard(bookmarksCard);
+        const photosCard = document.querySelector('[data-card-id="photos"]');
+        if (photosCard) loadPhotosCard(photosCard);
         const summaryCard = document.querySelector('[data-card-id="summary"]');
         if (summaryCard) loadSummaryCard(summaryCard);
         dashboardLoaded = true;
@@ -5779,12 +5781,13 @@
         meal: '🥗 饮食记录',
         notes: '📝 随手记 · 灵感碎片',
         bookmarks: '🔗 在线收藏 · 稍后看',
+        photos: '📸 照片墙 · 生活记录',
       };
       return summaries[card.id] || '卡片数据加载中...';
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -6997,6 +7000,171 @@
 
     /* ===== N2+ N3: 随手记 Notes Card ===== */
     let cachedNotesData = null;
+
+    /* ===== P3+ P4+ P5: 照片墙 Photos Card ===== */
+    let cachedPhotosData = null;
+    let photosTab = 'all';
+    let photosNestedCardId = null;
+
+    async function loadPhotosCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+      const token = document.getElementById('token').value;
+      if (!token) { if (summary) summary.textContent = '⚠️ 请先连接 API Token'; return; }
+      try {
+        if (!cachedPhotosData) {
+          const resp = await fetch('/v1/api/daily/photos', { headers: { 'Authorization': 'Bearer ' + token }});
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          cachedPhotosData = await resp.json();
+        }
+        renderPhotosCardCollapsed(summary, body, cachedPhotosData);
+        renderPhotosCardExpanded(body, cachedPhotosData);
+      } catch (e) { body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>'; }
+    }
+
+    function renderPhotosCardCollapsed(summaryEl, bodyEl, data) {
+      const photos = data && data.photos ? data.photos : [];
+      const total = data && data.total != null ? data.total : photos.length;
+      if (!total) {
+        if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">📸 暂无照片</div></div>';
+        return;
+      }
+      let html = '<div class="wishes-collapsed">';
+      html += '<div class="wishes-total">📸 <strong>' + total + '</strong> 张照片</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px;">';
+      const latest = photos.slice(0, 4);
+      for (const p of latest) {
+        const src = p.thumbnail || p.image || '';
+        if (src) html += '<img src="' + src + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;cursor:pointer;" onerror="this.style.display=\'none\'" onclick="event.stopPropagation();toggleCard(\'photos\',event)">';
+      }
+      html += '</div>';
+      html += '<div class="wishes-expand-hint" onclick="toggleCard(\'photos\', event)">展开查看 ▼</div></div>';
+      if (summaryEl) summaryEl.innerHTML = html;
+    }
+
+    function renderPhotosCardExpanded(bodyEl, data) {
+      const photos = data && data.photos ? data.photos : [];
+      const total = photos.length;
+      let html = '<div>';
+      // Tab bar
+      html += '<div style="display:flex;gap:4px;margin-bottom:12px;">';
+      html += '<span onclick="switchPhotosTab(\'all\')" style="font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;' + (photosTab==='all'?'background:var(--accent);color:#fff;':'border:1px solid var(--border);color:var(--text-secondary);') + '">全部 ' + total + '</span>';
+      html += '<span onclick="switchPhotosTab(\'管理员\')" style="font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;' + (photosTab==='管理员'?'background:var(--accent);color:#fff;':'border:1px solid var(--border);color:var(--text-secondary);') + '">管理员</span>';
+      html += '<span onclick="switchPhotosTab(\'伴侣\')" style="font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;' + (photosTab==='伴侣'?'background:var(--accent);color:#fff;':'border:1px solid var(--border);color:var(--text-secondary);') + '">伴侣</span>';
+      html += '</div>';
+      // Upload button
+      html += '<div style="margin-bottom:8px;"><input type="file" id="photosFileInput" accept="image/*" onchange="uploadPhoto()" style="font-size:11px;"></div>';
+      // Masonry grid
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;">';
+      const filtered = photosTab === 'all' ? photos : [];
+      // Re-fetch filtered
+      let displayPhotos = photos;
+      for (const p of displayPhotos) {
+        const src = p.thumbnail || p.image || '';
+        if (!src) continue;
+        html += '<div style="position:relative;cursor:pointer;" onclick="viewPhotoDetail(' + p.id + ')">';
+        html += '<img src="' + src + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border);" onerror="this.style.display=\'none\'">';
+        const likes = p.likes || [];
+        const comments = p.comments || [];
+        if (likes.length || comments.length) {
+          html += '<div style="position:absolute;bottom:4px;right:4px;font-size:10px;background:rgba(0,0,0,0.5);color:#fff;padding:1px 6px;border-radius:8px;">❤️' + likes.length + ' 💬' + comments.length + '</div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+      // Like/comment section
+      html += '<div id="photoDetailPanel" style="margin-top:12px;display:none;padding:12px;background:var(--bg-hover);border-radius:var(--radius-sm);"></div>';
+      html += '</div>';
+      bodyEl.innerHTML = html;
+    }
+
+    async function switchPhotosTab(tab) {
+      photosTab = tab;
+      const token = document.getElementById('token').value;
+      if (!token) return;
+      try {
+        const url = tab === 'all' ? '/v1/api/daily/photos' : '/v1/api/daily/photos?tab=' + encodeURIComponent(tab);
+        const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token }});
+        if (resp.ok) {
+          cachedPhotosData = await resp.json();
+          const card = document.querySelector('[data-card-id="photos"]');
+          if (card) {
+            const body = card.querySelector('.card-body');
+            if (body) renderPhotosCardExpanded(body, cachedPhotosData);
+          }
+        }
+      } catch(e) {}
+    }
+
+    async function uploadPhoto() {
+      const input = document.getElementById('photosFileInput');
+      if (!input || !input.files.length) return;
+      const token = document.getElementById('token').value;
+      const form = new FormData();
+      form.append('file', input.files[0]);
+      const resp = await fetch('/v1/api/daily/photos', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: form });
+      if (resp.ok) {
+        cachedPhotosData = null;
+        switchPhotosTab(photosTab);
+      } else { alert('上传失败'); }
+    }
+
+    async function viewPhotoDetail(id) {
+      const panel = document.getElementById('photoDetailPanel');
+      if (!panel) return;
+      const photos = cachedPhotosData && cachedPhotosData.photos ? cachedPhotosData.photos : [];
+      const photo = photos.find(function(p) { return p.id === id; });
+      if (!photo) return;
+      const likes = photo.likes || [];
+      const comments = photo.comments || [];
+      let html = '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">';
+      html += '<button onclick="togglePhotoLike(' + id + ')" style="padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;cursor:pointer;font-size:12px;">❤️ ' + (likes.length || '') + '</button>';
+      html += '<span style="font-size:11px;color:var(--text-tertiary);">' + (likes.length ? likes.join('、') + ' 觉得好看' : '') + '</span>';
+      html += '</div>';
+      if (photo.caption) html += '<div style="font-size:13px;color:var(--text-primary);margin-bottom:8px;">' + escapeHtml(photo.caption) + '</div>';
+      // Comments
+      html += '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;">💬 评论</div>';
+      for (const c of comments) {
+        html += '<div style="margin-bottom:4px;font-size:12px;"><strong>' + escapeHtml(c.author) + '</strong> <span style="color:var(--text-secondary);">' + escapeHtml(c.text) + '</span> <span style="color:var(--text-tertiary);font-size:10px;">' + (c.time||'').slice(0,16) + '</span></div>';
+      }
+      html += '<div style="display:flex;gap:6px;margin-top:6px;">';
+      html += '<input type="text" id="photoCommentInput" placeholder="写评论..." style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);">';
+      html += '<button onclick="addPhotoComment(' + id + ')" style="padding:4px 10px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">发送</button>';
+      html += '</div>';
+      panel.style.display = 'block';
+      panel.innerHTML = html;
+    }
+
+    async function togglePhotoLike(id) {
+      const token = document.getElementById('token').value;
+      if (!token) return;
+      const resp = await fetch('/v1/api/daily/photos/' + id + '/like', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person: '管理员' })
+      });
+      if (resp.ok) {
+        cachedPhotosData = null;
+        switchPhotosTab(photosTab);
+        setTimeout(function() { viewPhotoDetail(id); }, 200);
+      }
+    }
+
+    async function addPhotoComment(id) {
+      const input = document.getElementById('photoCommentInput');
+      if (!input || !input.value.trim()) return;
+      const token = document.getElementById('token').value;
+      const resp = await fetch('/v1/api/daily/photos/' + id + '/comment', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author: '管理员', text: input.value.trim() })
+      });
+      if (resp.ok) {
+        cachedPhotosData = null;
+        switchPhotosTab(photosTab);
+        setTimeout(function() { viewPhotoDetail(id); }, 200);
+      }
+    }
 
     /* ===== B3+ B4: 收藏夹 Bookmarks Card ===== */
     let cachedBookmarksData = null;

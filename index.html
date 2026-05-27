@@ -3353,6 +3353,61 @@
     /* UF9: user-files 高亮 */
     .file-tree-item.primary { font-weight: 600; }
 
+  
+    /* ===== BUG14: 登录页样式 ===== */
+    .login-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+    }
+    .login-card {
+      background: var(--bg-card, #fff); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      padding: 36px 32px; width: 380px; max-width: 92vw;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .login-logo {
+      font-size: 24px; font-weight: 700; text-align: center;
+      color: var(--accent, #6366f1); padding-bottom: 4px;
+    }
+    .login-subtitle {
+      font-size: 13px; text-align: center; color: var(--text-tertiary, #999);
+      margin-bottom: 8px;
+    }
+    .login-input {
+      width: 100%; padding: 10px 14px; font-size: 14px;
+      border: 1px solid var(--border, #e0e0e0); border-radius: 8px;
+      background: var(--bg-page, #f8f9fa); color: var(--text-primary, #333);
+      outline: none; box-sizing: border-box; transition: border-color 0.2s;
+    }
+    .login-input:focus {
+      border-color: var(--accent, #6366f1);
+      background: var(--bg-card, #fff);
+    }
+    .login-remember {
+      display: flex; align-items: center; gap: 6px; font-size: 12px;
+    }
+    .login-btn {
+      width: 100%; padding: 11px; font-size: 15px; font-weight: 600;
+      background: var(--accent, #6366f1); color: #fff; border: none;
+      border-radius: 8px; cursor: pointer; transition: background 0.2s, transform 0.1s;
+    }
+    .login-btn:hover { background: var(--accent-hover, #4f46e5); }
+    .login-btn:active { transform: scale(0.98); }
+    .login-error {
+      font-size: 12px; color: #e74c3c; text-align: center; min-height: 18px;
+    }
+    .login-footer {
+      text-align: center; font-size: 12px; color: var(--text-tertiary, #999);
+    }
+    .login-footer a { color: var(--accent, #6366f1); text-decoration: none; }
+    .login-footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 767px) {
+      .login-card { width: 92vw; padding: 28px 20px; }
+      .login-logo { font-size: 20px; }
+    }
+
   </style>
 </head>
 <body>

@@ -444,36 +444,71 @@
       padding: 24px;
       background: var(--bg);
     }
-    .dashboard-empty {
+    /* ==================== 卡片网格 ==================== */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .dashboard-grid .card-placeholder {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
+      gap: 8px;
+      cursor: pointer;
+      transition: box-shadow 0.2s, transform 0.15s;
+      min-height: 120px;
+    }
+    .dashboard-grid .card-placeholder:hover {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      transform: translateY(-1px);
+    }
+    .dashboard-grid .card-placeholder.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .card-placeholder .card-header {
+      display: flex;
       align-items: center;
-      justify-content: center;
-      min-height: 300px;
-      text-align: center;
-      color: var(--text-secondary);
+      justify-content: space-between;
     }
-    .dashboard-empty .empty-icon {
-      font-size: 64px;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-    .dashboard-empty h3 {
-      font-size: 20px;
+    .card-placeholder .card-name {
+      font-size: 16px;
       font-weight: 600;
       color: var(--text);
-      margin: 0 0 8px;
     }
-    .dashboard-empty p {
-      font-size: 14px;
-      margin: 0;
-      line-height: 1.6;
-    }
-    .dashboard-empty .hint-text {
-      font-size: 12px;
+    .card-placeholder .card-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 8px;
+      background: var(--border);
       color: var(--text-secondary);
-      opacity: 0.6;
-      margin-top: 12px;
+    }
+    .card-placeholder .card-summary {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    /* 响应式 */
+    @media (max-width: 1024px) {
+      .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      #tab-daily { padding: 16px; }
+    }
+    .dashboard-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+      color: var(--text-secondary);
+      font-size: 14px;
     }
     .file-browser {
       display: flex;
@@ -1652,13 +1687,8 @@
       </div>
     </div>
     <div class="tab-content" id="tab-daily">
-      <div class="dashboard-container" id="dashboardContainer">
-        <div class="dashboard-empty">
-          <div class="empty-icon">📊</div>
-          <h3>每日 Dashboard</h3>
-          <p>卡片注册表已准备就绪，等待前端组件接入。</p>
-          <p class="hint-text">后续 Issue (DF2-DF7) 将实现卡片网格和指令中枢。</p>
-        </div>
+      <div class="dashboard-grid" id="dashboardGrid">
+        <div class="dashboard-loading">加载中...</div>
       </div>
     </div>
   </div>
@@ -3856,6 +3886,114 @@
       }
       wasMobile = nowMobile;
     });
+
+    /* ==================== 每日 Dashboard 卡片网格 (DF2) ==================== */
+
+    let dashboardLoaded = false;
+    let dashboardCards = [];
+
+    /** 从 API 加载卡片配置并渲染网格 */
+    async function loadDashboard() {
+      const grid = document.getElementById('dashboardGrid');
+      const token = document.getElementById('token').value;
+      if (!token) {
+        grid.innerHTML = '<div class="dashboard-loading">⚠️ 请先连接 API Token</div>';
+        return;
+      }
+
+      try {
+        const resp = await fetch('/v1/api/daily/config', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) {
+          throw new Error('HTTP ' + resp.status);
+        }
+        const data = await resp.json();
+        dashboardCards = data.cards || [];
+        renderDashboardGrid();
+        dashboardLoaded = true;
+      } catch (e) {
+        console.error('加载 Dashboard 失败:', e);
+        grid.innerHTML = '<div class="dashboard-loading">⚠️ 加载失败，请检查 Token</div>';
+      }
+    }
+
+    /** 渲染卡片网格 */
+    function renderDashboardGrid() {
+      const grid = document.getElementById('dashboardGrid');
+      if (!dashboardCards.length) {
+        grid.innerHTML = '<div class="dashboard-loading">暂无卡片，请先添加卡片</div>';
+        return;
+      }
+
+      const config = JSON.parse(localStorage.getItem('aichat_dashboard_config') || '{}');
+      const disabledCards = config.disabledCards || [];
+      const layout = config.layout || {};
+      const order = layout.order || dashboardCards.map(c => c.id);
+
+      // 按 order 排序
+      const ordered = order
+        .map(id => dashboardCards.find(c => c.id === id))
+        .filter(Boolean);
+      // 追加 order 中不存在的卡片
+      for (const card of dashboardCards) {
+        if (!ordered.find(c => c.id === card.id)) {
+          ordered.push(card);
+        }
+      }
+
+      let html = '';
+      for (const card of ordered) {
+        const isDisabled = disabledCards.includes(card.id) || !card.enabled;
+        const cls = isDisabled ? 'card-placeholder disabled' : 'card-placeholder';
+        const summary = getCardSummary(card);
+        html += '<div class="' + cls + '" data-card-id="' + card.id + '" onclick="onCardClick(\'' + card.id + '\')">' +
+          '<div class="card-header">' +
+            '<span class="card-name">' + card.name + '</span>' +
+            (isDisabled ? '<span class="card-badge">已禁用</span>' : '<span class="card-badge">待实现</span>') +
+          '</div>' +
+          '<div class="card-summary">' + summary + '</div>' +
+        '</div>';
+      }
+      grid.innerHTML = html;
+    }
+
+    /** 获取卡片摘要信息 */
+    function getCardSummary(card) {
+      const summaries = {
+        news: '📰 最新资讯汇总',
+        todo: '📋 待办事项清单',
+        data: '📊 个人数据追踪',
+        recipe: '🍽️ 今日食谱',
+        wishes: '💡 心愿池',
+        weather: '🌤️ 天气信息',
+        fitness: '🏃 运动健身',
+        journal: '📝 日记随笔',
+        finance: '💰 财务记录',
+        meal: '🥗 饮食记录',
+        events: '📅 日程备忘',
+      };
+      return summaries[card.id] || '卡片数据加载中...';
+    }
+
+    /** 卡片点击事件 */
+    function onCardClick(cardId) {
+      const card = dashboardCards.find(c => c.id === cardId);
+      if (!card) return;
+      // 禁用卡片不做响应
+      const config = JSON.parse(localStorage.getItem('aichat_dashboard_config') || '{}');
+      if ((config.disabledCards || []).includes(cardId)) return;
+      if (!card.enabled) return;
+      // 缩略/展开切换将在 DF3/DF4 实现
+      console.log('卡片点击:', cardId, card.name);
+    }
+
+    // Hook into switchTab to load dashboard when tab is opened
+    const origSwitchTab2 = switchTab;
+    switchTab = function(tabName) {
+      origSwitchTab2(tabName);
+      if (tabName === 'daily') { loadDashboard(); }
+    };
 
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>

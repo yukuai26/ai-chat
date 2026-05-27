@@ -704,6 +704,22 @@
       margin-right: 4px;
       white-space: nowrap;
     }
+    .dashboard-command-bar .cmd-attach-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 16px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: background 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .dashboard-command-bar .cmd-attach-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
     /* 命令响应 toast */
     .dashboard-toast {
       position: fixed;
@@ -2050,6 +2066,7 @@
       </div>
       <div class="dashboard-command-bar">
         <span class="cmd-hint" id="cmdHint">@todo @done @data ...</span>
+        <button class="cmd-attach-btn" id="cmdAttachBtn" title="选择文件" onclick="openDashboardFilePicker()">📎</button>
         <input type="text" class="cmd-input" id="cmdInput"
           placeholder="输入指令，如 @todo 管理员 买牛奶"
           onkeydown="if(event.key==='Enter') sendCommand()" />
@@ -2555,6 +2572,13 @@
     let selectedFiles = [];
     /** 文件选择器中加载的完整文件列表（用于搜索过滤） */
     let filePickerAllFiles = [];
+    let filePickerSource = 'chat'; // 'chat' or 'dashboard'
+
+    /** 从 Dashboard 命令栏打开文件选择器 */
+    function openDashboardFilePicker() {
+      filePickerSource = 'dashboard';
+      toggleFilePicker();
+    }
 
     function toggleFilePicker() {
       const picker = document.getElementById('filePicker');
@@ -2565,12 +2589,14 @@
         loadFilePickerFiles();
       } else {
         picker.classList.add('hidden');
+        filePickerSource = 'chat';
       }
     }
 
     function closeFilePicker() {
       const picker = document.getElementById('filePicker');
       if (picker) picker.classList.add('hidden');
+      filePickerSource = 'chat';
       // 关闭时清空搜索框
       const searchInput = document.getElementById('filePickerSearch');
       if (searchInput) searchInput.value = '';
@@ -2669,6 +2695,21 @@
     function confirmFileSelection() {
       updateFilePickerSelections();
       closeFilePicker();
+
+      if (filePickerSource === 'dashboard') {
+        // Dashboard: 插入文件路径到命令输入框
+        const cmdInput = document.getElementById('cmdInput');
+        if (cmdInput && selectedFiles.length > 0) {
+          const paths = selectedFiles.map(f => f.path).join(' ');
+          const current = cmdInput.value.trim();
+          cmdInput.value = current ? current + ' ' + paths : paths;
+          cmdInput.focus();
+        }
+        filePickerSource = 'chat'; // 重置
+        return;
+      }
+
+      // Chat: 渲染文件标签
       renderSelectedFileTags();
       if (selectedFiles.length > 0) {
         showToast('已选择 ' + selectedFiles.length + ' 个文件', 'success', 2500);

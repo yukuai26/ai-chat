@@ -5370,6 +5370,8 @@
         if (sharesCard) loadSharesCard(sharesCard);
         const remindersCard = document.querySelector('[data-card-id="reminders"]');
         if (remindersCard) loadRemindersCard(remindersCard);
+        const habitsCard = document.querySelector('[data-card-id="habits"]');
+        if (habitsCard) loadHabitsCard(habitsCard);
         const summaryCard = document.querySelector('[data-card-id="summary"]');
         if (summaryCard) loadSummaryCard(summaryCard);
         dashboardLoaded = true;
@@ -5788,12 +5790,13 @@
         photos: '📸 照片墙 · 生活记录',
         shares: '💬 分享板 · 心情记录',
         reminders: '⏰ 提醒 · 定时备忘',
+        habits: '✅ 习惯打卡 · 每日坚持',
       };
       return summaries[card.id] || '卡片数据加载中...';
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos", "shares", "reminders"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos", "shares", "reminders", "habits"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -7006,6 +7009,104 @@
 
     /* ===== N2+ N3: 随手记 Notes Card ===== */
     let cachedNotesData = null;
+
+    /* ===== H1-H4: 习惯打卡 Habits Card ===== */
+    let cachedHabitsData = null;
+
+    async function loadHabitsCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+      const token = document.getElementById('token').value;
+      if (!token) { if (summary) summary.textContent = '⚠️ 请先连接 API Token'; return; }
+      try {
+        if (!cachedHabitsData) {
+          const resp = await fetch('/v1/api/daily/habits', { headers: { 'Authorization': 'Bearer ' + token }});
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          cachedHabitsData = await resp.json();
+        }
+        renderHabitsCardCollapsed(summary, body, cachedHabitsData);
+        renderHabitsCardExpanded(body, cachedHabitsData);
+      } catch(e) { body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>'; }
+    }
+
+    function renderHabitsCardCollapsed(summaryEl, bodyEl, data) {
+      const habits = data && data.habits ? data.habits : [];
+      const total = data && data.total != null ? data.total : habits.length;
+      const done = habits.filter(function(h){return h.doneToday;}).length;
+      if (!total) { if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">✅ 暂无习惯</div></div>'; return; }
+      let html = '<div class="wishes-collapsed">';
+      const pct = Math.round(done / total * 100);
+      html += '<div class="wishes-total">✅ <strong>' + done + '/' + total + '</strong> 已完成 · ' + pct + '%</div>';
+      html += '<div class="wishes-status-list" style="flex-direction:column;align-items:stretch;">';
+      for (const h of habits.slice(0, 3)) {
+        const icon = h.doneToday ? '✅' : '⬜';
+        const streak = h.streak > 0 ? ' 🔥' + h.streak : '';
+        html += '<div style="font-size:12px;color:' + (h.doneToday ? 'var(--text-tertiary)' : 'var(--text-primary)') + ';padding:2px 0;">' + icon + ' ' + escapeHtml(h.text||'') + streak + '</div>';
+      }
+      html += '</div><div class="wishes-expand-hint" onclick="toggleCard(\'habits\',event)">展开查看 ▼</div></div>';
+      if (summaryEl) summaryEl.innerHTML = html;
+    }
+
+    function renderHabitsCardExpanded(bodyEl, data) {
+      const habits = data && data.habits ? data.habits : [];
+      let html = '<div>';
+      // New habit input
+      html += '<div style="display:flex;gap:4px;margin-bottom:10px;">';
+      html += '<input type="text" id="habitTextInput" placeholder="新习惯..." style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);">';
+      html += '<button onclick="addHabit()" style="padding:6px 10px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">+</button>';
+      html += '</div>';
+
+      if (!habits.length) {
+        html += '<div style="text-align:center;color:var(--text-secondary);padding:12px;">添加习惯开始打卡吧！</div>';
+      } else {
+        for (const h of habits) {
+          const streak = h.streak || 0;
+          html += '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center;">';
+          html += '<span onclick="toggleHabit(' + h.id + ')" style="cursor:pointer;font-size:18px;flex-shrink:0;">' + (h.doneToday ? '✅' : '⬜') + '</span>';
+          html += '<div style="flex:1;min-width:0;font-size:13px;color:' + (h.doneToday ? 'var(--text-tertiary)' : 'var(--text-primary)') + ';">' + escapeHtml(h.text||'') + '</div>';
+          html += '<span style="font-size:11px;color:var(--accent);flex-shrink:0;">' + (streak > 0 ? '🔥' + streak + '天' : '') + '</span>';
+          html += '<span onclick="deleteHabit(' + h.id + ')" style="font-size:11px;color:var(--text-tertiary);cursor:pointer;">✕</span>';
+          html += '</div>';
+        }
+      }
+      html += '</div>';
+      bodyEl.innerHTML = html;
+    }
+
+    async function toggleHabit(id) {
+      const token = document.getElementById('token').value;
+      const resp = await fetch('/v1/api/daily/habits/' + id + '/toggle', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (resp.ok) {
+        cachedHabitsData = null;
+        const c = document.querySelector('[data-card-id="habits"]');
+        if (c) loadHabitsCard(c);
+      }
+    }
+
+    async function addHabit() {
+      const text = document.getElementById('habitTextInput').value.trim();
+      if (!text) return;
+      const token = document.getElementById('token').value;
+      const resp = await fetch('/v1/api/daily/habits', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text })
+      });
+      if (resp.ok) { cachedHabitsData = null; const c = document.querySelector('[data-card-id="habits"]'); if(c) loadHabitsCard(c); }
+      else { alert('创建失败'); }
+    }
+
+    async function deleteHabit(id) {
+      if (!confirm('删除这个习惯？')) return;
+      const token = document.getElementById('token').value;
+      await fetch('/v1/api/daily/habits/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }});
+      cachedHabitsData = null;
+      const c = document.querySelector('[data-card-id="habits"]');
+      if (c) loadHabitsCard(c);
+    }
 
     /* ===== R1-R6: 提醒 Reminders Card ===== */
     let cachedRemindersData = null;

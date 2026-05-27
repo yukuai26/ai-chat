@@ -1150,11 +1150,20 @@ DEFAULT_CARD_REGISTRY = {
             "api": "/v1/api/daily/reminders",
             "persons": ["管理员", "伴侣"],
             "expandable": True
+        },
+        {
+            "id": "habits",
+            "name": "✅ 习惯打卡",
+            "width": "medium",
+            "enabled": True,
+            "api": "/v1/api/daily/habits",
+            "persons": ["管理员", "伴侣"],
+            "expandable": True
         }
     ],
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares", "reminders"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares", "reminders", "habits"],
         "gap": 16
     },
     "commandPrefixes": [
@@ -1264,6 +1273,7 @@ BOOKMARKS_PATH = os.path.join(USER_DATA_DIR, "bookmarks.json")
 PHOTOS_PATH = os.path.join(USER_DATA_DIR, "photos.json")
 SHARES_PATH = os.path.join(USER_DATA_DIR, "shares.json")
 REMINDERS_PATH = os.path.join(USER_DATA_DIR, "reminders.json")
+HABITS_PATH = os.path.join(USER_DATA_DIR, "habits.json")
 
 
 def _load_todos():
@@ -1473,7 +1483,7 @@ DASHBOARD_CONFIG_PATH = os.path.join(USER_DATA_DIR, "dashboard-config.json")
 DEFAULT_DASHBOARD_CONFIG = {
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares", "reminders"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares", "reminders", "habits"],
         "gap": 16,
     },
     "disabledCards": [],
@@ -3490,6 +3500,124 @@ def reminders_due():
             if matched:
                 due.append({"person": person, "reminder": item})
     return jsonify({"ok": True, "due": due, "checked_at": now.isoformat()})
+
+
+# ---- 习惯打卡 Habits API ----
+
+def _load_habits() -> dict:
+    try:
+        if os.path.isfile(HABITS_PATH) and os.path.getsize(HABITS_PATH) > 0:
+            with open(HABITS_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"habits.json 读取失败: {e}")
+    return {}
+
+
+def _save_habits(data: dict):
+    os.makedirs(os.path.dirname(HABITS_PATH), exist_ok=True)
+    with open(HABITS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _calc_streak(history: dict) -> int:
+    """从 history (date→bool) 计算连续打卡天数。"""
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d")
+    streak = 0
+    check = today
+    while history.get(check):
+        streak += 1
+        check = (datetime.strptime(check, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Shanghai")) -
+                 timedelta(days=1)).strftime("%Y-%m-%d")
+    return streak
+
+
+@app.route("/v1/api/daily/habits", methods=["GET", "POST"])
+@require_token
+def habits_list():
+    if request.method == "GET":
+        habits = _load_habits()
+        person = request.args.get("person", "").strip()
+        if person:
+            items = habits.get(person, [])
+        else:
+            items = []
+            for p_items in habits.values():
+                if isinstance(p_items, list):
+                    items.extend(p_items)
+        # Update doneToday and streak for each habit
+        today = datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d")
+        for item in items:
+            history = item.get("history", {})
+            item["doneToday"] = history.get(today, False)
+            item["streak"] = _calc_streak(history)
+        return jsonify({"ok": True, "habits": items, "total": len(items)})
+
+    if request.method == "POST":
+        data = request.get_json(silent=True)
+        if not data or "text" not in data:
+            return error_response("缺少习惯名称", 400)
+        person = data.get("person", "管理员").strip()
+        if person not in KNOWN_PERSONS:
+            return error_response(f"未知用户: {person}", 400)
+        habits = _load_habits()
+        habits.setdefault(person, [])
+        ids = [i.get("id", 0) for i in habits[person] if isinstance(i.get("id"), int)]
+        new_id = max(ids) + 1 if ids else 1
+        record = {
+            "id": new_id,
+            "text": data["text"].strip(),
+            "history": {},
+            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+        }
+        habits[person].append(record)
+        _save_habits(habits)
+        return jsonify({"ok": True, "habit": record, "message": "已创建"})
+
+
+@app.route("/v1/api/daily/habits/<int:habit_id>/toggle", methods=["POST"])
+@require_token
+def habits_toggle(habit_id):
+    """POST /v1/api/daily/habits/{id}/toggle - 切换今日打卡状态。"""
+    habits = _load_habits()
+    found, found_person = None, None
+    for p, items in habits.items():
+        for item in items:
+            if item.get("id") == habit_id:
+                found, found_person = item, p
+                break
+        if found:
+            break
+    if not found:
+        return error_response(f"习惯 #{habit_id} 不存在", 404)
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d")
+    history = found.setdefault("history", {})
+    if history.get(today):
+        del history[today]
+    else:
+        history[today] = True
+    _save_habits(habits)
+    streak = _calc_streak(history)
+    return jsonify({"ok": True, "doneToday": history.get(today, False), "streak": streak})
+
+
+@app.route("/v1/api/daily/habits/<int:habit_id>", methods=["DELETE"])
+@require_token
+def habits_item(habit_id):
+    habits = _load_habits()
+    found, found_person = None, None
+    for p, items in habits.items():
+        for item in items:
+            if item.get("id") == habit_id:
+                found, found_person = item, p
+                break
+        if found:
+            break
+    if not found:
+        return error_response(f"习惯 #{habit_id} 不存在", 404)
+    habits[found_person] = [i for i in habits[found_person] if i.get("id") != habit_id]
+    _save_habits(habits)
+    return jsonify({"ok": True, "message": "已删除"})
 
 
 def _next_wish_id(wishes: list) -> int:

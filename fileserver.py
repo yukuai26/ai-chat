@@ -2537,7 +2537,29 @@ def get_week_recipe():
 #  心愿池 CRUD API (DB18)
 # ============================================================
 
-WISH_STATUSES = {"dreaming", "planning", "in_progress", "done", "archived"}
+WISH_STATUSES = {"idea", "discussing", "designing", "implementing", "done", "archived"}
+
+# 允许的状态流转
+VALID_TRANSITIONS = {
+    "idea":          {"discussing", "archived"},
+    "discussing":    {"designing", "idea", "archived"},
+    "designing":     {"implementing", "discussing", "archived"},
+    "implementing":  {"done", "designing", "archived"},
+    "done":          {"archived"},
+    "archived":      {"idea"},
+}
+
+# 旧状态别名 → 新状态
+STATUS_ALIASES = {
+    "dreaming":     "idea",
+    "planning":     "designing",
+    "in_progress":  "implementing",
+}
+
+
+def _normalize_status(status: str) -> str:
+    """将旧状态别名转换为新状态。"""
+    return STATUS_ALIASES.get(status, status)
 
 
 def _load_wishes() -> list:
@@ -2717,6 +2739,72 @@ def wishes_item(wish_id):
         "ok": True,
         "wish": wish,
         "message": f"已更新心愿 #{wish_id}",
+    })
+
+
+
+
+
+@app.route("/v1/api/daily/wishes/<int:wish_id>/status", methods=["PATCH"])
+@require_token
+def wishes_status_transition(wish_id):
+    """PATCH /v1/api/daily/wishes/{id}/status - 心愿状态流转。
+
+    请求体: {"status": "discussing"}
+
+    状态流转规则:
+      idea → discussing → designing → implementing → done
+      ↑                     ↓                     ↓
+      └──── <回退允许> ────┘              archived ↔ idea
+    """
+    data = request.get_json(silent=True)
+    if not data or "status" not in data:
+        return error_response("缺少必填字段 status", 400)
+
+    new_status = _normalize_status(data["status"].strip())
+    if new_status not in WISH_STATUSES:
+        return error_response(f"无效状态: {new_status}, 可用: {', '.join(sorted(WISH_STATUSES))}", 400)
+
+    wishes = _load_wishes()
+    idx = next((i for i, w in enumerate(wishes) if w.get("id") == wish_id), None)
+    if idx is None:
+        return error_response(f"心愿 #{wish_id} 不存在", 404)
+
+    wish = wishes[idx]
+    old_status = _normalize_status(wish.get("status", "idea"))
+
+    # 检查流转是否合法
+    allowed = VALID_TRANSITIONS.get(old_status, set())
+    if new_status not in allowed:
+        return error_response(
+            f"不允许从 {old_status} 流转到 {new_status}，"
+            f"可从 {old_status} 流转到: {', '.join(sorted(allowed))}",
+            400,
+        )
+
+    tz = ZoneInfo("Asia/Shanghai")
+    wish["status"] = new_status
+    wish["updated_at"] = datetime.now(tz).isoformat()
+
+    # 记录流转历史
+    history = wish.setdefault("history", [])
+    history.append({
+        "from": old_status,
+        "to": new_status,
+        "at": wish["updated_at"],
+    })
+
+    try:
+        _save_wishes(wishes)
+    except IOError as e:
+        return error_response(f"保存失败: {e}", 500)
+
+    return jsonify({
+        "ok": True,
+        "wish": wish,
+        "from": old_status,
+        "to": new_status,
+        "message": f"心愿 #{wish_id}: {old_status} → {new_status}",
     })
 
 

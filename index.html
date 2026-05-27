@@ -720,6 +720,12 @@
       border-color: var(--accent);
       color: var(--accent);
     }
+    /* DF9: 拖拽上传高亮 */
+    .dashboard-command-bar.drag-over {
+      border-color: var(--accent);
+      background: rgba(var(--accent-rgb, 99, 102, 241), 0.08);
+      box-shadow: 0 0 0 2px var(--accent);
+    }
     /* 命令响应 toast */
     .dashboard-toast {
       position: fixed;
@@ -2064,7 +2070,7 @@
           <div class="dashboard-loading">加载中...</div>
         </div>
       </div>
-      <div class="dashboard-command-bar">
+      <div class="dashboard-command-bar" id="dashboard-command-bar">
         <span class="cmd-hint" id="cmdHint">@todo @done @data ...</span>
         <button class="cmd-attach-btn" id="cmdAttachBtn" title="选择文件" onclick="openDashboardFilePicker()">📎</button>
         <input type="text" class="cmd-input" id="cmdInput"
@@ -4332,6 +4338,7 @@
         dashboardCards = data.cards || [];
         renderDashboardGrid();
         updateCommandHint();
+        setupCommandBarDragDrop();
         dashboardLoaded = true;
       } catch (e) {
         console.error('加载 Dashboard 失败:', e);
@@ -4569,6 +4576,79 @@
       // 从配置中读取前缀列表，默认显示已知前缀
       const knownPrefixes = ['@todo', '@done', '@data', '@news', '@recipe', '@schedule', '@wish', '@sum'];
       hint.textContent = knownPrefixes.join(' ');
+    }
+
+    /* ===== DF9: 拖拽上传区域 ===== */
+    let dragCounter = 0;
+
+    function setupCommandBarDragDrop() {
+      const bar = document.getElementById('dashboard-command-bar');
+      if (!bar) return;
+
+      bar.addEventListener('dragenter', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter++;
+        bar.classList.add('drag-over');
+      });
+
+      bar.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter--;
+        if (dragCounter <= 0) {
+          dragCounter = 0;
+          bar.classList.remove('drag-over');
+        }
+      });
+
+      bar.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+      bar.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter = 0;
+        bar.classList.remove('drag-over');
+
+        const input = document.getElementById('cmdInput');
+        if (!input) return;
+
+        // 优先处理文本/URL 拖放 (如从文件管理器拖入)
+        const textData = e.dataTransfer.getData('text/plain');
+        const uriData = e.dataTransfer.getData('text/uri-list');
+
+        let paths = [];
+
+        if (textData) {
+          // 按行分割，过滤空行
+          paths = textData.split(/[\r\n]+/).map(function(s) {
+            return s.trim().replace(/^file:\/\//, '');
+          }).filter(function(s) { return s.length > 0; });
+        }
+
+        if (paths.length === 0 && uriData) {
+          paths = uriData.split(/[\r\n]+/).map(function(s) {
+            return s.trim().replace(/^file:\/\/\/?/, '');
+          }).filter(function(s) { return s.length > 0; });
+        }
+
+        // 如果拖拽的是 web File 对象，使用文件名
+        if (paths.length === 0 && e.dataTransfer.files.length > 0) {
+          paths = Array.from(e.dataTransfer.files).map(function(f) {
+            return f.name;
+          });
+        }
+
+        if (paths.length > 0) {
+          const current = input.value.trim();
+          input.value = current ? current + ' ' + paths.join(' ') : paths.join(' ');
+          input.focus();
+          showCommandToast('📎 已添加 ' + paths.length + ' 个文件路径', 'info');
+        }
+      });
     }
 
     /** 获取卡片摘要信息 */

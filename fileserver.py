@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-fileserver.py — Flask 文件服务，提供 REST API 管理服务器文件。
+fileserver.py - Flask 文件服务，提供 REST API 管理服务器文件。
 Phase 1: GET /ls, /read, /health, POST /mkdir
 后续 Phase 扩展：写操作（/write, /upload）
 """
@@ -27,12 +27,13 @@ logger = logging.getLogger(__name__)
 WHITELIST = [
     "/home/ubuntu/.openclaw/workspace-assistant",
     "/home/ubuntu/.openclaw/workspace-build-cat",
+    "/home/ubuntu/.openclaw/user-files",
 ]
 
 
 def _load_token():
     """从多个来源加载 API Token（优先级：环境变量 > Gateway 配置文件 > 占位符）。
-    
+
     来源：
     1. FILESERVER_TOKEN 环境变量（最高优先级）
     2. ~/.openclaw/openclaw.json → gateway.auth.token（Gateway 统一 Token）
@@ -106,7 +107,7 @@ def _ensure_directories():
 
 def _resolve_path(rel_path: str) -> Path:
     """将请求路径解析为绝对路径，并进行安全校验（白名单 + 防路径穿越）。
-    
+
     安全策略：
     1. 请求路径必须相对于白名单中的某个根目录
     2. 解析后的绝对路径必须在白名单根目录之内（含子目录）
@@ -114,11 +115,18 @@ def _resolve_path(rel_path: str) -> Path:
     """
     # 1. 清洗输入：去掉首尾斜杠
     clean = rel_path.strip("/")
-    
+
     # 2. 拒绝显式路径穿越（.. 作为独立路径段）
     if ".." in clean.split("/"):
         raise ValueError("路径穿越被拒绝")
-    
+
+    # 2.5 当请求路径等于白名单根目录的 basename 时直接返回
+    for base in WHITELIST:
+        bp = Path(base).resolve()
+        if clean == bp.name or str(bp) == clean or str(bp).endswith("/" + clean):
+            if bp.is_dir():
+                return bp
+
     # 3. 遍历白名单，尝试解析
     for base in WHITELIST:
         base_path = Path(base).resolve()
@@ -127,13 +135,13 @@ def _resolve_path(rel_path: str) -> Path:
             candidate = (base_path / clean).resolve()
             candidate_str = str(candidate)
             base_str = str(base_path)
-            
+
             # 4. 围栏检查：候选路径必须在白名单根目录之内
             if candidate_str == base_str or candidate_str.startswith(base_str + os.sep):
                 return candidate
         except (ValueError, OSError):
             continue
-    
+
     raise ValueError("路径不在白名单范围内或路径穿越被拒绝")
 
 
@@ -148,7 +156,7 @@ def _check_read_access(target: Path) -> tuple[bool, str]:
 
 def _check_write_access(target: Path, is_dir: bool = False) -> tuple[bool, str]:
     """检查是否允许在 target 位置写入。
-    
+
     对于目录创建：检查父目录存在且可写，如果目录已存在则报错（避免幂等问题）。
     对于文件写入：检查父目录存在且可写。
     """
@@ -164,10 +172,10 @@ def _check_write_access(target: Path, is_dir: bool = False) -> tuple[bool, str]:
 
 def error_response(message: str, code: int = 400, detail: str = None):
     """统一 JSON 错误格式（B9：API 错误处理标准化）。
-    
+
     所有 API 端点使用此函数返回错误，确保一致的 JSON 结构：
     { "error": true, "message": "<人类可读>", "code": <HTTP 状态码>[, "detail": "<技术详情>"] }
-    
+
     前端可据此统一解析和处理错误。
     """
     body = {"error": True, "message": message, "code": code}
@@ -201,10 +209,10 @@ def _list_directory(directory: Path) -> list[dict]:
 
 def require_token(f):
     """Token 认证装饰器。
-    
+
     从 Authorization 头提取 Bearer Token，
     与 API_TOKEN（来自环境变量 / Gateway 配置文件）比对。
-    
+
     安全特性：
     - 拒绝空 Token
     - 拒绝错误 Token
@@ -213,23 +221,23 @@ def require_token(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         auth_header = request.headers.get("Authorization", "")
-        
+
         # 提取 Bearer Token
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
         else:
             token = ""
-        
+
         # 拒绝空 Token
         if not token:
             logger.warning(f"认证失败: 空 Token (path={request.path}, ip={request.remote_addr})")
             return error_response("缺少认证 Token", 401, "请在 Authorization 头中提供 Bearer Token")
-        
+
         # Token 比对
         if token != API_TOKEN:
             logger.warning(f"认证失败: Token 不匹配 (path={request.path}, ip={request.remote_addr})")
             return error_response("认证失败", 401, "Token 无效")
-        
+
         return f(*args, **kwargs)
     return decorated
 
@@ -239,7 +247,7 @@ def require_token(f):
 @app.route("/v1/files/health", methods=["GET"])
 def health():
     """健康检查端点（无需认证）。
-    
+
     检查所有白名单根目录是否存在且可读，返回整体健康状态和各根目录详情。
     systemd 可通过此端点做 watch dog 触发自动重启。
     """
@@ -270,7 +278,7 @@ def health():
 @app.route("/v1/files/ls", methods=["GET"])
 @require_token
 def list_files():
-    """GET /v1/files/ls?path=<relative-path> — 列出目录内容。"""
+    """GET /v1/files/ls?path=<relative-path> - 列出目录内容。"""
     path_arg = request.args.get("path", "")
     try:
         target = _resolve_path(path_arg)
@@ -301,7 +309,7 @@ def list_files():
 @app.route("/v1/files/read", methods=["GET"])
 @require_token
 def read_file():
-    """GET /v1/files/read?path=<relative-path> — 读取文件内容。"""
+    """GET /v1/files/read?path=<relative-path> - 读取文件内容。"""
     path_arg = request.args.get("path", "")
     try:
         target = _resolve_path(path_arg)
@@ -328,7 +336,7 @@ def read_file():
 @app.route("/v1/files/download", methods=["GET"])
 @require_token
 def download_file():
-    """GET /v1/files/download?path=<relative-path> — 下载文件。
+    """GET /v1/files/download?path=<relative-path> - 下载文件。
 
     与 /read 不同，此端点：
     - 设置 Content-Disposition: attachment 头，触发浏览器下载而非内联显示
@@ -364,7 +372,7 @@ def download_file():
 @app.route("/v1/sessions/new", methods=["POST"])
 @require_token
 def create_session():
-    """POST /v1/sessions/new — 创建新 Session，自动生成标题。
+    """POST /v1/sessions/new - 创建新 Session，自动生成标题。
 
     请求体 JSON（可选）: {"title": "可选标题"}
     返回 201: {"id": "sess_...", "title": "...", "created": "...", "updated": "...", "messages": []}
@@ -409,7 +417,7 @@ def create_session():
 @app.route("/v1/sessions/list", methods=["GET"])
 @require_token
 def list_sessions():
-    """GET /v1/sessions/list — 返回所有 Session 列表，按更新时间倒序排列。
+    """GET /v1/sessions/list - 返回所有 Session 列表，按更新时间倒序排列。
 
     返回 200: {"sessions": [{...}, {...}]}
 
@@ -441,7 +449,7 @@ def list_sessions():
 @app.route("/v1/sessions/<session_id>", methods=["GET"])
 @require_token
 def get_session(session_id):
-    """GET /v1/sessions/{id} — 返回指定 Session 的完整消息历史。
+    """GET /v1/sessions/{id} - 返回指定 Session 的完整消息历史。
 
     参数：session_id (URL 路径参数)，对应 POST /v1/sessions/new 返回的 id。
     成功 200: 完整的 Session JSON（含 id、title、created、updated、messages 数组）
@@ -482,7 +490,7 @@ def get_session(session_id):
 @app.route("/v1/sessions/<session_id>", methods=["DELETE"])
 @require_token
 def delete_session(session_id):
-    """DELETE /v1/sessions/{id} — 删除指定 Session。
+    """DELETE /v1/sessions/{id} - 删除指定 Session。
 
     参数：session_id (URL 路径参数)，对应 POST /v1/sessions/new 返回的 id。
     成功 200: {"message": "Session 已删除", "id": "..."}
@@ -771,7 +779,7 @@ def _build_gateway_messages(
 @app.route("/v1/sessions/<session_id>/chat", methods=["POST"])
 @require_token
 def session_chat(session_id):
-    """POST /v1/sessions/{id}/chat — 发送消息到对话，调用 Gateway 获取 AI 回复。
+    """POST /v1/sessions/{id}/chat - 发送消息到对话，调用 Gateway 获取 AI 回复。
 
     请求体 JSON:
       {"message": "用户消息", "files": ["可选文件路径列表"]}
@@ -886,7 +894,7 @@ def session_chat(session_id):
 @app.route("/v1/files/write", methods=["POST"])
 @require_token
 def write_file():
-    """POST /v1/files/write — 写入文件内容。
+    """POST /v1/files/write - 写入文件内容。
 
     请求体 JSON: {"path": "<relative-path>", "content": "<文件内容>"}
 
@@ -933,12 +941,12 @@ MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 @app.route("/v1/files/upload", methods=["POST"])
 @require_token
 def upload_file():
-    """POST /v1/files/upload — 上传文件（multipart/form-data）。
-    
+    """POST /v1/files/upload - 上传文件（multipart/form-data）。
+
     请求参数：
     - path (form field): 目标目录路径（相对于白名单根目录）
     - file (file field): 上传的文件
-    
+
     安全约束：
     - 路径必须在白名单范围内
     - 文件大小限制 50MB
@@ -1014,8 +1022,8 @@ def upload_file():
 @app.route("/v1/files/mkdir", methods=["POST"])
 @require_token
 def make_directory():
-    """POST /v1/files/mkdir — 创建目录。
-    
+    """POST /v1/files/mkdir - 创建目录。
+
     请求体 JSON: {"path": "<relative-path>"}
     安全约束：
     - 路径必须在白名单范围内
@@ -1140,7 +1148,7 @@ def _save_card_registry(data: dict):
 @app.route("/v1/api/daily/registry", methods=["GET"])
 @require_token
 def get_card_registry():
-    """GET /v1/api/daily/registry — 读取卡片注册表。
+    """GET /v1/api/daily/registry - 读取卡片注册表。
 
     返回完整注册表（cards + layout + commandPrefixes）。
     若文件不存在则返回默认结构。
@@ -1152,7 +1160,7 @@ def get_card_registry():
 @app.route("/v1/api/daily/registry", methods=["PUT"])
 @require_token
 def put_card_registry():
-    """PUT /v1/api/daily/registry — 更新卡片注册表。
+    """PUT /v1/api/daily/registry - 更新卡片注册表。
 
     请求体：完整注册表 JSON（覆盖写入）。
     验证：必须包含 cards 数组。
@@ -1173,7 +1181,7 @@ def put_card_registry():
 @app.route("/v1/api/daily/registry/cards/<card_id>", methods=["PUT"])
 @require_token
 def put_card_by_id(card_id):
-    """PUT /v1/api/daily/registry/cards/{id} — 更新单张卡片配置。
+    """PUT /v1/api/daily/registry/cards/{id} - 更新单张卡片配置。
 
     支持局部更新：enabled、width、name 等字段。
     """
@@ -1330,7 +1338,7 @@ def _parse_command(text: str) -> dict:
 @app.route("/v1/api/daily/command", methods=["POST"])
 @require_token
 def daily_command():
-    """POST /v1/api/daily/command — 统一指令中枢。
+    """POST /v1/api/daily/command - 统一指令中枢。
 
     请求体: {"text": "@todo 管理员 买牛奶"} 或 {"text": "今天天气怎么样"}
 
@@ -1362,21 +1370,21 @@ def daily_command():
 
         logger.info(f"指令解析: prefix={prefix}, person={person}, text={content}")
 
-        # @todo — 添加 Todo
+        # @todo - 添加 Todo
         if prefix == "@todo":
             result = _dispatch_add_todo(person, content)
             result["prefix"] = prefix
             result["action"] = parsed["action"]
             return jsonify(result)
 
-        # @done — 勾选 Todo
+        # @done - 勾选 Todo
         if prefix == "@done":
             result = _dispatch_done(person, content)
             result["prefix"] = prefix
             result["action"] = parsed["action"]
             return jsonify(result)
 
-        # 其他指令 — 返回解析结果（处理器在后续 Phase 实现）
+        # 其他指令 - 返回解析结果（处理器在后续 Phase 实现）
         return jsonify({
             "ok": True,
             "prefix": prefix,
@@ -1442,7 +1450,7 @@ def _save_dashboard_config(data: dict):
 @app.route("/v1/api/daily/config", methods=["GET"])
 @require_token
 def get_dashboard_config():
-    """GET /v1/api/daily/config — 读取面板完整配置。
+    """GET /v1/api/daily/config - 读取面板完整配置。
 
     合并卡片注册表与用户布局配置，返回：
       - cards: 注册表中所有卡片（含 enabled/disabled 状态）
@@ -1474,7 +1482,7 @@ def get_dashboard_config():
 @app.route("/v1/api/daily/config", methods=["PUT"])
 @require_token
 def put_dashboard_config():
-    """PUT /v1/api/daily/config — 更新面板配置。
+    """PUT /v1/api/daily/config - 更新面板配置。
 
     请求体：部分或完整配置（layout、disabledCards、cardSettings）。
     支持增量更新：只传 layout 则只改布局。
@@ -1510,12 +1518,12 @@ def put_dashboard_config():
 @app.route("/v1/api/daily/config/cards/<card_id>", methods=["PUT"])
 @require_token
 def put_card_config(card_id):
-    """PUT /v1/api/daily/config/cards/{id} — 启用/禁用/设置单张卡片。
+    """PUT /v1/api/daily/config/cards/{id} - 启用/禁用/设置单张卡片。
 
     请求体:
-      {"enabled": true/false}  — 启用或禁用
-      {"settings": {"width": "large"}}  — 更新卡片设置
-      {"order": 0}  — 调整排序位置
+      {"enabled": true/false}  - 启用或禁用
+      {"settings": {"width": "large"}}  - 更新卡片设置
+      {"order": 0}  - 调整排序位置
 
     卡片必须存在于注册表中。
     """

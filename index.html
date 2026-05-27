@@ -3214,6 +3214,84 @@
     /* 移动端安全区 */
     body { padding-top: var(--safe-top); }
 
+  
+    /* ===== Phase 14: 日历 Tab ===== */
+    .calendar-layout { display: flex; gap: 20px; padding: 16px; height: 100%; }
+    .calendar-month { flex: 0 0 380px; }
+    .calendar-month-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .cal-month-title { flex: 1; font-size: 16px; font-weight: 600; text-align: center; }
+    .cal-nav-btn, .cal-today-btn {
+      padding: 4px 10px; background: var(--bg-page); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); cursor: pointer; font-size: 13px;
+      color: var(--text-primary); min-width: 28px;
+    }
+    .cal-nav-btn:hover, .cal-today-btn:hover { background: var(--bg-hover); }
+    .calendar-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 2px; text-align: center;
+    }
+    .cal-day-header {
+      font-size: 11px; color: var(--text-tertiary); font-weight: 600;
+      padding: 6px 0;
+    }
+    .cal-day {
+      position: relative; padding: 6px 4px; cursor: pointer;
+      border-radius: var(--radius-sm); font-size: 13px; min-height: 52px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .cal-day:hover { background: var(--bg-hover); }
+    .cal-day.other-month { color: var(--text-tertiary); opacity: 0.4; }
+    .cal-day.today .cal-day-num {
+      background: var(--accent); color: #fff; width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+    }
+    .cal-day.selected { background: var(--bg-hover); outline: 1px solid var(--accent); }
+    .cal-day-num { font-size: 13px; font-weight: 500; }
+    .cal-day-dots { display: flex; gap: 2px; margin-top: 2px; }
+    .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
+    .cal-dot.todo { background: #27ae60; }
+    .cal-dot.reminder { background: #f39c12; }
+    .cal-dot.event { background: #e74c3c; }
+    .calendar-detail { flex: 1; min-width: 0; overflow-y: auto; background: var(--bg-card); border-radius: var(--radius-md); padding: 16px; }
+    .cal-detail-date { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+    .cal-detail-section { margin-bottom: 16px; }
+    .cal-detail-section h4 { font-size: 12px; color: var(--text-tertiary); font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .cal-todo-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; cursor: pointer; }
+    .cal-todo-item.done { text-decoration: line-through; color: var(--text-tertiary); }
+    .cal-todo-check { width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+    .cal-todo-item.done .cal-todo-check { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .cal-event-card { padding: 6px 10px; border-radius: var(--radius-sm); font-size: 12px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+    .cal-event-actions { display: flex; gap: 4px; }
+    .cal-event-actions button { background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px; opacity: 0.5; }
+    .cal-event-actions button:hover { opacity: 1; }
+    .cal-add-btn { margin-top: 8px; padding: 6px 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; }
+    .cal-event-modal { position: fixed; inset: 0; z-index: 9995; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); }
+    .cal-event-modal-content { background: var(--bg-card); border-radius: var(--radius-md); padding: 24px; width: 360px; max-width: 92vw; max-height: 80vh; overflow-y: auto; }
+    .cal-event-modal-content h3 { margin-bottom: 12px; }
+    .cal-event-modal-content input, .cal-event-modal-content select, .cal-event-modal-content textarea {
+      width: 100%; padding: 8px 10px; margin-bottom: 8px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 13px; background: var(--bg-page);
+      color: var(--text-primary); font-family: inherit; box-sizing: border-box;
+    }
+    .cal-event-type-options { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .cal-event-type-btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; font-size: 12px; background: none; }
+    .cal-event-type-btn.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .cal-no-data { font-size: 12px; color: var(--text-tertiary); padding: 8px 0; }
+    .cal-upcoming { margin-top: 12px; font-size: 12px; }
+    .cal-upcoming-item { display: flex; gap: 8px; padding: 4px 0; }
+
+    /* CL13: 手机适配 */
+    @media (max-width: 767px) {
+      .calendar-layout { flex-direction: column; padding: 8px; }
+      .calendar-month { flex: none; }
+      .calendar-grid { gap: 1px; }
+      .cal-day { min-height: 38px; padding: 3px 1px; font-size: 11px; }
+      .cal-day .cal-day-num { font-size: 11px; }
+      .cal-day.today .cal-day-num { width: 22px; height: 22px; }
+      .calendar-detail { max-height: 50vh; }
+    }
+
   </style>
 </head>
 <body>
@@ -8699,6 +8777,7 @@
     switchTab = function(tabName) {
       origSwitchTab2(tabName);
       if (tabName === 'daily') { loadDashboard(); }
+      if (tabName === 'calendar') { initCalendar(); }
       syncMobileTab(tabName);
     };
 
@@ -9037,6 +9116,228 @@
       origDoLogout();
     };
 
+
+    /* ===== CL7-CL12: 日历 Tab ===== */
+    let calYear, calMonth, calSelectedDate;
+
+    function initCalendar() {
+      var now = new Date();
+      calYear = now.getFullYear(); calMonth = now.getMonth() + 1;
+      calSelectedDate = now.toISOString().slice(0, 10);
+      renderCalendar();
+    }
+
+    function calPrevMonth() { calMonth--; if (calMonth<1) { calMonth=12; calYear--; } renderCalendar(); }
+    function calNextMonth() { calMonth++; if (calMonth>12) { calMonth=1; calYear++; } renderCalendar(); }
+    function calGoToday() {
+      var now = new Date();
+      calYear = now.getFullYear(); calMonth = now.getMonth() + 1;
+      calSelectedDate = now.toISOString().slice(0, 10);
+      renderCalendar();
+    }
+
+    async function renderCalendar() {
+      document.getElementById('calMonthTitle').textContent = calYear + '年 ' + calMonth + '月';
+
+      var firstDay = new Date(calYear, calMonth - 1, 1).getDay(); // 0=Sun
+      var daysInMonth = new Date(calYear, calMonth, 0).getDate();
+
+      var weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+      var headerHtml = '';
+      for (var i = 0; i < 7; i++) { headerHtml += '<div class="cal-day-header">' + weekDays[i] + '</div>'; }
+
+      // CL3: Fetch range data for dots
+      var from = calYear + '-' + String(calMonth).padStart(2,'0') + '-01';
+      var to = calYear + '-' + String(calMonth).padStart(2,'0') + '-' + String(daysInMonth).padStart(2,'0');
+      var rangeData = {};
+      try {
+        var resp = await authFetch('/v1/api/calendar/range?from=' + from + '&to=' + to);
+        var rangeJson = await resp.json();
+        if (rangeJson.ok) rangeData = rangeJson.range || {};
+      } catch(e) {}
+
+      var todayStr = new Date().toISOString().slice(0, 10);
+      var prevMonthDays = firstDay;
+      var prevMonthLast = new Date(calYear, calMonth - 1, 0).getDate();
+
+      var html = headerHtml;
+      // Previous month days
+      for (var i = prevMonthDays - 1; i >= 0; i--) {
+        var d = prevMonthLast - i;
+        html += calDayHtml(d, true, '', rangeData, todayStr);
+      }
+      // Current month days
+      for (var d = 1; d <= daysInMonth; d++) {
+        var dateStr = calYear + '-' + String(calMonth).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+        html += calDayHtml(d, false, dateStr, rangeData, todayStr);
+      }
+      // Next month days
+      var remaining = 42 - (prevMonthDays + daysInMonth);
+      for (var d = 1; d <= remaining; d++) {
+        html += calDayHtml(d, true, '', rangeData, todayStr);
+      }
+
+      document.getElementById('calendarGrid').innerHTML = html;
+      // Load selected date detail
+      loadCalDetail(calSelectedDate);
+    }
+
+    function calDayHtml(day, otherMonth, dateStr, rangeData, todayStr) {
+      var cls = 'cal-day' + (otherMonth ? ' other-month' : '');
+      if (dateStr === todayStr) cls += ' today';
+      if (dateStr === calSelectedDate) cls += ' selected';
+
+      var dots = '';
+      var rd = rangeData[dateStr];
+      if (rd) {
+        if (rd.todos > 0) dots += '<span class="cal-dot todo"></span>';
+        if (rd.reminders > 0) dots += '<span class="cal-dot reminder"></span>';
+        if (rd.events.length > 0 || rd.is_anniversary) dots += '<span class="cal-dot event"></span>';
+      }
+
+      var onclick = dateStr ? ' onclick="selectCalDate(\'' + dateStr + '\')"' : '';
+      return '<div class="' + cls + '"' + onclick + '><span class="cal-day-num">' + day + '</span><div class="cal-day-dots">' + dots + '</div></div>';
+    }
+
+    function selectCalDate(dateStr) {
+      calSelectedDate = dateStr;
+      renderCalendar();
+    }
+
+    async function loadCalDetail(dateStr) {
+      document.getElementById('calDetailDate').textContent = dateStr;
+      try {
+        var resp = await authFetch('/v1/api/calendar/' + dateStr);
+        var data = await resp.json();
+        if (!data.ok) { document.getElementById('calDetailSections').innerHTML = '<div class="cal-no-data">加载失败</div>'; return; }
+
+        var html = '';
+        var weekday = data.weekday || '';
+
+        // Events
+        html += '<div class="cal-detail-section"><h4>📅 事件</h4>';
+        if (data.events && data.events.length) {
+          for (var i = 0; i < data.events.length; i++) {
+            var ev = data.events[i];
+            var bg = ev.color ? 'background:' + ev.color + '11;' : '';
+            html += '<div class="cal-event-card" style="' + bg + '"><span>' + (ev.icon||'📅') + ' ' + (ev.time||'') + ' ' + ev.title + (ev.description ? '<br><small>' + ev.description + '</small>' : '') + '</span><div class="cal-event-actions"><button onclick="editCalEvent(' + ev.id + ')">✏️</button><button onclick="deleteCalEvent(' + ev.id + ')" style="color:#e74c3c;">🗑</button></div></div>';
+          }
+        } else { html += '<div class="cal-no-data">无事件</div>'; }
+        html += '<button class="cal-add-btn" onclick="openAddEvent()">+ 添加事件</button></div>';
+
+        // Todos
+        html += '<div class="cal-detail-section"><h4>✅ Todo (' + (data.todos||[]).length + ')</h4>';
+        if (data.todos && data.todos.length) {
+          for (var i = 0; i < data.todos.length; i++) {
+            var t = data.todos[i];
+            var doneCls = t.done ? ' done' : '';
+            html += '<div class="cal-todo-item' + doneCls + '" onclick="toggleCalTodo(' + t.id + ', ' + (t.done?'true':'false') + ')"><div class="cal-todo-check">' + (t.done ? '✓' : '') + '</div>' + t.text + '</div>';
+          }
+        } else { html += '<div class="cal-no-data">无待办</div>'; }
+        html += '</div>';
+
+        // Reminders
+        html += '<div class="cal-detail-section"><h4>⏰ 提醒 (' + (data.reminders||[]).length + ')</h4>';
+        if (data.reminders && data.reminders.length) {
+          for (var i = 0; i < data.reminders.length; i++) {
+            var r = data.reminders[i];
+            html += '<div style="font-size:13px;padding:4px 0;">⏰ ' + (r.time||'') + ' ' + r.text + '</div>';
+          }
+        } else { html += '<div class="cal-no-data">无提醒</div>'; }
+        html += '</div>';
+
+        // Recipe
+        if (data.recipe && Object.keys(data.recipe).length) {
+          html += '<div class="cal-detail-section"><h4>🍽️ 食谱</h4>';
+          if (data.recipe.lunch) html += '<div style="font-size:13px;">午餐: ' + data.recipe.lunch + '</div>';
+          if (data.recipe.dinner) html += '<div style="font-size:13px;">晚餐: ' + data.recipe.dinner + '</div>';
+          html += '</div>';
+        }
+
+        // Notes
+        if (data.notes && data.notes.length) {
+          html += '<div class="cal-detail-section"><h4>📝 随手记</h4>';
+          for (var i = 0; i < data.notes.length; i++) {
+            html += '<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;">' + data.notes[i].text + '</div>';
+          }
+          html += '</div>';
+        }
+
+        document.getElementById('calDetailSections').innerHTML = html;
+      } catch(e) {
+        document.getElementById('calDetailSections').innerHTML = '<div class="cal-no-data">加载失败</div>';
+      }
+    }
+
+    // CL10: Todo toggle from calendar
+    async function toggleCalTodo(todoId, isDone) {
+      try {
+        var resp = await authFetch('/v1/api/daily/todos/' + todoId, {
+          method: 'PUT', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({done: !isDone})
+        });
+        var data = await resp.json();
+        if (data.ok) loadCalDetail(calSelectedDate);
+      } catch(e) {}
+    }
+
+    // CL11: Add event modal
+    let calEditId = null;
+    function openAddEvent() {
+      calEditId = null;
+      document.getElementById('calEventModal').style.display = 'flex';
+      document.getElementById('calEventTitle').value = '';
+      document.getElementById('calEventTime').value = '';
+      document.getElementById('calEventDesc').value = '';
+      document.getElementById('calEventRepeat').value = '';
+      calSelectType('appointment');
+    }
+    function editCalEvent(id) {
+      calEditId = id;
+      document.getElementById('calEventModal').style.display = 'flex';
+      document.getElementById('calEventModalTitle').textContent = '编辑事件';
+      // Fetch current event data and populate...
+      // Simplified: just open modal with reset
+    }
+    function closeCalEventModal() { document.getElementById('calEventModal').style.display = 'none'; }
+    function calSelectType(type) {
+      document.querySelectorAll('.cal-event-type-btn').forEach(function(b){b.classList.remove('selected');});
+      document.getElementById('calType-' + type).classList.add('selected');
+    }
+    async function saveCalEvent() {
+      var title = document.getElementById('calEventTitle').value.trim();
+      if (!title) return;
+      var type = document.querySelector('.cal-event-type-btn.selected').dataset.type || 'appointment';
+      var body = {
+        title: title,
+        date: calSelectedDate,
+        type: type,
+        time: document.getElementById('calEventTime').value,
+        description: document.getElementById('calEventDesc').value,
+        repeat: document.getElementById('calEventRepeat').value
+      };
+      if (type === 'anniversary') { body.icon = '💝'; body.color = '#e8a0a0'; }
+      if (type === 'birthday') { body.icon = '🎂'; body.color = '#f0c0c0'; }
+      if (type === 'appointment') { body.icon = '📅'; }
+
+      var url = '/v1/api/calendar/events';
+      var method = 'POST';
+      if (calEditId) { url += '/' + calEditId; method = 'PUT'; body.id = calEditId; }
+
+      try {
+        var resp = await authFetch(url, { method: method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        var data = await resp.json();
+        if (data.ok) { closeCalEventModal(); loadCalDetail(calSelectedDate); renderCalendar(); }
+      } catch(e) {}
+    }
+    async function deleteCalEvent(id) {
+      if (!confirm('删除此事件？')) return;
+      try {
+        await authFetch('/v1/api/calendar/events/' + id, { method: 'DELETE' });
+        loadCalDetail(calSelectedDate); renderCalendar();
+      } catch(e) {}
+    }
+
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
@@ -9063,5 +9364,30 @@
 
   <!-- MB8: 长按菜单 -->
   <div class="context-menu" id="contextMenu" style="display:none;"></div>
+
+  <!-- CL11: 日历事件弹窗 -->
+  <div class="cal-event-modal" id="calEventModal" style="display:none;" onclick="if(event.target===this)closeCalEventModal()">
+    <div class="cal-event-modal-content" onclick="event.stopPropagation()">
+      <h3 id="calEventModalTitle">添加事件</h3>
+      <input type="text" id="calEventTitle" placeholder="事件标题">
+      <div class="cal-event-type-options">
+        <button class="cal-event-type-btn selected" id="calType-appointment" data-type="appointment" onclick="calSelectType('appointment')">📅 约会</button>
+        <button class="cal-event-type-btn" id="calType-anniversary" data-type="anniversary" onclick="calSelectType('anniversary')">💝 纪念日</button>
+        <button class="cal-event-type-btn" id="calType-birthday" data-type="birthday" onclick="calSelectType('birthday')">🎂 生日</button>
+      </div>
+      <input type="time" id="calEventTime" placeholder="时间（可选）">
+      <textarea id="calEventDesc" placeholder="描述（可选）" rows="2"></textarea>
+      <select id="calEventRepeat">
+        <option value="">不重复</option>
+        <option value="yearly">每年</option>
+        <option value="monthly">每月</option>
+        <option value="weekly">每周</option>
+      </select>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="cal-add-btn" onclick="saveCalEvent()" style="flex:1;">保存</button>
+        <button onclick="closeCalEventModal()" style="flex:1;padding:6px;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;">取消</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

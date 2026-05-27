@@ -4052,6 +4052,195 @@ def global_search():
 
     total = sum(len(g["items"]) for g in results)
     return jsonify({"ok": True, "results": results, "total": total, "query": query})
+# ---- 日历 API (Phase 14) ----
+
+CALENDAR_PATH = os.path.join(USER_DATA_DIR, "calendar.json")
+
+def _load_calendar() -> dict:
+    if os.path.exists(CALENDAR_PATH):
+        with open(CALENDAR_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"events": []}
+
+def _save_calendar(data: dict):
+    with open(CALENDAR_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def _next_event_id(events: list) -> int:
+    ids = [e.get("id", 0) for e in events if isinstance(e.get("id"), int)]
+    return max(ids, default=0) + 1
+
+# CL2: 日期汇聚
+@app.route("/v1/api/calendar/<date>", methods=["GET"])
+@require_token
+def calendar_date(date: str):
+    """GET /v1/api/calendar/{date} - 某日的所有汇聚数据"""
+    person = _get_person()
+    events = _load_calendar().get("events", [])
+    date_events = [e for e in events if e.get("date") == date]
+
+    # 查 Todo
+    todos = _load_todos().get(person, [])
+    date_todos = [t for t in todos if t.get("date") == date]
+
+    # 查提醒
+    reminders = _load_reminders().get(person, [])
+    date_reminders = [r for r in reminders if r.get("time", "").startswith(date)]
+
+    # 查食谱
+    recipe = _load_recipe()
+    dt_obj = datetime.fromisoformat(date)
+    weekday = dt_obj.strftime("%A")
+    day_recipes = recipe.get(weekday, {})
+
+    # 查随手记
+    notes = _load_notes().get(person, [])
+    date_notes = [n for n in notes if (n.get("created", ""))[:10] == date]
+
+    # 查照片
+    photos = _load_photos().get(person, [])
+    date_photos = [p for p in photos if (p.get("created", ""))[:10] == date]
+
+    return jsonify({
+        "ok": True,
+        "date": date,
+        "weekday": weekday,
+        "events": date_events,
+        "todos": date_todos,
+        "reminders": date_reminders,
+        "recipe": day_recipes,
+        "notes": date_notes,
+        "photos": date_photos,
+    })
+
+# CL3: 范围标记
+@app.route("/v1/api/calendar/range", methods=["GET"])
+@require_token
+def calendar_range():
+    """GET /v1/api/calendar/range?from=2026-06-01&to=2026-06-30"""
+    from_date = request.args.get("from", "")
+    to_date = request.args.get("to", "")
+    person = _get_person()
+
+    try:
+        start = datetime.fromisoformat(from_date).date()
+        end = datetime.fromisoformat(to_date).date()
+    except Exception:
+        return error_response("日期格式错误: YYYY-MM-DD", 400)
+
+    # 加载所有数据
+    events = _load_calendar().get("events", [])
+    todos = _load_todos().get(person, [])
+    reminders = _load_reminders().get(person, [])
+
+    result = {}
+    delta = (end - start).days
+    for d in range(delta + 1):
+        day = (start + timedelta(days=d)).isoformat()
+        day_count = {"todos": 0, "reminders": 0, "events": [], "is_anniversary": False}
+
+        # Todo 计数（未完成）
+        for t in todos:
+            if t.get("date") == day and not t.get("done"):
+                day_count["todos"] += 1
+
+        # 提醒计数
+        for r in reminders:
+            if (r.get("time", "")).startswith(day):
+                day_count["reminders"] += 1
+
+        # 事件
+        for e in events:
+            if e.get("date") == day:
+                day_count["events"].append(e.get("title", "")[:8])
+                if e.get("type") in ("anniversary", "birthday"):
+                    day_count["is_anniversary"] = True
+
+        result[day] = day_count
+
+    return jsonify({"ok": True, "range": result, "from": from_date, "to": to_date})
+
+# CL4: 未来事件
+@app.route("/v1/api/calendar/upcoming", methods=["GET"])
+@require_token
+def calendar_upcoming():
+    """GET /v1/api/calendar/upcoming - 未来 7 天的重要日期"""
+    tz = ZoneInfo("Asia/Shanghai")
+    today = datetime.now(tz).date()
+    events = _load_calendar().get("events", [])
+    upcoming = []
+    for i in range(8):
+        day = (today + timedelta(days=i)).isoformat()
+        day_events = [e for e in events if e.get("date") == day]
+        if day_events:
+            upcoming.append({"date": day, "events": day_events})
+    return jsonify({"ok": True, "upcoming": upcoming})
+
+# CL1: 日历事件 CRUD
+@app.route("/v1/api/calendar/events", methods=["GET", "POST"])
+@require_token
+def calendar_events():
+    """GET: 所有事件 | POST: 创建事件"""
+    data = _load_calendar()
+    events = data.get("events", [])
+
+    if request.method == "GET":
+        return jsonify({"ok": True, "events": events})
+
+    body = request.get_json(silent=True)
+    if not body or "title" not in body or "date" not in body:
+        return error_response("缺少 title 或 date", 400)
+
+    event = {
+        "id": _next_event_id(events),
+        "title": body["title"].strip(),
+        "date": body["date"],
+        "type": body.get("type", "appointment"),
+        "icon": body.get("icon", "📅"),
+        "color": body.get("color", ""),
+        "description": body.get("description", ""),
+        "time": body.get("time", ""),
+        "repeat": body.get("repeat", ""),
+        "created_by": request.user,
+    }
+    events.append(event)
+    data["events"] = events
+    _save_calendar(data)
+    _notify_partner(request.user, {"event": "calendar_changed", "by": request.user})
+    return jsonify({"ok": True, "event": event})
+
+@app.route("/v1/api/calendar/events/<int:event_id>", methods=["PUT", "DELETE"])
+@require_token
+def calendar_event_item(event_id):
+    """PUT/DELETE 单个事件"""
+    data = _load_calendar()
+    events = data.get("events", [])
+    idx = next((i for i, e in enumerate(events) if e.get("id") == event_id), None)
+    if idx is None:
+        return error_response("事件不存在", 404)
+
+    if request.method == "DELETE":
+        del events[idx]
+        data["events"] = events
+        _save_calendar(data)
+        _notify_partner(request.user, {"event": "calendar_changed", "by": request.user})
+        return jsonify({"ok": True, "message": "已删除"})
+
+    body = request.get_json(silent=True)
+    if not body:
+        return error_response("缺少请求体", 400)
+    e = events[idx]
+    for f in ("title", "date", "type", "icon", "color", "description", "time", "repeat"):
+        if f in body:
+            e[f] = body[f]
+    data["events"] = events
+    _save_calendar(data)
+    _notify_partner(request.user, {"event": "calendar_changed", "by": request.user})
+    return jsonify({"ok": True, "event": e})
+
+# CL5: calendar_changed event handler → already in _notify_partner above
+
+
 
 # ---- WebSocket 实时同步 (Phase 13) ----
 

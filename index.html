@@ -5366,6 +5366,8 @@
         if (bookmarksCard) loadBookmarksCard(bookmarksCard);
         const photosCard = document.querySelector('[data-card-id="photos"]');
         if (photosCard) loadPhotosCard(photosCard);
+        const sharesCard = document.querySelector('[data-card-id="shares"]');
+        if (sharesCard) loadSharesCard(sharesCard);
         const summaryCard = document.querySelector('[data-card-id="summary"]');
         if (summaryCard) loadSummaryCard(summaryCard);
         dashboardLoaded = true;
@@ -5782,12 +5784,13 @@
         notes: '📝 随手记 · 灵感碎片',
         bookmarks: '🔗 在线收藏 · 稍后看',
         photos: '📸 照片墙 · 生活记录',
+        shares: '💬 分享板 · 心情记录',
       };
       return summaries[card.id] || '卡片数据加载中...';
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos", "shares"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -7000,6 +7003,103 @@
 
     /* ===== N2+ N3: 随手记 Notes Card ===== */
     let cachedNotesData = null;
+
+    /* ===== S1+ S2+ S3+ S4: 分享板 Shares Card ===== */
+    let cachedSharesData = null;
+    const MOOD_LIST = ['😊', '🥰', '😄', '😢', '😤', '😎', '🤔', '🎉'];
+
+    async function loadSharesCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+      const token = document.getElementById('token').value;
+      if (!token) { if (summary) summary.textContent = '⚠️ 请先连接 API Token'; return; }
+      try {
+        if (!cachedSharesData) {
+          const resp = await fetch('/v1/api/daily/shares', { headers: { 'Authorization': 'Bearer ' + token }});
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          cachedSharesData = await resp.json();
+        }
+        renderSharesCardCollapsed(summary, body, cachedSharesData);
+        renderSharesCardExpanded(body, cachedSharesData);
+      } catch(e) { body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>'; }
+    }
+
+    function renderSharesCardCollapsed(summaryEl, bodyEl, data) {
+      const shares = data && data.shares ? data.shares : [];
+      const total = data && data.total != null ? data.total : shares.length;
+      if (!total) { if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">💬 暂无分享</div></div>'; return; }
+      let html = '<div class="wishes-collapsed">';
+      html += '<div class="wishes-total">💬 <strong>' + total + '</strong> 条心情</div>';
+      const latest = shares.slice(0, 2);
+      html += '<div class="wishes-status-list" style="flex-direction:column;align-items:stretch;">';
+      for (const s of latest) {
+        const mood = s.mood || '😊';
+        const text = (s.text || '').length > 40 ? s.text.slice(0,40)+'...' : (s.text||'');
+        html += '<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;">' + mood + ' ' + escapeHtml(text) + '</div>';
+      }
+      html += '</div><div class="wishes-expand-hint" onclick="toggleCard(\'shares\',event)">展开查看 ▼</div></div>';
+      if (summaryEl) summaryEl.innerHTML = html;
+    }
+
+    function renderSharesCardExpanded(bodyEl, data) {
+      const shares = data && data.shares ? data.shares : [];
+      const total = shares.length;
+      let html = '<div>';
+      // Mood picker + new input
+      html += '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">';
+      html += '<input type="text" id="sharesTextInput" placeholder="今天想说什么？" style="flex:1;min-width:120px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);">';
+      html += '<select id="sharesMoodSelect" style="padding:6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);">';
+      for (const m of MOOD_LIST) html += '<option>' + m + '</option>';
+      html += '</select>';
+      html += '<button onclick="addShare()" style="padding:6px 12px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">分享</button>';
+      html += '</div>';
+      // List
+      if (!shares.length) {
+        html += '<div style="text-align:center;color:var(--text-secondary);padding:12px;">暂无分享，快来说点什么吧！</div>';
+      } else {
+        for (const s of shares) {
+          const tags = (s.tags||[]).map(function(t){return '<span style="font-size:10px;color:var(--text-tertiary);">#'+escapeHtml(t)+'</span>';}).join(' ');
+          html += '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start;">';
+          html += '<span style="font-size:20px;flex-shrink:0;">' + (s.mood||'😊') + '</span>';
+          html += '<div style="flex:1;min-width:0;">';
+          html += '<div style="font-size:13px;color:var(--text-primary);word-break:break-word;">' + escapeHtml(s.text||'') + '</div>';
+          html += '<div style="display:flex;gap:6px;margin-top:2px;justify-content:space-between;align-items:center;">';
+          html += '<div>' + tags + '</div>';
+          html += '<div style="display:flex;gap:8px;align-items:center;"><span style="font-size:10px;color:var(--text-tertiary);">' + (s.created||'').slice(0,16) + '</span><span onclick="deleteShare(' + s.id + ')" style="font-size:11px;color:var(--text-tertiary);cursor:pointer;">✕</span></div>';
+          html += '</div></div></div>';
+        }
+      }
+      html += '</div>';
+      bodyEl.innerHTML = html;
+    }
+
+    async function addShare() {
+      const text = document.getElementById('sharesTextInput').value.trim();
+      if (!text) return;
+      const mood = document.getElementById('sharesMoodSelect').value;
+      const token = document.getElementById('token').value;
+      const resp = await fetch('/v1/api/daily/shares', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text, mood: mood })
+      });
+      if (resp.ok) {
+        cachedSharesData = null;
+        const card = document.querySelector('[data-card-id="shares"]');
+        if (card) loadSharesCard(card);
+      } else { alert('分享失败'); }
+    }
+
+    async function deleteShare(id) {
+      if (!confirm('删除这条分享？')) return;
+      const token = document.getElementById('token').value;
+      await fetch('/v1/api/daily/shares/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }});
+      cachedSharesData = null;
+      const card = document.querySelector('[data-card-id="shares"]');
+      if (card) loadSharesCard(card);
+    }
 
     /* ===== P3+ P4+ P5: 照片墙 Photos Card ===== */
     let cachedPhotosData = null;

@@ -5362,6 +5362,8 @@
         if (wishesCard) loadWishesCard(wishesCard);
         const notesCard = document.querySelector('[data-card-id="notes"]');
         if (notesCard) loadNotesCard(notesCard);
+        const bookmarksCard = document.querySelector('[data-card-id="bookmarks"]');
+        if (bookmarksCard) loadBookmarksCard(bookmarksCard);
         const summaryCard = document.querySelector('[data-card-id="summary"]');
         if (summaryCard) loadSummaryCard(summaryCard);
         dashboardLoaded = true;
@@ -5776,12 +5778,13 @@
         finance: '💰 财务记录',
         meal: '🥗 饮食记录',
         notes: '📝 随手记 · 灵感碎片',
+        bookmarks: '🔗 在线收藏 · 稍后看',
       };
       return summaries[card.id] || '卡片数据加载中...';
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -6991,6 +6994,176 @@
       if (overlay) overlay.remove();
     }
 
+
+    /* ===== N2+ N3: 随手记 Notes Card ===== */
+    let cachedNotesData = null;
+
+    /* ===== B3+ B4: 收藏夹 Bookmarks Card ===== */
+    let cachedBookmarksData = null;
+    let bookmarksTagFilter = '';
+
+    async function loadBookmarksCard(cardEl) {
+      if (!cardEl) return;
+      const summary = cardEl.querySelector('.card-summary');
+      const body = cardEl.querySelector('.card-body');
+      if (!body) return;
+
+      const token = document.getElementById('token').value;
+      if (!token) {
+        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
+        return;
+      }
+
+      try {
+        if (!cachedBookmarksData) {
+          const resp = await fetch('/v1/api/daily/bookmarks', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          cachedBookmarksData = await resp.json();
+        }
+
+        renderBookmarksCardCollapsed(summary, body, cachedBookmarksData);
+        renderBookmarksCardExpanded(body, cachedBookmarksData);
+      } catch (e) {
+        console.error('加载收藏夹失败:', e);
+        body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>';
+      }
+    }
+
+    function renderBookmarksCardCollapsed(summaryEl, bodyEl, data) {
+      const bookmarks = data && data.bookmarks ? data.bookmarks : [];
+      const total = data && data.total != null ? data.total : bookmarks.length;
+
+      if (!total) {
+        if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">🔗 暂无收藏</div></div>';
+        bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
+        return;
+      }
+
+      const unread = bookmarks.filter(function(b) { return !b.read; }).length;
+      let html = '<div class="wishes-collapsed">';
+      html += '<div class="wishes-total">🔗 <strong>' + total + '</strong> 个收藏' + (unread ? ' · <span style="color:var(--text-primary);">' + unread + ' 未读</span>' : '') + '</div>';
+      html += '<div class="wishes-status-list" style="flex-direction:column;align-items:stretch;">';
+
+      const latest = bookmarks.slice(0, 3);
+      for (const bm of latest) {
+        const fav = bm.favicon ? '<img src="' + escapeHtml(bm.favicon) + '" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;" onerror="this.style.display=\'none\'">' : '';
+        const title = bm.title || bm.url || '';
+        const preview = title.length > 40 ? title.slice(0, 40) + '...' : title;
+        html += '<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
+        html += fav + escapeHtml(preview);
+        html += '</div>';
+      }
+
+      html += '</div>';
+      html += '<div class="wishes-expand-hint" onclick="toggleCard(\'bookmarks\', event)">展开查看 ▼</div>';
+      html += '</div>';
+
+      if (summaryEl) summaryEl.innerHTML = html;
+    }
+
+    function renderBookmarksCardExpanded(bodyEl, data) {
+      const bookmarks = data && data.bookmarks ? data.bookmarks : [];
+      const total = data && data.total != null ? data.total : bookmarks.length;
+
+      // Tag filter
+      const allTags = [];
+      const seenTags = {};
+      for (const bm of bookmarks) {
+        for (const t of bm.tags || []) {
+          if (!seenTags[t]) { seenTags[t] = true; allTags.push(t); }
+        }
+      }
+
+      let html = '<div>';
+      // Tag filter bar
+      html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">';
+      html += '<span onclick="filterBookmarks(\'\')" style="font-size:11px;padding:2px 8px;border-radius:10px;cursor:pointer;' + (!bookmarksTagFilter ? 'background:var(--accent);color:#fff;' : 'border:1px solid var(--border);color:var(--text-secondary);') + '">全部</span>';
+      for (const tag of allTags) {
+        const active = bookmarksTagFilter === tag;
+        html += '<span onclick="filterBookmarks(\'' + escapeHtml(tag) + '\')" style="font-size:11px;padding:2px 8px;border-radius:10px;cursor:pointer;' + (active ? 'background:var(--accent);color:#fff;' : 'border:1px solid var(--border);color:var(--text-secondary);') + '">#' + escapeHtml(tag) + '</span>';
+      }
+      html += '</div>';
+
+      // Search
+      html += '<input type="text" id="bookmarksSearchInput" placeholder="搜索收藏..." oninput="filterBookmarks(null)" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);margin-bottom:8px;box-sizing:border-box;">';
+
+      // Filtered list
+      let filtered = bookmarks;
+      const searchTerm = (document.getElementById('bookmarksSearchInput') || {}).value || '';
+      if (searchTerm) {
+        const q = searchTerm.toLowerCase();
+        filtered = filtered.filter(function(b) { return (b.title || '').toLowerCase().includes(q) || (b.url || '').toLowerCase().includes(q); });
+      }
+      if (bookmarksTagFilter) {
+        filtered = filtered.filter(function(b) { return (b.tags || []).includes(bookmarksTagFilter); });
+      }
+
+      html += '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;">' + filtered.length + ' / ' + total + ' 条</div>';
+
+      if (!filtered.length) {
+        html += '<div style="text-align:center;color:var(--text-secondary);padding:16px;">暂无匹配的收藏</div>';
+      } else {
+        for (const bm of filtered) {
+          const fav = bm.favicon ? '<img src="' + escapeHtml(bm.favicon) + '" style="width:16px;height:16px;border-radius:2px;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '<span style="width:16px;height:16px;border-radius:2px;background:var(--bg-hover);flex-shrink:0;font-size:10px;text-align:center;">🔗</span>';
+          const tags = (bm.tags || []).map(function(t) { return '<span style="font-size:10px;color:var(--text-tertiary);">#' + escapeHtml(t) + '</span>'; }).join(' ');
+          const readCls = bm.read ? 'color:var(--text-tertiary);' : 'font-weight:500;';
+
+          html += '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start;">';
+          html += fav;
+          html += '<div style="flex:1;min-width:0;">';
+          html += '<a href="' + escapeHtml(bm.url) + '" target="_blank" style="font-size:13px;' + readCls + 'text-decoration:none;color:var(--text-primary);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(bm.title || bm.url) + '">' + escapeHtml(bm.title || bm.url) + '</a>';
+          if (bm.description) {
+            html += '<div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;line-height:1.4;">' + escapeHtml(bm.description.slice(0, 100)) + '</div>';
+          }
+          html += '<div style="display:flex;gap:6px;margin-top:2px;">' + tags + '<span onclick="toggleBookmarkRead(' + bm.id + ')" style="font-size:10px;color:var(--text-tertiary);cursor:pointer;">' + (bm.read ? '✓已读' : '○未读') + '</span>' +
+            '<span onclick="deleteBookmark(' + bm.id + ')" style="font-size:10px;color:var(--text-tertiary);cursor:pointer;">✕删除</span></div>';
+          html += '</div></div>';
+        }
+      }
+      html += '</div>';
+      bodyEl.innerHTML = html;
+    }
+
+    async function filterBookmarks(tag) {
+      if (tag !== null && tag !== undefined) bookmarksTagFilter = tag;
+      const token = document.getElementById('token').value;
+      if (!token) return;
+      const resp = await fetch('/v1/api/daily/bookmarks', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (resp.ok) {
+        cachedBookmarksData = await resp.json();
+        const card = document.querySelector('[data-card-id="bookmarks"]');
+        if (card) {
+          const body = card.querySelector('.card-body');
+          if (body) renderBookmarksCardExpanded(body, cachedBookmarksData);
+        }
+      }
+    }
+
+    async function toggleBookmarkRead(id) {
+      const token = document.getElementById('token').value;
+      if (!token) return;
+      await fetch('/v1/api/daily/bookmarks/' + id, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ read: true })
+      });
+      filterBookmarks(null);
+    }
+
+    async function deleteBookmark(id) {
+      if (!confirm('确定删除这个收藏？')) return;
+      const token = document.getElementById('token').value;
+      if (!token) return;
+      await fetch('/v1/api/daily/bookmarks/' + id + '?person=admin', {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      filterBookmarks(null);
+    }
 
     /* ===== N2+ N3: 随手记 Notes Card ===== */
     let cachedNotesData = null;

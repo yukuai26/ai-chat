@@ -1212,6 +1212,7 @@ def put_card_by_id(card_id):
 
 KNOWN_PERSONS = ["管理员", "伴侣"]
 TODOS_PATH = os.path.join(USER_DATA_DIR, "todos.json")
+RECIPE_PATH = os.path.join(USER_DATA_DIR, "recipe.json")
 
 
 def _load_todos():
@@ -2317,6 +2318,135 @@ def get_person_field(person, field):
         "field": field,
         "data": records,
         "total": len(records),
+    })
+
+
+# ============================================================
+#  食谱 API (DB15)
+# ============================================================
+
+WEEKDAY_MAP = {
+    "周一": 1, "周二": 2, "周三": 3, "周四": 4,
+    "周五": 5, "周六": 6, "周日": 7,
+    "星期一": 1, "星期二": 2, "星期三": 3, "星期四": 4,
+    "星期五": 5, "星期六": 6, "星期日": 7,
+}
+
+
+def _load_recipe() -> dict:
+    """读取食谱文件。"""
+    try:
+        if os.path.isfile(RECIPE_PATH) and os.path.getsize(RECIPE_PATH) > 0:
+            with open(RECIPE_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"recipe.json 读取失败: {e}")
+    return {}
+
+
+def _save_recipe(data: dict):
+    """保存食谱文件。"""
+    os.makedirs(os.path.dirname(RECIPE_PATH), exist_ok=True)
+    with open(RECIPE_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _parse_recipe_text(text: str) -> dict:
+    """解析食谱文本，提取每天的午/晚餐。
+
+    示例: "周一 午餐:沙拉 晚餐:鱼 周二 午餐:面"
+
+    返回:
+      {"1": {"lunch": "沙拉", "dinner": "鱼"}, "2": {"lunch": "面", "dinner": ""}}
+    """
+    import re
+    result: dict[str, dict] = {}
+    current_day = None
+    day_pattern = r"(周[一二三四五六日]|星期[一二三四五六日])"
+
+    # 按自然语言分割
+    # 策略: 找到每个"周X"标记，切分后续内容直到下一个"周X"
+    parts = re.split(rf"(?=({day_pattern}))", text)
+    buffer = ""
+    for part in parts:
+        m = re.match(rf"^{day_pattern}$", part)
+        if m:
+            # 保存上一个 day 的内容
+            if current_day and buffer.strip():
+                result[str(WEEKDAY_MAP[current_day])] = _parse_meal_spec(buffer)
+            current_day = m.group(1)
+            buffer = ""
+        else:
+            buffer += part
+
+    # 最后一个 day
+    if current_day and buffer.strip():
+        result[str(WEEKDAY_MAP[current_day])] = _parse_meal_spec(buffer)
+
+    return result
+
+
+def _parse_meal_spec(spec: str) -> dict:
+    """解析单日餐食描述。
+
+    支持: "午餐:沙拉 晚餐:鱼" 或 "午餐: 沙拉, 晚餐: 鱼"
+    """
+    import re
+    meals = {"lunch": "", "dinner": ""}
+    meal_map = {"午餐": "lunch", "晚饭": "dinner", "晚餐": "dinner",
+                "早饭": "breakfast", "早餐": "breakfast"}
+
+    for cn, en in meal_map.items():
+        m = re.search(rf"{cn}[：:，,\s]*([^\s]*?)(?=\s*(?:午餐|晚饭|晚餐|早饭|早餐|$))", spec)
+        if m:
+            meals[en] = m.group(1).strip().rstrip("，,。.")
+
+    return meals
+
+
+@app.route("/v1/api/daily/recipe/upload", methods=["POST"])
+@require_token
+def upload_recipe():
+    """POST /v1/api/daily/recipe/upload - 上传/解析食谱。
+
+    请求体: {"text": "周一 午餐:沙拉 晚餐:鱼 周二 午餐:面"}
+
+    支持格式:
+      - "周X 午餐:XXX 晚餐:XXX"（自然语言）
+      - 每餐用空格或标点分隔
+
+    返回: {"ok":true, "parsed": {"1":{"lunch":"沙拉","dinner":"鱼"}}, "count": 2}
+    """
+    data = request.get_json(silent=True)
+    if not data or "text" not in data:
+        return error_response("缺少必填字段 text", 400)
+    text = data["text"].strip()
+    if len(text) < 4:
+        return error_response("食谱内容太短", 400)
+
+    parsed = _parse_recipe_text(text)
+    if not parsed:
+        return error_response("未识别到任何周X标记，请使用格式：周一 午餐:XX 晚餐:XX", 400)
+
+    # 合并到已有食谱
+    current = _load_recipe()
+    for day, meals in parsed.items():
+        current.setdefault(day, {})
+        for k, v in meals.items():
+            if v:
+                current[day][k] = v
+
+    try:
+        _save_recipe(current)
+    except IOError as e:
+        return error_response(f"保存食谱失败: {e}", 500)
+
+    return jsonify({
+        "ok": True,
+        "parsed": parsed,
+        "count": len(parsed),
+        "days": sorted(parsed.keys()),
+        "message": f"已更新 {len(parsed)} 天食谱",
     })
 
 

@@ -1810,7 +1810,7 @@
       max-width: 90vw;
       max-height: 80vh;
       overflow-y: auto;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
       animation: modalIn 0.2s ease;
     }
     @keyframes modalIn {
@@ -2077,7 +2077,7 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.55);
+      background: rgba(0,0,0,0.12);
       z-index: 99;
       opacity: 0;
       transition: opacity 0.15s ease;
@@ -2230,7 +2230,7 @@
       max-height: 100%;
       object-fit: contain;
       border-radius: 4px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
       background: transparent;
     }
     .image-info {
@@ -2440,9 +2440,7 @@
         transform: translateX(-100%);
         transition: transform 0.15s ease;
         border-right: 1px solid var(--border);
-        box-shadow: 4px 0 24px rgba(0,0,0,0.4);
-      }
-      .conv-panel.open { transform: translateX(0); }
+        box-shadow: 4px 0 24px rgba(0,0,0,0.08);
       /* 覆盖 collapsed 的桌面行为：移动端始终用抽屉方式 */
       .conv-panel.collapsed { width: 280px; max-width: 85vw; transform: translateX(-100%); }
 
@@ -2476,11 +2474,7 @@
         transform: translateX(100%);
         transition: transform 0.15s ease;
         border-left: 1px solid var(--border);
-        box-shadow: -4px 0 24px rgba(0,0,0,0.4);
-        padding: 0;
-        overflow-y: auto;
-      }
-      .settings-panel.open { transform: translateX(0); }
+        box-shadow: -4px 0 24px rgba(0,0,0,0.08);
       .settings-panel.collapsed { width: 280px; max-width: 85vw; transform: translateX(100%); }
 
       /* 抽屉头部（设置面板） */
@@ -2514,7 +2508,7 @@
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(0,0,0,0.55);
+        background: rgba(0,0,0,0.2);
         z-index: 99;
         opacity: 0;
         transition: opacity 0.15s ease;
@@ -2538,7 +2532,7 @@
         transform: translateX(-100%);
         transition: transform 0.15s ease;
         border-right: 1px solid var(--border);
-        box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+        box-shadow: 4px 0 24px rgba(0,0,0,0.08);
       }
       .file-tree.open { transform: translateX(0); }
       .tree-drawer-header { display: flex; }
@@ -2952,7 +2946,7 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 4px;
-      box-shadow: 0 6px 24px rgba(0,0,0,0.55);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.12);
       z-index: 3000;
       min-width: 130px;
       opacity: 0;

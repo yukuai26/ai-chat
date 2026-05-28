@@ -1,0 +1,6 @@
+{
+  "summary_template": "☑ {done}/{total} ({percent}%)",
+  "limit": 10,
+  "group_by": "date",
+  "order": "desc"
+}

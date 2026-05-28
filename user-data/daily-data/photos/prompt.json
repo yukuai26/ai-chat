@@ -1,0 +1,11 @@
+{
+  "card_name": "照片",
+  "domain_knowledge": "照片墙。图片存在 /user-files/ 下，这里只存元数据和路径。",
+  "best_practices": [
+    "id 格式 p + 数字，自增",
+    "image 字段存 /user-files/ 下的相对路径",
+    "caption 简洁（不超过 50 字）"
+  ],
+  "user_preferences": [],
+  "examples": []
+}

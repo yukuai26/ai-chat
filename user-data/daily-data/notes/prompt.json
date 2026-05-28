@@ -1,0 +1,24 @@
+{
+  "card_name": "随手记",
+  "domain_knowledge": "随手记录想法、灵感、心情。短则一句话，长可带图片。用 mood 表情标记心情。",
+  "best_practices": [
+    "id 格式 n + 数字，自增",
+    "mood 用单个 emoji（💡/😊/😢/🤔/🔥/📝）",
+    "tags 用数组，方便后续筛选",
+    "images 存 /user-files/ 下的路径"
+  ],
+  "user_preferences": [
+    "默认 mood: 💡",
+    "不自动给 notes 加标签（让用户自然语言说明时再加）"
+  ],
+  "examples": [
+    {
+      "in": "记一下：今天发现一个好用的工具叫 foo",
+      "out": "创建笔记 id=nX, text='今天发现一个好用的工具叫 foo', mood='💡'"
+    },
+    {
+      "in": "心情不好，今天不想说话",
+      "out": "创建笔记 mood='😢', text='心情不好，今天不想说话'"
+    }
+  ]
+}

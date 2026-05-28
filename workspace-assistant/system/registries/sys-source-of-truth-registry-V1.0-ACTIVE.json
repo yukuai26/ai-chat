@@ -1,0 +1,171 @@
+{
+  "_meta": {
+    "created": "2026-05-26",
+    "maintainer": "小助手",
+    "version": "1.0",
+    "status": "ACTIVE",
+    "last_audit": "2026-05-26T19:43:00+08:00"
+  },
+  "canonical_paths": {
+    "SOUL": "SOUL.md",
+    "USER": "USER.md",
+    "MEMORY": "MEMORY.md",
+    "HEARTBEAT": "HEARTBEAT.md",
+    "WORKFLOW": "WORKFLOW.md",
+    "MISTAKES": "MISTAKES.md",
+    "TOOLS": "TOOLS.md",
+    "AGENTS": "AGENTS.md",
+    "OPENCLAW_CONFIG": "~/.openclaw/openclaw.json",
+    "ASSISTANT_MODEL_CONFIG": "~/.openclaw/agents/assistant/agent/models.json"
+  },
+  "project_canonical": {
+    "ac-readme": "projects/ac/ac-readme-V1.0-ACTIVE.md",
+    "ac-work-log": "projects/ac/ac-work-log-V1.0-ACTIVE.md",
+    "ac-issues": "projects/ac/ac-issues-V1.0-ACTIVE.md",
+    "ac-changes": "projects/ac/ac-changes-V1.0-ACTIVE.md",
+    "ac-project-plan": "projects/ac/ac-project-plan-V1.0-ACTIVE.md",
+    "ac-risk-register": "projects/ac/ac-risk-register-V1.0-ACTIVE.md",
+    "ac-scope-doc": "projects/ac/ac-scope-doc-V1.0-ACTIVE.md",
+    "ac-nginx-config": "/etc/nginx/sites-available/chat",
+    "ac-web-chat": "/var/www/chat/index.html",
+    "ac-web-source": "canvas/index.html",
+    "ac-buildcat-design": "projects/ac/ac-buildcat-system-design-V1.0-ACTIVE.md",
+    "ac-pipeline-state": "pipeline-state.json",
+    "ac-file-browser-design": "projects/ac/ac-file-browser-design-V1.0-ACTIVE.md"
+  },
+  "deployment_canonical": {
+    "infra-architecture": "projects/ac/tech/ac-architecture-V1.0-ACTIVE.md"
+  },
+  "sops": {
+    "session-startup": "sops/by-workflow/session-startup/sys-session-startup-sop-V1.1-ACTIVE.md",
+    "web-deploy": "sops/by-workflow/deployment/sys-web-deploy-sop-V1.0-ACTIVE.md",
+    "weekly-maintenance": "sops/by-workflow/maintenance/sys-weekly-maintenance-sop-V1.0-ACTIVE.md",
+    "buildcat-pipeline": "sops/by-entity/ac/ac-build-pipeline-sop-V1.0-ACTIVE.md",
+    "buildcat-audit": "sops/by-entity/ac/ac-audit-buildcat-sop-V1.0-ACTIVE.md"
+  },
+  "buildcat_canonical": {
+    "bc-workspace": "/home/ubuntu/.openclaw/workspace-build-cat",
+    "bc-soul": "/home/ubuntu/.openclaw/workspace-build-cat/SOUL.md",
+    "bc-agents": "/home/ubuntu/.openclaw/workspace-build-cat/AGENTS.md",
+    "bc-workflow": "/home/ubuntu/.openclaw/workspace-build-cat/WORKFLOW.md",
+    "bc-heartbeat": "/home/ubuntu/.openclaw/workspace-build-cat/HEARTBEAT.md",
+    "bc-memory": "/home/ubuntu/.openclaw/workspace-build-cat/MEMORY.md",
+    "bc-tools": "/home/ubuntu/.openclaw/workspace-build-cat/TOOLS.md",
+    "bc-memory-sop": "/home/ubuntu/.openclaw/workspace-build-cat/sops/by-workflow/bc-memory-maintenance-sop-V1.0-ACTIVE.md",
+    "bc-logs-format": "/home/ubuntu/.openclaw/workspace-build-cat/logs/_format.md",
+    "bc-entity-registry": "/home/ubuntu/.openclaw/workspace-build-cat/system/registries/bc-entity-prefix-registry-V1.0-ACTIVE.yaml",
+    "bc-source-registry": "/home/ubuntu/.openclaw/workspace-build-cat/system/registries/bc-source-of-truth-registry-V1.0-ACTIVE.json",
+    "bc-changelog": "/home/ubuntu/.openclaw/workspace-build-cat/system/changelogs/bc-changelog-2026-V1.0-ACTIVE.md"
+  },
+  "files": {
+    "projects/ac/ac-daily-dashboard-design-V1.0-ACTIVE.md": {
+      "entity": "ac",
+      "descriptor": "daily-dashboard-design",
+      "version": "1.0",
+      "status": "ACTIVE",
+      "type": "设计文档",
+      "created": "2026-05-27T01:18:59.838761+08:00",
+      "description": "每日 Dashboard 卡片式仪表盘设计文档（Phase 6）"
+    },
+    "projects/ac/ac-backup-design-V1.0-ACTIVE.md": {
+      "entity": "ac",
+      "descriptor": "backup-design",
+      "version": "1.0",
+      "status": "ACTIVE",
+      "type": "设计文档",
+      "created": "2026-05-27T01:25:01.070531+08:00",
+      "description": "备份系统设计文档（Phase 7）"
+    },
+    "projects/ac/ac-ui-polish-design-V1.0-ACTIVE.md": {
+      "entity": "ac",
+      "descriptor": "ui-polish-design",
+      "version": "1.0",
+      "status": "ACTIVE",
+      "type": "设计文档",
+      "created": "2026-05-27T01:27:03.463288+08:00",
+      "description": "UI 极简美化设计文档（Phase 8）"
+    },
+    "projects/ac/ac-extended-cards-design-V1.0-ACTIVE.md": {
+      "entity": "ac",
+      "descriptor": "extended-cards-design",
+      "version": "1.0",
+      "status": "ACTIVE",
+      "type": "设计文档",
+      "created": "2026-05-27T01:40:23.715009+08:00",
+      "description": "Phase 9 扩展卡片设计文档（随手记/收藏夹/照片墙/分享板/提醒/习惯打卡）"
+    },
+    "projects/ac/ac-user-system-design-V1.0-ACTIVE.md": {
+      "entity": "ac",
+      "descriptor": "user-system-design",
+      "version": "1.0",
+      "status": "ACTIVE",
+      "type": "设计文档",
+      "created": "2026-05-27T01:48:07.969090+08:00",
+      "description": "Phase 10 用户系统设计文档（登录/注册/JWT/数据隔离）"
+    },
+    "projects/ac/ac-global-search-design-V1.0-ACTIVE.md": {
+      "entity": "ac",
+      "descriptor": "global-search-design",
+      "version": "1.0",
+      "status": "ACTIVE",
+      "type": "设计文档",
+      "created": "2026-05-27T01:48:47.910988+08:00",
+      "description": "Phase 11 全局搜索设计文档"
+    },
+    "projects/ac/ac-mobile-adapt-design-V1.0-ACTIVE.md": {
+      "entity": "ac",
+      "descriptor": "mobile-adapt-design",
+      "version": "1.0",
+      "status": "ACTIVE",
+      "type": "设计文档",
+      "created": "2026-05-27T01:58:16.085090+08:00",
+      "description": "Phase 12 手机适配设计文档"
+    },
+    "projects/ac/ac-realtime-sync-design-V1.0-ACTIVE.md": {
+      "entity": "ac",
+      "descriptor": "realtime-sync-design",
+      "version": "1.0",
+      "status": "ACTIVE",
+      "type": "设计文档",
+      "created": "2026-05-27T01:58:16.085090+08:00",
+      "description": "Phase 13 实时同步设计文档（WebSocket）"
+    },
+    "projects/ac/ac-calendar-design-V1.0-ACTIVE.md": {
+      "entity": "ac",
+      "descriptor": "calendar-design",
+      "version": "1.0",
+      "status": "ACTIVE",
+      "type": "设计文档",
+      "created": "2026-05-27T02:01:40.537268+08:00",
+      "description": "Phase 14 日历 Tab 设计文档（时间中枢，汇聚 Todo/提醒/食谱/事件）"
+    },
+    "projects/ac/ac-ux-optimization-design-V1.0-DRAFT.md": {
+      "entity": "ac",
+      "descriptor": "ux-optimization-design",
+      "version": "1.0",
+      "status": "DRAFT",
+      "type": "设计文档",
+      "created": "2026-05-27T10:32:00+08:00",
+      "description": "Phase 15 体验优化设计文档（会话标题优化等，持续追加）"
+    },
+    "projects/ac/ac-unified-files-design-V1.0-DRAFT.md": {
+      "entity": "ac",
+      "descriptor": "unified-files-design",
+      "version": "1.0",
+      "status": "DRAFT",
+      "type": "设计文档",
+      "created": "2026-05-27T10:56:00+08:00",
+      "description": "Phase 16 统一文件管理设计文档（聊天上传/文件选择器/文件浏览器统一）"
+    },
+    "projects/ac/ac-nutrition-system-design-V1.0-DRAFT.md": {
+      "entity": "ac",
+      "descriptor": "nutrition-system-design",
+      "version": "1.0",
+      "status": "DRAFT",
+      "type": "设计文档",
+      "created": "2026-05-28T00:00:00+08:00",
+      "description": "Phase 17 营养追踪与食谱系统设计文档（周食谱/午餐推荐/热量记录/Dashboard卡片）"
+    }
+  },
+  "_updated": "2026-05-28T00:00:00+08:00"
+}

@@ -1,0 +1,34 @@
+{
+  "id": "sess_daily_20260528_174435_44dc9f",
+  "title": "Daily 指令 05月28日 17:44",
+  "created": "2026-05-28T17:44:35.204679",
+  "updated": "2026-05-28T18:07:14.095965+08:00",
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是 Daily 卡片助手。每张卡片有四层结构：数据 → 规则 → 显示 → 经验。\n\n## 每张卡片的目录结构\n\nuser-data/{card_id}/\n  data.json       ← 原始记录（你负责读写）\n  rules.json      ← 显示准则（声明式 JSON，控制怎么展示）\n  display.json    ← 实际显示内容（前端直接读，由 apply_rules 自动生成）\n  prompt.json     ← 卡片专属经验（领域知识、最佳实践、用户偏好、示例）\n  heartbeat.json  ← 心跳配置（cron 定时刷新，可选）\n\n设计原则：\n- 改数据内容 → 改 data.json → 然后调 apply_rules 刷新 display\n- 改展示方式 → 改 rules.json → 然后调 apply_rules\n- 改卡片行为经验 → 改 prompt.json（用户说「记住...」「以后别...」「经验是...」时修改）\n- 改心跳频率 → 改 heartbeat.json\n- 系统会自动注入涉及卡片的专属 prompt 消息，包含该卡片的领域知识和最佳实践\n\n## 调 apply_rules 刷新 display\n\n改完 data.json 或 rules.json 后，用 exec 执行（替换 card_id）：\n  curl -s -X POST http://127.0.0.1:5050/v1/api/daily/apply-rules -H \"Content-Type: application/json\" -H \"Authorization: Bearer e0fb40cef753818c92577e3c8fe2af53\" -d '{\"card_id\": \"替换为卡片id\"}'\n\n## 十二张卡片\n\n📋 Todo: /home/ubuntu/.openclaw/user-data/todo/\n  data.json: {\"管理员\": [{\"id\": 1, \"text\": \"xxx\", \"done\": false, \"type\": \"daily\", \"date\": \"YYYY-MM-DD\"}], \"伴侣\": []}\n  新增时 id 自增（最大 id + 1），type 默认 \"daily\"\n  rules.json 字段: limit(条数), group_by(date/person), order(desc/priority)\n\n📊 数据追踪: /home/ubuntu/.openclaw/user-data/data/管理员.json 和 /home/ubuntu/.openclaw/user-data/data/伴侣.json\n  格式: {\"weight\": {\"2026-05-28\": 72}, \"water\": {...}, \"exercise\": {...}}\n  字段自由定义。rules.json 字段: fields([\"weight\",\"water\",\"exercise\"])\n\n🍽️ 食谱: /home/ubuntu/.openclaw/user-data/recipe/data.json\n  格式: {\"周一\": {\"lunch\": {\"name\": \"沙拉\", \"calories\": 200}}}\n  rules.json 字段: mode(today/week)\n\n💡 心愿: /home/ubuntu/.openclaw/user-data/wishes/data.json\n  格式: [{\"id\": \"w1\", \"title\": \"拍饭分析\", \"status\": \"idea\", \"tags\": [], \"createdBy\": \"管理员\"}]\n  状态: idea → discussing → designing → implementing → done\n  rules.json 字段: limit, filters({\"status\":\"designing\"})\n\n📝 随手记: /home/ubuntu/.openclaw/user-data/notes/data.json\n  格式: {\"管理员\": [{\"id\": \"n1\", \"text\": \"...\", \"mood\": \"💡\", \"tags\": [], \"images\": [], \"created\": \"ISO8601\"}]}\n  rules.json 字段: limit(最新N条)\n\n🔗 收藏: /home/ubuntu/.openclaw/user-data/bookmarks/data.json\n  格式: {\"管理员\": [{\"id\": \"b1\", \"url\": \"https://...\", \"title\": \"...\", \"tags\": [], \"created\": \"ISO8601\"}]}\n  rules.json 字段: limit, filter_tag\n\n📸 照片: /home/ubuntu/.openclaw/user-data/photos/data.json\n  格式: {\"管理员\": [{\"id\": \"p1\", \"image\": \"/user-files/...\", \"caption\": \"...\", \"likes\": [], \"comments\": []}]}\n  rules.json 字段: limit, layout(grid/masonry)\n\n📤 分享: /home/ubuntu/.openclaw/user-data/shares/data.json\n  格式: {\"sent\": [{\"id\": \"s1\", \"from\": \"管理员\", \"to\": \"伴侣\", ...}], \"received\": []}\n\n⏰ 提醒: /home/ubuntu/.openclaw/user-data/reminders/data.json\n  格式: {\"管理员\": [{\"id\": \"r1\", \"text\": \"下午3点开会\", \"time\": \"15:00\", \"date\": \"2026-05-28\", \"repeat\": null, \"done\": false}]}\n\n✅ 习惯: /home/ubuntu/.openclaw/user-data/habits/data.json\n  格式: {\"管理员\": {\"habits\": [{\"id\": \"h1\", \"name\": \"运动\", \"icon\": \"🏃\"}], \"logs\": {\"h1\": {\"2026-05-28\": true}}}}}\n\n📰 新闻: /home/ubuntu/.openclaw/user-data/news/YYYY-MM-DD.json（每天 08:00 cron 自动爬取）\n\n## 操作规则\n\n1. 先读后写：改 data.json 或 rules.json 前先 read 读取当前文件内容\n2. 改了必刷新：写完 data/rules 后立即 exec curl 调 apply_rules 刷新 display.json\n3. 展示改 rules：用户说「多展示几条」「按优先级排序」「改成只显示进行中的」→ 改 rules.json\n4. 数据改 data：用户说「记一下体重 72」「添加一个提醒」→ 改 data.json\n5. 添加 TODO 时用 @todo 前缀更快（不走这个流程）\n6. 简洁确认：只回复操作结果，如「已更新体重 72kg」「Todo 卡片现在展示 10 条」\n7. 新增条目时不要覆盖已有数据，合并到现有列表\n8. 经验改 prompt：用户说「以后记体重用kg」「记住我不吃辣」→ 读对应卡片的 prompt.json → 更新 domain_knowledge/best_practices/user_preferences → 写回\n"
+    },
+    {
+      "role": "user",
+      "content": "现在食谱是怎么显示的"
+    },
+    {
+      "role": "assistant",
+      "content": "🔧 小助手：\n\n当前食谱卡片的情况如下：\n\n**数据 (data.json)**：\n- 只有周四有一条记录：午餐 — 鸡胸肉沙拉（300 卡）\n- 其余周一～周日都是空的\n\n**显示 (display.json)**：\n- 当前显示模式是\"今日\"，只展示当天的食谱\n- 显示内容：`今日: 鸡胸肉沙拉`，附带详细的午餐信息（名称 + 卡路里）\n\n**规则 (rules.json)**：\n- 该文件不存在，意味着目前没有自定义显示规则，使用的是系统默认行为（默认 mode 应该是 `today`，即只显示今天）\n\n---\n\n**总结**：食谱卡片目前只展示当天对应星期的餐食，数据也比较空，只填了周四午餐一条。\n\n需要我帮你调整显示模式（比如改成显示一整周）或者补充食谱数据吗？"
+    },
+    {
+      "role": "user",
+      "content": "食谱规则更新一下，每周我会发送食谱，记录周一到周五的食谱（图片），我希望周一到周五每天中午11点启动心跳，根据当天食谱给我一个推荐正常成年人的食材配比（同时考虑我的喜好以及我的体重身高等，这个我以后会说，现在不用），如果周六周日启动发现我还没给下周的食谱则在卡片提示。然后我可能还会提供晚餐/早餐的照片，也需要记录食用了什么以及卡路里，卡片需要展示的是今天摄入卡路里/中午推荐使用（xxx ag xxx b g这样），还有这周摄入等等，总之就是最近摄入，健康推荐这种，你设计下",
+      "time": "2026-05-28T10:01:37.993Z",
+      "files": []
+    },
+    {
+      "role": "assistant",
+      "content": "Now let me look at the existing card registry for the dashboard to understand how cards are registered:Now I have enough context. Let me design the full system and create the design document.Now let me update the registries, changelog, pipeline state, and present the design:Now let me update MEMORY.md and today's daily log:🔧 小助手：\n\n已为你设计了完整的 **营养追踪与食谱系统**。设计文档已保存，下面是要点总结：\n\n---\n\n## 🍽️ 系统全貌\n\n### 你的使用流程\n\n| 步骤 | 你怎么做 | 系统做什么 |\n|:--:|------|------|\n| ① | 发一张食谱图片（周一到周五的午餐菜单） | Agent 视觉识别 → 提取 Mon-Fri 菜品 → 存储 |\n| ② | 每天 11:00 自动触发 | 读当天食谱 → 生成食材配比推荐 → 更新卡片 |\n| ③ | 周六/日 11:00 自动检查 | 如果还没发下周食谱 → 弹卡片提醒你 |\n| ④ | 吃完早餐/晚餐拍个照发过来 | Agent 识别食物 → 估算热量 → 记录 |\n| ⑤ | 打开 Dashboard | 看今日摄入/午餐推荐/本周汇总 |\n\n### Dashboard 卡片样子\n\n```\n┌──────────────────────────────┐\n│ 🍽️ 饮食  W22                │\n│ 🔥 今日摄入: 435 / 2400 kcal │\n│ ██░░░░░░░░░░░░░░ 18%        │\n│                              │\n│ ☀️ 午餐推荐:                 │\n│ 五花肉 120g | 空心菜 200g   │\n│ 米饭 180g   | 食用油 12g    │\n│                              │\n│ 📊 本周日均: 1,680 kcal      │\n│ 一 二 三 四 五 六 日        │\n│ █ █ █ ░ ░ ░ ░              │\n└──────────────────────────────┘\n```\n\n点击展开后能看到每餐明细、营养素分解（蛋白/碳水/脂肪/纤维）、本周每天的柱状图。\n\n---\n\n### 实现分为 4 个 Phase（共 20 个 TODO）\n\n| Phase | 内容 | TODO |\n|:--:|------|:--:|\n| **17-1** | 数据层 + 卡片骨架（API + 前端组件） | N1-N9 |\n| **17-2** | Cron 定时任务（11:00 推荐 + 周末检查） | N10-N13 |\n| **17-3** | 图片分析 + 热量估算 + 健康档案 | N14-N20 |\n| **17-4** | 高级特性（对比/环图/知识库，可选） | N21-N25 |\n\n---\n\n### 🤔 需要你确认的 5 个问题\n\n| # | 问题 | 默认方案 |\n|---|------|------|\n| 1 | 营养追踪是**单人**还是也包含伴侣？ | 先单人 |\n| 2 | 午餐推荐是**只显示在卡片**还是同时推送飞书？ | 仅卡片 |\n| 3 | 食谱图片是**一张大图**包含全部还是每天分开发？ | 一张大图 |\n| 4 | 需要晚餐推荐吗？ | 不需要（仅午餐） |\n| 5 | 历史记录保留多久？ | 无限保留 |\n\n---\n\n📄 完整设计文档：[ac-nutrition-system-design-V1.0-DRAFT.md](/user-files/projects/ac/ac-nutrition-system-design-V1.0-DRAFT.md)\n\n设计已注册到 registry + changelog，pipeline-state.json 已写入 20 个 TODO，确认后 Build喵 就可以动工了 🐱",
+      "time": "2026-05-28T10:01:43.019Z"
+    }
+  ],
+  "tags": [
+    "daily"
+  ]
+}

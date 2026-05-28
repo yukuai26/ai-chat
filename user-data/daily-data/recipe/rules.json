@@ -1,0 +1,72 @@
+{
+  "mode": "recipe_dashboard",
+  "sections": [
+    {
+      "id": "today_intake",
+      "title": "📊 今日摄入",
+      "template": "{total_calories} kcal（早 {breakfast_cal} / 午 {lunch_cal} / 晚 {dinner_cal}）",
+      "source": "intake_log.today",
+      "show_when": "always"
+    },
+    {
+      "id": "lunch_recommendation",
+      "title": "🍽️ 午餐推荐",
+      "template": "{plan_name}\n配比: 蛋白质 {protein}g / 碳水 {carbs}g / 脂肪 {fat}g\n建议热量: {target_cal} kcal",
+      "source": "weekly_plan.today.lunch",
+      "show_when": "weekday"
+    },
+    {
+      "id": "week_summary",
+      "title": "📈 本周摄入",
+      "template": "累计 {week_total_cal} kcal | 日均 {week_avg_cal} kcal\n蛋白质均 {week_avg_protein}g | 碳水均 {week_avg_carbs}g | 脂肪均 {week_avg_fat}g\n已记录 {days_logged} 天",
+      "source": "intake_log.this_week",
+      "show_when": "always"
+    },
+    {
+      "id": "health_tip",
+      "title": "💡 健康提示",
+      "template": "{tip}",
+      "source": "computed",
+      "show_when": "has_data"
+    },
+    {
+      "id": "next_week_alert",
+      "title": "📮 提醒",
+      "template": "请发送下周食谱图片～",
+      "source": "computed",
+      "show_when": "weekend_no_next_week_plan"
+    }
+  ],
+  "display_logic": {
+    "weekday": "展示今日摄入 + 午餐推荐配比 + 本周摄入汇总 + 健康提示",
+    "weekend_no_plan": "展示本周摄入汇总 + 提示发送下周食谱",
+    "weekend_has_plan": "展示本周摄入汇总 + 下周食谱预览"
+  },
+  "computation_rules": {
+    "daily_target": {
+      "description": "无 user_profile 时使用默认值，有时按 TDEE 计算",
+      "default_calories": 2000,
+      "default_macros": {
+        "protein_ratio": 0.25,
+        "carbs_ratio": 0.5,
+        "fat_ratio": 0.25
+      }
+    },
+    "lunch_recommendation": {
+      "description": "根据当天食谱菜品，按目标热量的35%分配午餐，给出食材克数配比",
+      "lunch_calorie_ratio": 0.35,
+      "consider": [
+        "user_profile",
+        "user_preferences",
+        "weekly_plan.today.lunch"
+      ]
+    },
+    "health_tip_triggers": [
+      "蛋白质连续3天低于目标 → 提示增加蛋白质",
+      "单日热量超过目标120% → 提示控制",
+      "连续2天未记录 → 提示记录",
+      "碳水占比超60% → 提示均衡"
+    ]
+  },
+  "summary_template": "今日: {today_meals}"
+}

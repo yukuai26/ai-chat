@@ -1,0 +1,6 @@
+{
+  "enabled": true,
+  "schedule": "0 11 * * 1-5",
+  "timezone": "Asia/Shanghai",
+  "prompt": "食谱卡片心跳触发。请执行以下逻辑：\n1. 判断今天是周几（周一=周一，以此类推）\n2. 读取 recipe/data.json 中 weekly_plan 对应今天的 lunch.menu\n3. 根据当天可选菜品，综合考虑营养均衡（蛋白质、碳水、脂肪、膳食纤维），为用户推荐一份午餐搭配方案：\n   - 从主荤菜中选 1-2 道（优先清蒸/炒制，避免全选油炸）\n   - 从素菜中选 1-2 道\n   - 主食选 1 种\n   - 汤粥选 1 种（可选）\n   - 五谷杂粮可选 1 种替代部分主食\n4. 对每道推荐菜标注建议取餐克数，格式如：\n   - 彩椒牛肉粒 150g\n   - 清炒油麦菜 120g\n   - 五常大米 150g\n   - 鲫鱼豆腐汤 200g\n5. 计算推荐方案的预估总热量和宏量营养素：\n   - 总热量目标：午餐约 600-700kcal（用户无特殊 TDEE 数据时按此标准）\n   - 蛋白质目标：25-35g\n   - 尽量控制脂肪在 20-25g 以内\n6. 输出格式写入 display.json：\n   {\n     \"lunch_recommendation\": {\n       \"date\": \"YYYY-MM-DD\",\n       \"items\": [\n         {\"name\": \"菜名\", \"portion\": \"Xg\", \"calories\": N, \"protein\": \"Xg\", \"carbs\": \"Xg\", \"fat\": \"Xg\"}\n       ],\n       \"total\": {\"calories\": N, \"protein\": \"Xg\", \"carbs\": \"Xg\", \"fat\": \"Xg\"},\n       \"tip\": \"简短饮食建议\"\n     },\n     \"updated\": \"ISO8601\"\n   }\n7. 将推荐结果以用户友好的格式回复用户（不只是写 display，要发消息通知），格式示例：\n   🍽️ 今日午餐推荐（周X）\n   \n   ・彩椒牛肉粒 150g（约180kcal）\n   ・清炒油麦菜 120g（约55kcal）\n   ・五常大米 150g（约230kcal）\n   ・鲫鱼豆腐汤 200g（约90kcal）\n   \n   📊 合计：约555kcal | 蛋白质28g | 碳水72g | 脂肪16g\n   💡 tip: xxx\n\n注意：用户偏好午餐轻食，推荐时控制总热量不超过700kcal，优先高蛋白低脂搭配。"
+}

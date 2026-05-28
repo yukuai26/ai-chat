@@ -1,0 +1,27 @@
+# Entity Prefix Registry
+# Purpose: Master registry of all entity/project prefixes in the workspace
+# Maintainer: 小助手
+# Last updated: 2026-05-26
+
+entities:
+  - prefix: "ac"
+    full_name: "assistant-chat (小助手 Web Chat)"
+    type: "project"
+    status: "active"
+    created: "2026-05-26"
+    description: "基于 OpenClaw Gateway 的 Web 聊天系统"
+    
+  - prefix: "sys"
+    full_name: "系统级配置"
+    type: "meta"
+    status: "active"
+    created: "2026-03-01"
+    description: "workspace 级别的配置文件和工作流规范"
+    
+  - prefix: "ws"
+    full_name: "workspace-assistant"
+    type: "workspace"
+    status: "active"
+    created: "2026-03-01"
+    description: "整个 assistant workspace 本身"
+

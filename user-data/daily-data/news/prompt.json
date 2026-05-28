@@ -1,0 +1,9 @@
+{
+  "card_name": "新闻",
+  "domain_knowledge": "每日自动爬取的新闻资讯。每天一个文件 YYYY-MM-DD.json，按分类组织。通常不需要手动修改。",
+  "best_practices": [
+    "新闻卡片是只读的（爬虫自动更新），一般不要手动改"
+  ],
+  "user_preferences": [],
+  "examples": []
+}

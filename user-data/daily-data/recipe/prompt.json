@@ -1,0 +1,62 @@
+{
+  "card_name": "食谱",
+  "domain_knowledge": "管理食谱计划和实际摄入记录。weekly_plan 存周一~周五的食谱图片/计划（用户每周发送），intake_log 按日期记录实际三餐摄入（早breakfast/午lunch/晚dinner），每餐记录 name、calories、macros（蛋白质/碳水/脂肪 可选）。user_profile 存身高体重等用于个性化推荐。",
+  "best_practices": [
+    "用户每周发一次食谱图片，解析后存入 weekly_plan 对应的周一~周五",
+    "用户发餐食照片时，识别食物并估算热量和宏量营养素，存入 intake_log/{date}/{meal}",
+    "热量估算：快餐 600-800kcal，家常菜 300-500kcal，轻食 200-350kcal",
+    "宏量营养素格式：{protein: 'Xg', carbs: 'Xg', fat: 'Xg'}",
+    "intake_log 的 key 为日期 YYYY-MM-DD",
+    "心跳触发时根据 weekly_plan 当天食谱生成食材配比推荐，写入 display",
+    "周六日心跳检查 weekly_plan 下周是否有数据，无则在 display 提示用户发食谱"
+  ],
+  "user_preferences": [
+    "午餐偏好轻食（沙拉、三明治、便当）",
+    "晚餐可以丰盛些",
+    "周末可能不下厨（外卖/外食）",
+    "关注整体热量和营养均衡",
+    "身高体重等以后提供，届时更新 user_profile"
+  ],
+  "data_schema": {
+    "weekly_plan": {
+      "周X": {
+        "lunch": {"name": "菜名", "calories": 0, "image": "/user-files/...", "ingredients": ["食材1", "食材2"]},
+        "dinner": {"name": "菜名", "calories": 0}
+      }
+    },
+    "intake_log": {
+      "YYYY-MM-DD": {
+        "breakfast": {"name": "...", "calories": 0, "macros": {"protein": "Xg", "carbs": "Xg", "fat": "Xg"}},
+        "lunch": {"name": "...", "calories": 0, "macros": {}},
+        "dinner": {"name": "...", "calories": 0, "macros": {}}
+      }
+    },
+    "user_profile": {
+      "height": "cm",
+      "weight": "kg",
+      "age": "years",
+      "gender": "male/female",
+      "activity_level": "sedentary/light/moderate/active",
+      "preferences": ["偏好列表"],
+      "allergies": ["过敏源"]
+    }
+  },
+  "heartbeat_behavior": {
+    "weekday_11am": "读取 weekly_plan 当天午餐，生成推荐食材配比（考虑 user_profile），更新 display.json",
+    "weekend_11am": "检查 weekly_plan 是否有下周食谱，无则在 display 提示「请发送下周食谱图片」"
+  },
+  "examples": [
+    {
+      "in": "（发送一张食谱图片）这是下周食谱",
+      "out": "解析图片中周一~周五的菜品，写入 weekly_plan 各天的 lunch"
+    },
+    {
+      "in": "（发送晚餐照片）今天晚饭",
+      "out": "识别食物，估算热量和营养素，写入 intake_log/今天日期/dinner"
+    },
+    {
+      "in": "今天早餐吃了两个鸡蛋一杯牛奶",
+      "out": "写入 intake_log/今天日期/breakfast: {name:'两个鸡蛋+牛奶', calories:280, macros:{protein:'22g', carbs:'12g', fat:'15g'}}"
+    }
+  ]
+}

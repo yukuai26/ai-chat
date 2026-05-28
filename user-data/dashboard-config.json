@@ -1,0 +1,21 @@
+{
+  "layout": {
+    "columns": 3,
+    "order": [
+      "news",
+      "todo",
+      "data",
+      "recipe",
+      "wishes",
+      "notes",
+      "bookmarks",
+      "photos",
+      "shares",
+      "reminders",
+      "habits"
+    ],
+    "gap": 16
+  },
+  "disabledCards": [],
+  "cardSettings": {}
+}

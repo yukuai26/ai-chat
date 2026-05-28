@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
 from functools import wraps
+from difflib import SequenceMatcher
 from flask import Flask, request, jsonify, send_file
 from flask_sock import Sock
 
@@ -4003,12 +4004,217 @@ def habits_item(habit_id):
     return jsonify({"ok": True, "message": "已删除"})
 
 
-# ---- 全局搜索 API (Phase 11) ----
+# ---- 全局搜索 API (Phase 11 V2) ----
+
+def _fuzzy_match(query, text, threshold=0.35):
+    """使用 SequenceMatcher 做语义模糊匹配，返回 (matches, score, preview)"""
+    if not text:
+        return False, 0, ""
+    text_clean = str(text).lower()
+    query_lower = query.lower()
+    # 快速路径：直接包含
+    if query_lower in text_clean:
+        idx = text_clean.index(query_lower)
+        start = max(0, idx - 20)
+        end = min(len(str(text)), idx + len(query) + 30)
+        preview = str(text)[start:end]
+        if start > 0:
+            preview = "…" + preview
+        if end < len(str(text)):
+            preview = preview + "…"
+        return True, 1.0, preview
+    # 模糊匹配
+    score = SequenceMatcher(None, query_lower, text_clean[:500]).ratio()
+    if score >= threshold:
+        return True, score, str(text)[:80] + ("…" if len(str(text)) > 80 else "")
+    return False, 0, ""
+
+
+def _get_card_registry():
+    """动态读取卡片注册表，返回已启用卡片列表"""
+    cards = []
+    registry_path = os.path.join(USER_DATA_DIR, "card-registry.json")
+    config_path = os.path.join(USER_DATA_DIR, "dashboard-config.json")
+    try:
+        with open(registry_path, "r", encoding="utf-8") as f:
+            registry = json.load(f)
+        cards = registry.get("cards", [])
+    except Exception:
+        pass
+    # 如果注册表为空，从 config 获取已启用卡片列表
+    if not cards:
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+            enabled = config.get("cards", config.get("enabledCards", []))
+            cards = [{"id": c} if isinstance(c, str) else c for c in enabled]
+        except Exception:
+            pass
+    return cards
+
+
+def _search_card_data(query, card_id, person, limit=5):
+    """搜索单个卡片的数据"""
+    items = []
+    ql = query.lower()
+    try:
+        if card_id == "todo":
+            todos = _load_todos()
+            for t in todos.get(person, []):
+                ok, score, preview = _fuzzy_match(query, t.get("text", ""))
+                if ok:
+                    items.append({
+                        "id": "todo_" + str(t.get("id", "")),
+                        "title": t.get("text", "")[:80],
+                        "subtitle": person + (" [已完成]" if t.get("done") else ""),
+                        "match_preview": preview if preview != t.get("text","")[:80] else "",
+                        "action": "open_daily_card", "action_data": {"card_type": "TodoCard", "view": "daily"},
+                        "_score": score
+                    })
+        elif card_id == "notes":
+            notes = _load_notes()
+            for n in notes.get(person, []):
+                ok, score, preview = _fuzzy_match(query, n.get("text", ""))
+                if ok:
+                    items.append({
+                        "id": "note_" + str(n.get("id", "")),
+                        "title": n.get("text", "")[:80],
+                        "subtitle": person,
+                        "match_preview": preview if preview != n.get("text","")[:80] else "",
+                        "action": "open_daily_card", "action_data": {"card_type": "NotesCard"},
+                        "_score": score
+                    })
+        elif card_id == "bookmarks":
+            bm = _load_bookmarks()
+            for b in bm.get(person, []):
+                text = (b.get("title","") + " " + b.get("description","") + " " + b.get("url",""))
+                ok, score, preview = _fuzzy_match(query, text)
+                if ok:
+                    items.append({
+                        "id": "bm_" + str(b.get("id", "")),
+                        "title": b.get("title","") or b.get("url",""),
+                        "subtitle": ", ".join(b.get("tags", [])[:3]) or person,
+                        "match_preview": preview if score < 1.0 else "",
+                        "action": "open_daily_card", "action_data": {"card_type": "BookmarksCard"},
+                        "_score": score
+                    })
+        elif card_id == "photos":
+            photos = _load_photos()
+            for p in photos.get(person, []):
+                text = (p.get("caption","") + " " + " ".join(p.get("tags", [])))
+                ok, score, preview = _fuzzy_match(query, text)
+                if ok:
+                    items.append({
+                        "id": "photo_" + str(p.get("id", "")),
+                        "title": p.get("caption","") or "照片 #" + str(p.get("id","")),
+                        "subtitle": p.get("created","")[:16],
+                        "match_preview": preview if score < 1.0 else "",
+                        "action": "open_daily_card", "action_data": {"card_type": "PhotosCard"},
+                        "_score": score
+                    })
+        elif card_id == "reminders":
+            reminders = _load_reminders()
+            for r in reminders.get(person, []):
+                ok, score, preview = _fuzzy_match(query, r.get("text", ""))
+                if ok:
+                    items.append({
+                        "id": "rem_" + str(r.get("id", "")),
+                        "title": r.get("text", "")[:80],
+                        "subtitle": r.get("time", ""),
+                        "match_preview": preview if score < 1.0 else "",
+                        "action": "open_daily_card", "action_data": {"card_type": "RemindersCard"},
+                        "_score": score
+                    })
+        elif card_id == "habits":
+            habits = _load_habits()
+            for h in habits.get(person, []):
+                ok, score, preview = _fuzzy_match(query, h.get("text", ""))
+                if ok:
+                    items.append({
+                        "id": "hab_" + str(h.get("id", "")),
+                        "title": h.get("text", "")[:80],
+                        "subtitle": "🔥" + str(h.get("streak", 0)) + "天",
+                        "match_preview": preview if score < 1.0 else "",
+                        "action": "open_daily_card", "action_data": {"card_type": "HabitsCard"},
+                        "_score": score
+                    })
+        elif card_id == "wishes":
+            wishes = _load_wishes()
+            for w in wishes.get(person, []):
+                text = (w.get("title","") + " " + w.get("description","") + " " + " ".join(w.get("tags", [])))
+                ok, score, preview = _fuzzy_match(query, text)
+                if ok:
+                    items.append({
+                        "id": "wish_" + str(w.get("id", "")),
+                        "title": w.get("title", "")[:80],
+                        "subtitle": w.get("status", person),
+                        "match_preview": preview if score < 1.0 else "",
+                        "action": "open_daily_card", "action_data": {"card_type": "WishesCard"},
+                        "_score": score
+                    })
+        elif card_id == "recipe":
+            recipes = _load_recipe()
+            for day, meals in recipes.get("week", {}).items():
+                if isinstance(meals, dict):
+                    for meal_type in ["lunch", "dinner"]:
+                        text = str(meals.get(meal_type, ""))
+                        ok, score, preview = _fuzzy_match(query, text)
+                        if ok:
+                            items.append({
+                                "id": "recipe_" + day + "_" + meal_type,
+                                "title": text[:80],
+                                "subtitle": day + " " + meal_type,
+                                "match_preview": "",
+                                "action": "open_daily_card", "action_data": {"card_type": "RecipeCard", "day": day},
+                                "_score": score
+                            })
+        elif card_id == "shares":
+            shares = _load_shares()
+            for s in shares.get("board", []):
+                text = s.get("text", "")
+                ok, score, preview = _fuzzy_match(query, text)
+                if ok:
+                    items.append({
+                        "id": "share_" + str(s.get("id", "")),
+                        "title": text[:80],
+                        "subtitle": s.get("author", person) + " · " + (s.get("created","")[:16]),
+                        "match_preview": preview if score < 1.0 else "",
+                        "action": "open_daily_card", "action_data": {"card_type": "ShareCard"},
+                        "_score": score
+                    })
+        elif card_id == "data":
+            # Search personal data journal entries
+            data_dir = os.path.join(USER_DATA_DIR, "profiles")
+            for pname in os.listdir(data_dir):
+                try:
+                    dp = os.path.join(data_dir, pname + ".json")
+                    if os.path.exists(dp):
+                        with open(dp, "r", encoding="utf-8") as f:
+                            pdata = json.load(f)
+                        for entry in pdata.get("journal", []):
+                            text = str(entry) if isinstance(entry, str) else entry.get("text", "")
+                            ok, score, preview = _fuzzy_match(query, text)
+                            if ok:
+                                items.append({
+                                    "id": "data_" + pname + "_" + (entry.get("date","") if isinstance(entry, dict) else ""),
+                                    "title": text[:80],
+                                    "subtitle": pname + " · 个人数据",
+                                    "match_preview": preview if score < 1.0 else "",
+                                    "action": "open_daily_card", "action_data": {"card_type": "DataCard", "person": pname},
+                                    "_score": score
+                                })
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    items.sort(key=lambda x: x["_score"], reverse=True)
+    return items[:limit]
+
 
 @app.route("/v1/api/search", methods=["GET"])
 @require_token
 def global_search():
-    """GET /v1/api/search?q=关键词&limit=20 - 跨所有数据源搜索"""
+    """GET /v1/api/search?q=关键词&limit=20 — 跨所有数据源语义模糊搜索"""
     query = request.args.get("q", "").strip()
     limit = int(request.args.get("limit", "20") or "20")
     if not query:
@@ -4016,14 +4222,13 @@ def global_search():
 
     person = _get_person()
     results = []
-    ql = query.lower()
     SESSION_DIR_PATH = "/home/ubuntu/.openclaw/user-sessions"
     tz = ZoneInfo("Asia/Shanghai")
 
-    # 1. 对话 Session
-    conv_items = []
+    # 1. 对话 Session（含消息定位）
     try:
-        for fn in os.listdir(SESSION_DIR_PATH):
+        conv_items = []
+        for fn in sorted(os.listdir(SESSION_DIR_PATH), reverse=True):
             if not fn.endswith(".json") or fn == "session-index.json":
                 continue
             fp = os.path.join(SESSION_DIR_PATH, fn)
@@ -4031,119 +4236,106 @@ def global_search():
                 with open(fp, "r", encoding="utf-8") as f:
                     sess = json.load(f)
                 title = sess.get("title", "") or fn
-                matches = ql in title.lower()
+                title_ok, _, _ = _fuzzy_match(query, title, 0.4)
                 msg_count = 0
-                for msg in sess.get("messages", []):
+                match_idx = -1
+                msg_preview = ""
+                for i, msg in enumerate(sess.get("messages", [])):
                     content = msg.get("content", "")
                     if isinstance(content, list):
                         content = " ".join(str(c.get("text", "")) for c in content if isinstance(c, dict))
-                    if ql in str(content).lower():
-                        matches = True
+                    ok, score, preview = _fuzzy_match(query, str(content))
+                    if ok and (match_idx < 0 or score > 0.8):
+                        match_idx = i
+                        msg_preview = preview
                     msg_count += 1
-                if matches:
+                if title_ok or match_idx >= 0:
+                    sid = fn.replace(".json", "")
                     conv_items.append({
-                        "id": fn.replace(".json", ""),
+                        "id": sid,
                         "title": title,
                         "subtitle": f"{msg_count} 条消息",
+                        "match_preview": msg_preview if not title_ok else "",
                         "action": "open_session",
-                        "action_data": fn.replace(".json", ""),
-                        "_score": 0 if ql in title.lower() else 1,
+                        "action_data": {"session_id": sid, "message_index": match_idx if match_idx >= 0 else 0},
+                        "_score": 0.0 if title_ok else 0.5,
                         "_time": sess.get("updated", "")
                     })
             except Exception:
                 pass
+        conv_items.sort(key=lambda x: (x["_score"], x["_time"] or ""), reverse=False)
+        if conv_items:
+            for item in conv_items[:5]:
+                del item["_score"]; del item["_time"]
+            results.append({"group": "对话", "icon": "💬", "items": conv_items[:5]})
     except Exception:
         pass
-    # Sort: title match first, then recent
-    conv_items.sort(key=lambda x: (x["_score"], x["_time"] or ""), reverse=False)
-    if conv_items:
-        for item in conv_items[:5]:
-            del item["_score"]; del item["_time"]
-        results.append({"group": "对话", "icon": "💬", "items": conv_items[:5]})
 
-    # 2. 用户文件
-    file_items = []
+    # 2. 用户文件（模糊匹配）
     try:
+        file_items = []
         for fn in os.listdir(USER_FILES_DIR):
-            if ql in fn.lower():
+            ok, score, _ = _fuzzy_match(query, fn)
+            if ok:
                 fp = os.path.join(USER_FILES_DIR, fn)
                 fstat = os.stat(fp)
-                import datetime as dt
-                mtime = dt.datetime.fromtimestamp(fstat.st_mtime, tz).strftime("%Y-%m-%d")
+                mtime = datetime.fromtimestamp(fstat.st_mtime, tz).strftime("%Y-%m-%d")
+                size_kb = fstat.st_size / 1024
+                size_str = f"{size_kb:.1f} KB" if size_kb < 1024 else f"{size_kb/1024:.1f} MB"
                 file_items.append({
-                    "id": fn, "title": fn, "subtitle": f"{mtime}",
-                    "action": "open_file", "action_data": f"/v1/files/{fn}",
-                    "_score": 0 if fn.lower().startswith(ql) else 1, "_time": mtime
+                    "id": fn, "title": fn,
+                    "subtitle": f"{mtime} · {size_str}",
+                    "match_preview": "",
+                    "action": "open_file",
+                    "action_data": {"path": "/" + fn},
+                    "_score": score
                 })
+        file_items.sort(key=lambda x: x["_score"], reverse=True)
+        if file_items:
+            for item in file_items[:5]:
+                del item["_score"]
+            results.append({"group": "文件", "icon": "📁", "items": file_items[:5]})
     except Exception:
         pass
-    file_items.sort(key=lambda x: (x["_score"], x["_time"] or ""), reverse=False)
-    if file_items:
-        for item in file_items[:5]: del item["_score"]; del item["_time"]
-        results.append({"group": "文件", "icon": "📁", "items": file_items[:5]})
 
-    # 3. Todo
-    todos = _load_todos()
-    todo_items = []
-    for t in todos.get(person, []):
-        if ql in (t.get("text", "")).lower():
-            todo_items.append({"id": str(t.get("id")), "title": t["text"],
-                "subtitle": f"{person}" + (" [已完成]" if t.get("done") else ""),
-                "action": "open_card", "action_data": "todo"})
-    if todo_items:
-        results.append({"group": "Todo", "icon": "✅", "items": todo_items[:5]})
+    # 3. Daily 卡片 — 动态枚举所有已有数据的卡片
+    card_registry = _get_card_registry()
+    card_ids = [c["id"] if isinstance(c, dict) else c for c in card_registry]
+    if not card_ids:
+        # 回退：搜所有已知卡片类型
+        card_ids = ["todo", "notes", "bookmarks", "photos", "reminders", "habits",
+                     "wishes", "recipe", "shares", "data"]
 
-    # 4. 笔记
-    notes = _load_notes()
-    note_items = []
-    for n in notes.get(person, []):
-        if ql in (n.get("text", "")).lower():
-            note_items.append({"id": str(n.get("id")), "title": n["text"][:80],
-                "subtitle": f"{person} · {(n.get('created','')[:16])}",
-                "action": "open_card", "action_data": "notes"})
-    if note_items:
-        results.append({"group": "随手记", "icon": "📝", "items": note_items[:5]})
-
-    # 5. 收藏夹
-    bm = _load_bookmarks()
-    bm_items = []
-    for b in bm.get(person, []):
-        if ql in (b.get("title","")+b.get("url","")).lower():
-            bm_items.append({"id": str(b.get("id")), "title": b.get("title","") or b.get("url",""),
-                "subtitle": ", ".join(b.get("tags",[])[:3]),
-                "action": "open_card", "action_data": "bookmarks"})
-    if bm_items:
-        results.append({"group": "收藏夹", "icon": "🔗", "items": bm_items[:5]})
-
-    # 6. 照片
-    photos = _load_photos()
-    photo_items = []
-    for p in photos.get(person, []):
-        if ql in (p.get("caption","")).lower() or any(ql in t for t in p.get("tags",[])):
-            photo_items.append({"id": str(p.get("id")), "title": p.get("caption","") or "照片",
-                "subtitle": p.get("created","")[:16], "action": "open_card", "action_data": "photos"})
-    if photo_items:
-        results.append({"group": "照片墙", "icon": "📸", "items": photo_items[:5]})
-
-    # 7. 提醒
-    reminders = _load_reminders()
-    rem_items = []
-    for r in reminders.get(person, []):
-        if ql in (r.get("text","")).lower():
-            rem_items.append({"id": str(r.get("id")), "title": r["text"],
-                "subtitle": f"{r.get('time','')}", "action": "open_card", "action_data": "reminders"})
-    if rem_items:
-        results.append({"group": "提醒", "icon": "⏰", "items": rem_items[:5]})
-
-    # 8. 习惯
-    habits = _load_habits()
-    hab_items = []
-    for h in habits.get(person, []):
-        if ql in (h.get("text","")).lower():
-            hab_items.append({"id": str(h.get("id")), "title": h["text"],
-                "subtitle": f"🔥{h.get('streak',0)}天", "action": "open_card", "action_data": "habits"})
-    if hab_items:
-        results.append({"group": "习惯", "icon": "✅", "items": hab_items[:5]})
+    for cid in card_ids:
+        try:
+            card_items = _search_card_data(query, cid, person, 3)
+            if card_items:
+                for item in card_items:
+                    del item["_score"]
+                # 卡片显示名映射
+                card_names = {
+                    "todo": "Todo", "notes": "随手记", "bookmarks": "收藏夹",
+                    "photos": "照片", "reminders": "提醒", "habits": "习惯",
+                    "wishes": "心愿", "recipe": "食谱", "shares": "分享板", "data": "数据"
+                }
+                card_icons = {
+                    "todo": "✅", "notes": "📝", "bookmarks": "🔗",
+                    "photos": "📸", "reminders": "⏰", "habits": "💪",
+                    "wishes": "🎯", "recipe": "🍳", "shares": "📤", "data": "📊"
+                }
+                cname = card_names.get(cid, cid)
+                prefix = "[" + cname + "] "
+                for item in card_items:
+                    if not item["title"].startswith(prefix):
+                        item["title"] = prefix + item["title"]
+                results.append({
+                    "group": "Daily",
+                    "icon": card_icons.get(cid, "📋"),
+                    "group_label": cname,
+                    "items": card_items
+                })
+        except Exception:
+            pass
 
     total = sum(len(g["items"]) for g in results)
     return jsonify({"ok": True, "results": results, "total": total, "query": query})

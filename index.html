@@ -7,11 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Chat</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
   <style>
     /* 确保全屏覆盖 */
     html, body {
@@ -27,6 +23,7 @@
       --bg-card:         #ffffff;
       --bg-hover:        #f0f0ed;
       --bg-input:        #f5f5f3;
+      --bg-secondary:    #f5f5f3;
       /* 文字 — 灰黑系 */
       --text-primary:    #1a1a1a;
       --text-secondary:  #8c8c8c;
@@ -1813,7 +1810,7 @@
     }
     .modal-backdrop.show { display: flex; }
     .modal-dialog {
-      background: var(--bg-secondary, #1e1e2e);
+      background: var(--bg-secondary);
       border: 1px solid var(--border, #333);
       border-radius: 16px;
       width: 480px;
@@ -2451,6 +2448,7 @@
         transition: transform 0.15s ease;
         border-right: 1px solid var(--border);
         box-shadow: 4px 0 24px rgba(0,0,0,0.08);
+        }
       /* 覆盖 collapsed 的桌面行为：移动端始终用抽屉方式 */
       .conv-panel.collapsed { width: 280px; max-width: 85vw; transform: translateX(-100%); }
 
@@ -2485,6 +2483,7 @@
         transition: transform 0.15s ease;
         border-left: 1px solid var(--border);
         box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+        }
       .settings-panel.collapsed { width: 280px; max-width: 85vw; transform: translateX(100%); }
 
       /* 抽屉头部（设置面板） */
@@ -2569,7 +2568,427 @@
       /* 查看器头部紧凑化 */
       .viewer-header { padding: 8px 12px; }
       .viewer-header .file-name { font-size: 12px; }
+
+      /* ==== 底部 Tab 栏 ==== */
+      .mobile-bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        height: 56px;
+        background: var(--bg);
+        border-top: 1px solid var(--border);
+        z-index: 110;
+        justify-content: space-around;
+        align-items: center;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .mobile-bottom-nav .mb-tab {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        border: none;
+        background: none;
+        color: var(--text-muted);
+        font-size: 10px;
+        cursor: pointer;
+        padding: 6px 0;
+        min-width: 48px;
+        min-height: 48px;
+        transition: color 0.15s;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .mobile-bottom-nav .mb-tab .mb-icon { font-size: 20px; line-height: 1; }
+      .mobile-bottom-nav .mb-tab.active { color: var(--accent); }
+
+      /* ==== 移动端顶部栏 ==== */
+      .mobile-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 44px;
+        padding: 0 12px;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        padding-top: env(safe-area-inset-top, 0px);
+        min-height: calc(44px + env(safe-area-inset-top, 0px));
+      }
+      .mobile-topbar .mt-title {
+        font-size: 15px; font-weight: 600; color: var(--text-primary);
+      }
+      .mobile-topbar .mt-hamburger {
+        display: flex; align-items: center; justify-content: center;
+        width: 40px; height: 40px; border: none; background: none;
+        color: var(--text-primary); font-size: 22px; cursor: pointer;
+        border-radius: 8px; -webkit-tap-highlight-color: transparent;
+      }
+      .mobile-topbar .mt-hamburger:active { background: var(--bg-hover); }
+
+      /* ==== 主区域适配 ==== */
+      .main {
+        flex-direction: column;
+        height: 100vh; height: 100dvh;
+      }
+      .main > *:not(.tab-content):not(.mobile-bottom-nav):not(.mobile-topbar) {
+        /* Side panels handled by drawer system */
+      }
+
+      /* 桌面 Tab 栏隐藏 */
+      .tab-bar { display: none !important; }
+
+      /* 聊天 Tab 手机化：会话列表 + 消息 分页 */
+      .conv-panel { display: none; }
+      .conv-panel.conv-show { display: flex; position: fixed; top: 44px; left: 0; right: 0; bottom: 56px; z-index: 90; width: 100%; max-width: 100%; transform: none; border-right: none; }
+      .conv-panel.conv-show .conv-drawer-header { display: flex; }
+      .conv-panel.conv-show + .panel-backdrop { display: block; opacity: 1; z-index: 89; }
+
+      /* 消息区占满 */
+      .messages-container { flex: 1; display: flex; flex-direction: column; }
+      #messages { flex: 1; }
+
+      /* 设置面板：全屏（从底部上滑？还是从右？保持右侧滑入） */
+      .settings-panel {
+        position: fixed; top: 44px; right: 0; bottom: 56px;
+        width: 85vw; max-width: 320px; z-index: 100;
+      }
+      .settings-panel.collapsed { transform: translateX(100%); }
+
+      /* 文件 Tab — 查看器全屏 */
+      .file-tree { top: 44px; bottom: 56px; z-index: 100; }
+      .file-viewer { flex: 1; width: 100%; }
+
+      /* Daily — 单列 */
+      .dashboard-grid { grid-template-columns: 1fr; }
+      #tab-daily .dashboard-scroll { padding: 12px 12px 0; }
+      .dashboard-command-bar { padding: 8px 12px; }
+      .dashboard-command-bar .cmd-hint { display: none; }
+
+      /* Search — 移动端适配 */
+      #tab-search .search-container { padding: 12px; }
+      #tab-search .search-bar input { font-size: 16px; } /* 防止 iOS 缩放 */
+
+      /* 卡片全屏展开 */
+      .card-placeholder.expanded { position: fixed; top: 44px; left: 0; right: 0; bottom: 56px; z-index: 95; border-radius: 0; }
+      .card-placeholder.expanded .card-body { overflow-y: auto; }
+
+      /* 触摸优化 */
+      button, .tree-item, .conv-item, .search-item, .card-placeholder {
+        min-height: 44px;
+      }
+      .tree-item { padding: 10px 12px 10px 0; }
+      .conv-item { padding: 10px 12px; }
+      .search-item { padding: 10px 12px; }
+
+      /* 输入框手机友好 */
+      /* 聊天输入区：手机端紧贴底部 */
+      .chat-input-area {
+        padding: 8px 10px;
+        padding-bottom: max(10px, env(safe-area-inset-bottom, 8px));
+        background: var(--bg);
+        border-top: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .chat-input-area textarea { font-size: 16px; } /* 防止 iOS 自动缩放 */
+      .chat-input-area button { min-width: 44px; min-height: 44px; }
+
+      /* 弹窗手机化 */
+      .modal-backdrop .modal-card, .file-picker-backdrop .file-picker-card {
+        width: 90vw; max-width: 400px; max-height: 80vh; margin: 10vh auto;
+      }
     }
+    /* ===== 手机版 - class 兜底（不依赖 media query） ===== */
+    .is-mobile .tab-bar { display: none !important; }
+    .is-mobile .mobile-topbar { display: flex !important; }
+    .is-mobile .mobile-bottom-nav { display: flex !important; }
+    .is-mobile .main { flex-direction: column !important; height: 100dvh !important; }
+    .is-mobile .conv-panel { display: none !important; }
+    .is-mobile .conv-panel.conv-show { display: flex !important; position: fixed !important; top: 44px !important; left: 0 !important; right: 0 !important; bottom: 56px !important; z-index: 90 !important; width: 100% !important; max-width: 100% !important; }
+    .is-mobile .settings-panel { position: fixed !important; top: 44px !important; right: 0 !important; bottom: 56px !important; width: 85vw !important; max-width: 320px !important; z-index: 100 !important; }
+    .is-mobile .settings-panel.collapsed { transform: translateX(100%) !important; }
+    .is-mobile .dashboard-grid { grid-template-columns: 1fr !important; }
+    .is-mobile #tab-search { padding-bottom: 56px !important; }
+
+    /* ==================== 全局搜索 (Phase 11) ==================== */
+    .search-container {
+      display: flex; flex-direction: column;
+      height: 100%; padding: 20px; max-width: 800px; margin: 0 auto;
+    }
+    .search-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; background: var(--bg-secondary);
+      border: 1px solid var(--border); border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    .search-icon { font-size: 18px; opacity: 0.5; }
+    .search-input {
+      flex: 1; border: none; background: none; outline: none;
+      font-size: 15px; color: var(--text-primary);
+      font-family: inherit;
+    }
+    .search-input::placeholder { color: var(--text-secondary); opacity: 0.6; }
+    .search-btn {
+      padding: 6px 16px; border: none; border-radius: 8px;
+      background: var(--accent); color: #fff; font-size: 13px;
+      cursor: pointer; font-family: inherit; font-weight: 500;
+    }
+    .search-btn:hover { opacity: 0.9; }
+    .search-results { flex: 1; overflow-y: auto; }
+    .search-placeholder {
+      text-align: center; padding: 60px 20px; color: var(--text-secondary);
+    }
+    .search-placeholder-icon { font-size: 48px; display: block; margin-bottom: 16px; opacity: 0.4; }
+    .search-placeholder p { margin: 0 0 8px; font-size: 14px; }
+    .search-hint { font-size: 12px !important; opacity: 0.5; }
+    .search-status { text-align: center; padding: 10px; font-size: 13px; color: var(--text-secondary); }
+    
+    /* 搜索结果分组 */
+    .search-group { margin-bottom: 20px; }
+    .search-group-header {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      padding: 6px 0; border-bottom: 1px solid var(--border);
+      margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .search-group-header .sg-icon { font-size: 16px; }
+    .search-result-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 8px; cursor: pointer;
+      transition: background 0.15s; margin-bottom: 2px;
+    }
+    .search-result-item:hover { background: var(--bg-secondary); }
+    .search-result-item.selected { background: var(--accent); color: #fff; }
+    .search-result-item.selected .sr-subtitle,
+    .search-result-item.selected .sr-preview { color: rgba(255,255,255,0.7) !important; }
+    .search-result-item.selected mark { background: rgba(255,255,255,0.3); }
+    .sr-icon { font-size: 18px; flex-shrink: 0; }
+    .sr-content { flex: 1; min-width: 0; }
+    .sr-title {
+      font-size: 14px; font-weight: 500; color: var(--text-primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .sr-subtitle { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+    .sr-preview {
+      font-size: 12px; color: var(--text-secondary); margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-style: italic;
+    }
+    mark {
+      background: rgba(59, 130, 246, 0.2); color: var(--accent);
+      padding: 0 1px; border-radius: 2px;
+    }
+    
+    /* 无结果 */
+    .search-empty {
+      text-align: center; padding: 40px 20px; color: var(--text-secondary);
+    }
+    .search-empty-icon { font-size: 36px; display: block; margin-bottom: 12px; opacity: 0.3; }
+    
+    /* 移动端适配 */
+    /* ==================== 日历 (Phase 14) ==================== */
+    .calendar-layout {
+      flex: 1; min-height: 0; display: flex; gap: 0;
+    }
+    /* 左侧月历面板 */
+    .calendar-month-panel {
+      width: 340px; min-width: 280px; flex-shrink: 0;
+      display: flex; flex-direction: column; padding: 16px 8px 16px 16px;
+      background: var(--bg);
+    }
+    .calendar-nav {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 16px;
+    }
+    .cal-nav-btn {
+      width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-card); color: var(--text-primary); cursor: pointer;
+      font-size: 14px; display: flex; align-items: center; justify-content: center;
+    }
+    .cal-nav-btn:hover { background: var(--bg-secondary); }
+    .cal-month-label {
+      flex: 1; text-align: center; font-size: 16px; font-weight: 600;
+      color: var(--text-primary);
+    }
+    .cal-today-btn {
+      padding: 4px 12px; border: 1px solid var(--accent); border-radius: 8px;
+      background: transparent; color: var(--accent); cursor: pointer;
+      font-size: 12px; font-weight: 500;
+    }
+    .cal-today-btn:hover { background: var(--accent); color: #fff; }
+    
+    /* 星期头（已合并到 calendar-grid 第一行） */
+    .cal-cell.weekday {
+      font-size: 12px; color: var(--text-secondary); font-weight: 500;
+      aspect-ratio: auto; cursor: default; padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cal-cell.weekday:first-child, .cal-cell.weekday:last-child { color: var(--accent); }
+    .cal-cell.weekday:hover { background: transparent; }
+    
+    /* 日期网格 */
+    .calendar-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+      flex: 1; overflow: hidden; align-content: start;
+    }
+    .cal-cell {
+      aspect-ratio: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; border-radius: 8px; cursor: pointer;
+      font-size: 13px; color: var(--text-primary); position: relative;
+      transition: background 0.15s; user-select: none;
+    }
+    .cal-cell:hover { background: var(--bg-secondary); }
+    .cal-cell.other-month { color: var(--text-secondary); opacity: 0.35; }
+    .cal-cell.today {
+      background: var(--accent); color: #fff; font-weight: 600; border-radius: 50%;
+      width: 32px; height: 32px; margin: auto;
+    }
+    .cal-cell.today:hover { background: var(--accent); opacity: 0.85; }
+    .cal-cell.selected {
+      box-shadow: inset 0 0 0 2px var(--accent); border-radius: 10px;
+    }
+    .cal-cell.today.selected { box-shadow: 0 0 0 2px var(--accent), inset 0 0 0 2px #fff; }
+    
+    /* 日期标记 */
+    .cal-markers {
+      display: flex; gap: 2px; position: absolute; bottom: 4px;
+    }
+    .cal-marker {
+      width: 5px; height: 5px; border-radius: 50%;
+    }
+    .cal-marker.todo { background: #22c55e; }
+    .cal-marker.reminder { background: #f59e0b; }
+    .cal-marker.event { background: #ef4444; }
+    .cal-marker.overflow {
+      font-size: 9px; color: var(--text-secondary); margin-left: 2px;
+    }
+    
+    /* 右侧详情 */
+    .calendar-detail {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden;
+      background: var(--bg);
+    }
+    .cal-detail-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px; border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .cal-detail-date { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+    .cal-detail-body {
+      flex: 1; overflow-y: auto; padding: 16px;
+    }
+    .cal-detail-placeholder {
+      text-align: center; padding: 60px 20px;
+    }
+    .cal-section { margin-bottom: 20px; }
+    .cal-section-title {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+    }
+    .cal-section-item {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      border-radius: 8px; background: var(--bg-card); margin-bottom: 4px;
+      font-size: 13px; color: var(--text-primary);
+    }
+    .cal-section-item:hover { background: var(--bg-secondary); }
+    .cal-section-item .item-checkbox {
+      width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 4px;
+      cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    }
+    .cal-section-item .item-checkbox.done {
+      background: var(--accent); border-color: var(--accent);
+    }
+    .cal-section-item .item-checkbox.done::after {
+      content: '✓'; color: #fff; font-size: 10px;
+    }
+    .cal-section-item .item-text { flex: 1; }
+    .cal-section-item .item-meta { font-size: 11px; color: var(--text-secondary); }
+    .cal-section-item.event-item { border-left: 3px solid var(--accent); }
+    .cal-section-item .event-delete {
+      cursor: pointer; opacity: 0; transition: opacity 0.15s; font-size: 14px; color: #ef4444;
+    }
+    .cal-section-item:hover .event-delete { opacity: 0.7; }
+    .cal-section-item .event-delete:hover { opacity: 1; }
+    
+    /* 详情底部 */
+    .cal-detail-footer {
+      padding: 16px; border-top: 1px solid var(--border); background: var(--bg);
+    }
+    .cal-add-event-btn {
+      width: 100%; padding: 10px; border: 2px dashed var(--border); border-radius: 10px;
+      background: transparent; color: var(--text-secondary); cursor: pointer;
+      font-size: 14px; font-family: inherit; transition: all 0.15s;
+    }
+    .cal-add-event-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .cal-add-event-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    
+    /* 事件弹窗 */
+    .cal-modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cal-modal {
+      background: var(--bg); border-radius: 16px; padding: 24px;
+      width: 90%; max-width: 420px; max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .cal-modal h3 { margin: 0 0 16px; font-size: 16px; color: var(--text-primary); }
+    .cal-modal label {
+      display: block; font-size: 12px; color: var(--text-secondary);
+      margin-bottom: 4px; margin-top: 12px; font-weight: 500;
+    }
+    .cal-modal input, .cal-modal select, .cal-modal textarea {
+      width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 14px; font-family: inherit;
+      background: var(--bg-card); color: var(--text-primary); box-sizing: border-box;
+    }
+    .cal-modal input:focus, .cal-modal select:focus, .cal-modal textarea:focus {
+      outline: none; border-color: var(--accent);
+    }
+    .cal-modal textarea { resize: vertical; min-height: 60px; }
+    .cal-modal-actions {
+      display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end;
+    }
+    .cal-modal-actions button {
+      padding: 8px 20px; border-radius: 8px; font-size: 14px; cursor: pointer;
+      font-family: inherit; border: none;
+    }
+    .cal-modal-actions .cal-btn-cancel { background: var(--bg-secondary); color: var(--text-primary); }
+    .cal-modal-actions .cal-btn-save { background: var(--accent); color: #fff; font-weight: 500; }
+    .cal-event-type-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    }
+    .cal-type-option {
+      padding: 8px 6px; border: 2px solid var(--border); border-radius: 8px;
+      text-align: center; cursor: pointer; font-size: 12px; transition: all 0.15s;
+    }
+    .cal-type-option:hover { border-color: var(--accent); }
+    .cal-type-option.selected { border-color: var(--accent); background: rgba(59,130,246,0.1); }
+    
+    /* 移动端日历适配 */
+    @media (max-width: 768px) {
+      .calendar-layout { flex-direction: column; }
+      .calendar-month-panel {
+        width: 100%; min-width: unset; flex-shrink: 1; 
+        max-height: 50vh; border-right: none; border-bottom: 1px solid var(--border);
+        padding: 10px;
+      }
+      .cal-cell { font-size: 12px; }
+      .calendar-detail { flex: 1; }
+      .cal-detail-body { padding: 12px; }
+      .cal-detail-header { padding: 12px; }
+      .cal-detail-footer { padding: 10px 12px; }
+      #tab-calendar { padding-bottom: 56px; }
+    }
+
+    @media (max-width: 768px) {
+      .search-container { padding: 12px; }
+      .search-bar { padding: 8px 12px; border-radius: 10px; margin-bottom: 12px; }
+      .search-input { font-size: 14px; }
+      .search-result-item { padding: 8px 10px; }
+      .sr-title { font-size: 13px; }
+      #tab-search { padding-bottom: 56px; }
+    }
+
     /* ==================== 编辑模式 (Phase 2) ==================== */
     .viewer-toolbar {
       display: flex;
@@ -2933,6 +3352,9 @@
       line-height: 1.5;
     }
     /* ==================== 目录树工具栏 ==================== */
+    .tree-shortcuts { border-bottom: 1px solid var(--border); padding: 6px 0 8px; margin-bottom: 6px; }
+    .tree-shortcuts .tree-item { font-weight: 500; }
+
     .tree-toolbar {
       display: flex;
       gap: 4px;
@@ -3138,8 +3560,69 @@
     .login-shake {
       animation: loginShake 0.4s ease;
     }
+
+    /* ==== Search Tab ==== */
+    .search-container {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 16px;
+    }
+    .search-bar {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+    .search-bar input {
+      flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); color: var(--text-primary); font-size: 14px; outline: none;
+    }
+    .search-bar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+    .search-bar button {
+      padding: 10px 20px; border: none; border-radius: var(--radius);
+      background: var(--accent); color: #fff; font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .search-bar button:hover { background: var(--accent-hover); opacity: 0.9; }
+    .search-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .search-results { flex: 1; overflow-y: auto; }
+    .search-group { margin-bottom: 16px; }
+    .search-group h3 {
+      font-size: 12px; font-weight: 600; color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 6px 0;
+    }
+    .search-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border-radius: var(--radius-sm); cursor: pointer; transition: background 0.12s;
+      border: 1px solid transparent;
+    }
+    .search-item:hover { background: var(--bg-hover); }
+    .search-item.selected { background: var(--bg-hover); border-color: var(--accent); }
+    .search-item .s-icon { font-size: 18px; flex-shrink: 0; }
+    .search-item .s-info { flex: 1; min-width: 0; }
+    .search-item .s-title {
+      font-size: 13px; font-weight: 500; color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .search-item .s-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .search-item .s-preview {
+      font-size: 11px; color: var(--text-muted); margin-top: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 400px;
+    }
+    .search-item mark { background: rgba(251,191,36,0.35); color: var(--text-primary); padding: 0 2px; border-radius: 2px; }
+    .search-empty {
+      text-align: center; padding: 60px 20px; color: var(--text-muted);
+    }
+    .search-empty .s-empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+    .search-empty p { font-size: 14px; margin: 4px 0; }
+    .search-hint {
+      text-align: center; padding: 80px 20px; color: var(--text-muted);
+    }
+    .search-hint .s-hint-icon { font-size: 56px; margin-bottom: 16px; opacity: 0.4; }
+    .search-hint p { font-size: 14px; margin: 4px 0; }
+    .search-hint kbd {
+      display: inline-block; padding: 1px 6px; border: 1px solid var(--border);
+      border-radius: 3px; background: var(--bg-card); font-size: 11px;
+      font-family: monospace; margin: 0 2px;
+    }
+
   </style>
-<!-- v=20260527-2245 -->
+<!-- v=1779903797 -->
 </head>
 <body class="logged-out">
 <style id="loginHider">
@@ -3165,6 +3648,7 @@
         <input type="checkbox" id="loginRemember"><label for="loginRemember" style="font-size:12px;color:var(--text-secondary);cursor:pointer;">记住我（7 天免登录）</label>
       </div>
       <button class="login-btn" onclick="doLogin()">登 录</button>
+      <div id="jsDebug" style="color:#999;font-size:11px;text-align:center;margin-top:8px;">⏳ JS 加载中...</div>
       <div class="login-error" id="loginError"></div>
       <div class="login-footer">
         没有账号？<a href="#" onclick="showRegisterModal(event)" style="color:var(--accent);">注册</a>
@@ -3206,6 +3690,13 @@
   </div>
 
   <div class="main">
+
+    <!-- 移动端顶部栏 -->
+    <div class="mobile-topbar" style="display:none;">
+      <button class="mt-hamburger" onclick="toggleMobileMenu()" aria-label="菜单">☰</button>
+      <span class="mt-title" id="mobileTitle">Chat</span>
+      <button class="mt-hamburger" onclick="togglePanelRight()" aria-label="设置">⚙️</button>
+    </div>
     <div class="chat-header">
       <button class="panel-toggle" id="toggleConvPanel" onclick="togglePanelLeft()" title="切换会话列表">☰</button>
       <h1>AI Chat</h1>
@@ -3226,22 +3717,24 @@
       <button class="tab-btn active" data-tab="chat" onclick="switchTab('chat')">Chat</button>
       <button class="tab-btn" data-tab="files" onclick="switchTab('files')">Files</button>
       <button class="tab-btn" data-tab="daily" onclick="switchTab('daily')">Daily</button>
+      <button class="tab-btn" data-tab="search" onclick="switchTab('search')">🔍 Search</button>
+      <button class="tab-btn" data-tab="calendar" onclick="switchTab('calendar')">📅 日历</button>
     </div>
     <div class="tab-content active" id="tab-chat">
       <div class="messages" id="messages">
         <div class="empty-state">
           <div class="icon">💬</div>
-          <p>输入 Token 后点击连接</p>
+          <p>正在连接服务器，请稍候...</p>
         </div>
       </div>
       <div class="file-tags" id="fileTags"></div>
       <div class="input-area">
         <button class="attach-btn" id="attachBtn" title="选择文件" onclick="toggleFilePicker()">📎</button>
         <textarea id="input" placeholder="输入消息..." rows="1"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enqueueMessage();}"
           oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,160)+'px';"
         ></textarea>
-        <button id="sendBtn" onclick="sendMessage()" disabled>发送</button>
+        <button id="sendBtn" onclick="enqueueMessage()" disabled>发送</button>
       </div>
     </div>
     <div class="tab-content" id="tab-files">
@@ -3307,8 +3800,57 @@
         <button class="cmd-send" id="cmdSend" onclick="sendCommand()">发送</button>
       </div>
     </div>
+
+    <!-- Search Tab -->
+    <div class="tab-content" id="tab-search">
+      <div class="search-container">
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="搜索对话、文件、Daily 卡片..." 
+                 onkeydown="if(event.key==='Enter')doSearch()" autocomplete="off" />
+          <button id="searchBtn" onclick="doSearch()">搜索</button>
+        </div>
+        <div class="search-results" id="searchResults">
+          <div class="search-hint">
+            <div class="s-hint-icon">🔍</div>
+            <p>输入关键词搜索所有内容</p>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">
+              快捷键 <kbd>⌘K</kbd> / <kbd>Ctrl+K</kbd>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
+
+    <!-- ==================== Calendar Tab ==================== -->
+    <div class="tab-content" id="tab-calendar">
+      <div class="calendar-layout">
+        <!-- 左侧月历 -->
+        <div class="calendar-month-panel">
+          <div class="calendar-nav">
+            <button class="cal-nav-btn" onclick="calendarNavigate(-1)" title="上月">◀</button>
+            <span class="cal-month-label" id="calMonthLabel">2026年6月</span>
+            <button class="cal-nav-btn" onclick="calendarNavigate(1)" title="下月">▶</button>
+            <button class="cal-today-btn" onclick="calendarGoToday()">今天</button>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+        <!-- 右侧详情 -->
+        <div class="calendar-detail" id="calendarDetail">
+          <div class="cal-detail-header" id="calDetailHeader">
+            <span class="cal-detail-date">选择日期查看详情</span>
+          </div>
+          <div class="cal-detail-body" id="calDetailBody">
+            <div class="cal-detail-placeholder">
+              <span style="font-size:48px;opacity:0.3;">📅</span>
+              <p style="color:var(--text-secondary);margin-top:12px;">点击日期查看当天数据</p>
+            </div>
+          </div>
+          <div class="cal-detail-footer">
+            <button class="cal-add-event-btn" id="calAddEventBtn" onclick="openCalendarEventModal()" disabled>+ 添加事件</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
   <!-- 卡片选择弹窗 -->
   <div class="modal-backdrop hidden" id="addCardModal">
@@ -3323,6 +3865,7 @@
     </div>
   </div>
 
+  </div>
   <!-- 右栏 — 设置面板 -->
   <div class="settings-panel" id="settingsPanel">
     <div class="settings-drawer-header">
@@ -3369,7 +3912,10 @@
     <div class="file-picker-dialog">
       <div class="file-picker-header">
         <h3>📎 选择文件</h3>
-        <button class="close-btn" onclick="closeFilePicker()" aria-label="关闭">×</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-sm" onclick="triggerFilePickerUpload()" style="padding:4px 10px;font-size:12px;background:transparent;border:1px dashed var(--accent);color:var(--accent);border-radius:6px;cursor:pointer;">📤 上传</button>
+          <button class="close-btn" onclick="closeFilePicker()" aria-label="关闭">×</button>
+        </div>
       </div>
       <div class="file-picker-search">
         <input type="text" id="filePickerSearch" placeholder="🔍 按文件名筛选..." oninput="filterFilePickerFiles()" autocomplete="off">
@@ -3388,6 +3934,7 @@
         </div>
       </div>
     </div>
+    <input type="file" id="filePickerUploadInput" multiple style="display:none" onchange="handleFilePickerUpload(event)">
   </div>
   <div class="toast-container" id="toastContainer"></div>
   <div class="conv-context-menu" id="convContextMenu">
@@ -3397,6 +3944,17 @@
   </div>
 
   <script>
+/* DEBUG: JS is executing */
+    (function(){ var d=document.getElementById("jsDebug"); if(d) d.textContent = "✅ JS 已加载"; })();
+    /* ==================== 移动端强制检测 ==================== */
+    (function forceMobile() {
+      var w = window.innerWidth || document.documentElement.clientWidth;
+      var isMobile = w <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+      if (isMobile) {
+        document.documentElement.classList.add('is-mobile');
+      }
+    })();
+
     let connected = false;
     let apiUrl = '';
     let token = '';
@@ -3489,12 +4047,15 @@
           return;
         }
         saveAuth(data.token, data.user);
-        showAppContent();
         document.getElementById('loginOverlay').style.display = 'none';
+        showAppContent();
         updateUserDisplay();
+        setStatus(false, '连接中...');
         autoGatewayConnect().then(function() {
           var activeTab = document.querySelector('.tab-btn.active');
           if (activeTab && activeTab.dataset.tab === 'daily') { loadDashboard(); }
+          // WebSocket 实时同步
+          if (typeof connectWS === 'function') connectWS();
         });
       } catch(e) {
         errEl.textContent = '网络错误，请稍后重试';
@@ -3649,12 +4210,15 @@
 
     function initExistingApp() {
       // 登录后自动连 Gateway，加载 UI
-      showAppContent();
       document.getElementById('loginOverlay').style.display = 'none';
+      showAppContent();
       updateUserDisplay();
+      // 立即设置连接中状态，避免闪现"未连接"
+      setStatus(false, '连接中...');
       autoGatewayConnect().then(function() {
         var activeTab = document.querySelector('.tab-btn.active');
         if (activeTab && activeTab.dataset.tab === 'daily') { loadDashboard(); }
+        if (typeof connectWS === 'function') connectWS();
       });
     }
 
@@ -3664,12 +4228,14 @@
         // Validate JWT first
         authFetch('/v1/api/auth/me').then(function(r) {
           if (r.ok) {
-            showAppContent();
             document.getElementById('loginOverlay').style.display = 'none';
+            showAppContent();
             updateUserDisplay();
+            setStatus(false, '连接中...');
             autoGatewayConnect().then(function() {
               var activeTab = document.querySelector('.tab-btn.active');
               if (activeTab && activeTab.dataset.tab === 'daily') { loadDashboard(); }
+              if (typeof connectWS === 'function') connectWS();
             });
           } else {
             clearAuth();
@@ -3694,17 +4260,155 @@
       }
     };
 
+    var currentTab = 'chat';
     function switchTab(tabName) {
+      currentTab = tabName;
+      // Desktop tab bar
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
+      var btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+      if (btn) btn.classList.add('active');
+      // Mobile bottom nav
+      document.querySelectorAll('.mb-tab').forEach(b => b.classList.remove('active'));
+      var mbtn = document.querySelector('.mb-tab[data-mbtab="' + tabName + '"]');
+      if (mbtn) mbtn.classList.add('active');
+      // Tab content
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.getElementById('tab-' + tabName).classList.add('active');
+      var tc = document.getElementById('tab-' + tabName);
+      if (tc) tc.classList.add('active');
+      // Update mobile title
+      var titles = { chat: 'Chat', files: 'Files', daily: 'Daily', search: '搜索' };
+      var mt = document.getElementById('mobileTitle');
+      if (mt) mt.textContent = titles[tabName] || tabName;
+      // Close mobile drawers on tab switch
+      if (typeof closeMobileMenu === 'function') closeMobileMenu();
+      
+      // 移动端：Chat Tab 隐藏底部导航，输入框直达底部；其他 Tab 显示导航
+      if (isMobileView()) {
+        var nav = document.getElementById('mobileBottomNav');
+        if (nav) nav.style.display = (tabName === 'chat') ? 'none' : 'flex';
+        // 调整主区域底部留白
+        var main = document.querySelector('.main');
+        if (main) main.style.paddingBottom = (tabName === 'chat') ? '0' : '56px';
+        // 调整搜索/Files/Daily 的底部留白
+        document.querySelectorAll('#tab-files, #tab-daily, #tab-search').forEach(function(el) {
+          el.style.paddingBottom = '56px';
+        });
+        document.getElementById('tab-chat') && (document.getElementById('tab-chat').style.paddingBottom = '');
+      }
+      
+      // If switching to search, focus input
+      if (tabName === 'search') {
+        setTimeout(function() {
+          var si = document.getElementById('searchInput');
+          if (si) { si.focus(); si.select(); }
+          // 恢复缓存的搜索结果
+          if (typeof restoreSearchCache === 'function') restoreSearchCache();
+        }, 80);
+      }
+      // If switching away from chat, hide conv panel on mobile
+      if (tabName !== 'chat' && isMobileView()) {
+        var cp = document.querySelector('.conv-panel');
+        if (cp) cp.classList.remove('conv-show');
+        var bd = document.getElementById('panelBackdrop');
+        if (bd) { bd.classList.remove('show'); bd.style.display = 'none'; }
+      }
+      // If on daily, load dashboard; on files, trigger load
+      if (tabName === 'daily' && typeof loadDashboard === 'function') {
+        setTimeout(function() { loadDashboard(); }, 200);
+      }
     }
 
-    /* ==================== 面板折叠/展开（桌面） / 抽屉切换（移动端） ==================== */
+
+    /* ==================== 全局搜索 (Phase 11) ==================== */
+
+    let searchQuery = '';    /* ==================== 面板折叠/展开（桌面） / 抽屉切换（移动端） ==================== */
 
     /** 当前是否为移动端视口 */
-    function isMobileView() { return window.innerWidth <= 768; }
+    function isMobileView() {
+      return window.innerWidth <= 768 || document.documentElement.classList.contains('is-mobile');
+    }
+
+    /** 移动端响应式初始化 */
+    function initMobileLayout() {
+      var isMobile = isMobileView();
+      
+      // 顶部栏
+      var topbar = document.querySelector('.mobile-topbar');
+      if (topbar) topbar.style.display = isMobile ? 'flex' : 'none';
+      
+      // 底部导航
+      var bottomNav = document.getElementById('mobileBottomNav');
+      if (bottomNav) bottomNav.style.display = isMobile ? 'flex' : 'none';
+      
+      // 桌面 Tab 栏：彻底隐藏
+      var tabBar = document.getElementById('tabBar');
+      if (tabBar) tabBar.style.display = isMobile ? 'none' : '';
+      
+      // 侧栏面板：移动端全部收起
+      var convPanel = document.querySelector('.conv-panel');
+      var settingsPanel = document.querySelector('.settings-panel');
+      if (isMobile) {
+        if (convPanel) { convPanel.classList.add('collapsed'); convPanel.classList.remove('conv-show'); }
+        if (settingsPanel) settingsPanel.classList.add('collapsed');
+        document.querySelectorAll('.panel-backdrop').forEach(function(el) { el.style.display = 'none'; });
+      }
+      
+      // 聊天输入区增加底部空间（盖在底部导航上方）
+      var inputArea = document.querySelector('.chat-input-area');
+      if (inputArea) {
+        inputArea.style.paddingBottom = isMobile ? 'calc(56px + 8px)' : '';
+      }
+      
+      // 移动端 conv 面板全屏化（通过 class 控制）
+      if (isMobile && convPanel) {
+        convPanel.style.maxWidth = '100%';
+        convPanel.style.width = '100%';
+      }
+    }
+
+    /** 汉堡菜单：打开会话面板（移动端全屏）或设置 */
+    function toggleMobileMenu() {
+      var cp = document.querySelector('.conv-panel');
+      if (!cp) return;
+      if (cp.classList.contains('conv-show')) {
+        closeMobileMenu();
+      } else {
+        // Show conv panel as fullscreen overlay
+        cp.classList.add('conv-show');
+        var bd = document.getElementById('panelBackdrop');
+        if (bd) { bd.style.display = 'block'; bd.classList.add('show'); }
+        // Close settings if open
+        var sp = document.querySelector('.settings-panel');
+        if (sp) sp.classList.add('collapsed');
+      }
+    }
+
+    function closeMobileMenu() {
+      var cp = document.querySelector('.conv-panel');
+      if (cp) cp.classList.remove('conv-show');
+      var bd = document.getElementById('panelBackdrop');
+      if (bd) { bd.classList.remove('show'); bd.style.display = 'none'; }
+    }
+
+    // Listen for backdrop click to close
+    document.addEventListener('click', function(e) {
+      if (e.target.id === 'panelBackdrop') {
+        closeMobileMenu();
+        var sp = document.querySelector('.settings-panel');
+        if (sp && !sp.classList.contains('collapsed')) {
+          togglePanelRight(false);
+        }
+      }
+    });
+
+    // Init mobile layout on load and resize
+    window.addEventListener('resize', function() { initMobileLayout(); });
+    // Init when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() { initMobileLayout(); });
+    } else {
+      initMobileLayout();
+    }
 
     function togglePanelLeft(save = true) {
       const panel = document.getElementById('convPanel');
@@ -4118,6 +4822,89 @@
       if (searchInput) searchInput.value = '';
     }
 
+    // F40 — 文件选择器上传
+    function triggerFilePickerUpload() {
+      var input = document.getElementById('filePickerUploadInput');
+      if (input) input.click();
+    }
+
+    async function handleFilePickerUpload(event) {
+      var files = event.target.files;
+      if (!files || files.length === 0) return;
+
+      var body = document.getElementById('filePickerBody');
+      var uploadCount = 0;
+      var failCount = 0;
+      var uploadedPaths = [];
+
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        try {
+          // Show upload progress
+          body.innerHTML = '<div class="file-picker-loading"><div class="spinner"></div><span>上传中 (' + (i+1) + '/' + files.length + '): ' + escapeHtml(file.name) + '</span></div>';
+
+          var formData = new FormData();
+          formData.append('file', file);
+          formData.append('path', '/user-files');
+
+          var resp = await authFetch('/v1/files/upload', {
+            method: 'POST',
+            body: formData
+          });
+          var result = await resp.json();
+
+          if (result.ok) {
+            uploadCount++;
+            var filePath = '/user-files/' + file.name;
+            uploadedPaths.push({ path: filePath, name: file.name });
+          } else {
+            // If file exists, try with overwrite
+            if (resp.status === 409) {
+              formData.append('overwrite', 'true');
+              var retryResp = await authFetch('/v1/files/upload', {
+                method: 'POST',
+                body: formData
+              });
+              var retryResult = await retryResp.json();
+              if (retryResult.ok) {
+                uploadCount++;
+                var filePath2 = '/user-files/' + file.name;
+                uploadedPaths.push({ path: filePath2, name: file.name });
+              } else {
+                failCount++;
+              }
+            } else {
+              failCount++;
+            }
+          }
+        } catch (e) {
+          failCount++;
+          console.warn('Upload failed:', e);
+        }
+      }
+
+      // Reset input
+      event.target.value = '';
+
+      if (uploadCount > 0) {
+        // Auto-attach uploaded files to the message
+        selectedFiles = selectedFiles || [];
+        for (var j = 0; j < uploadedPaths.length; j++) {
+          // Deduplicate
+          if (!selectedFiles.some(function(sf) { return sf.path === uploadedPaths[j].path; })) {
+            selectedFiles.push(uploadedPaths[j]);
+          }
+        }
+        // Refresh file tags in chat input
+        renderSelectedFileTags();
+        // Close picker
+        closeFilePicker();
+        showToast('已上传并附加 ' + uploadCount + ' 个文件' + (failCount > 0 ? '，' + failCount + ' 个失败' : ''), 'success', 3000);
+      } else {
+        showToast('上传失败', 'error', 3000);
+      }
+    }
+
     async function loadFilePickerFiles() {
       const body = document.getElementById('filePickerBody');
       body.innerHTML = '<div class="file-picker-loading"><div class="spinner"></div><span>加载中...</span></div>';
@@ -4257,12 +5044,64 @@
       updateFilePickerCount();
     }
 
-    async function sendMessage() {
+    // 发送状态控制 — 排队模式
+    let isSending = false;
+    let messageQueue = [];
+
+    /** Enter/Ctrl+Enter/发送按钮 → 加入队列 */
+    function enqueueMessage() {
       if (!connected) return;
-      const input = document.getElementById('input');
-      const text = input.value.trim();
+      var input = document.getElementById('input');
+      var text = input.value.trim();
       if (!text) return;
-      
+      input.value = '';
+      input.style.height = 'auto';
+      input.disabled = true;
+      document.getElementById('sendBtn').disabled = true;
+
+      // 显示用户消息到聊天区
+      var userDisplayText = text;
+      var fnames = selectedFiles.map(function(f) { return f.name; });
+      if (fnames.length > 0) userDisplayText += '\n' + fnames.map(function(fn) { return '📎 ' + fn; }).join(' ');
+      addMessage('user', userDisplayText, new Date().toISOString());
+
+      messageQueue.push({ text: text, files: selectedFiles.slice() });
+      selectedFiles = [];
+      renderSelectedFileTags();
+      if (!isSending) processQueue();
+    }
+
+    /** 从队列依次取出并发送 */
+    async function processQueue() {
+      if (messageQueue.length === 0) {
+        isSending = false;
+        document.getElementById('input').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('input').focus();
+        return;
+      }
+      isSending = true;
+      var item = messageQueue.shift();
+      // 更新占位文案：后续排队中有 X 条
+      if (messageQueue.length > 0 && document.querySelector('.queue-hint') === null) {
+        var hintEl = document.createElement('div');
+        hintEl.className = 'queue-hint';
+        hintEl.style.cssText = 'text-align:center;padding:6px;font-size:12px;color:var(--text-secondary);';
+        hintEl.textContent = '⏳ 还有 ' + messageQueue.length + ' 条消息等待发送...';
+        document.getElementById('messages').appendChild(hintEl);
+      }
+      await _doSendMessage(item.text, item.files);
+      // 移除排队提示
+      var hints = document.querySelectorAll('.queue-hint');
+      for (var h = 0; h < hints.length; h++) hints[h].remove();
+      // 继续处理下一条
+      processQueue();
+    }
+
+    /** 实际发送一条消息到 Gateway */
+    async function _doSendMessage(text, filesToSend) {
+      const now = new Date().toISOString();
+
       // 如果没有活跃会话，自动创建一个
       if (!activeConversationId) {
         try {
@@ -4277,22 +5116,48 @@
           if (crResp.ok) {
             var crData = await crResp.json();
             activeConversationId = crData.id;
-            // 异步刷新会话列表
             loadConversations();
           }
         } catch(e) {}
       }
-      
-      input.value = '';
-      input.style.height = 'auto';
-      const now = new Date().toISOString();
-      addMessage('user', text, now);
-      const sendBtn = document.getElementById('sendBtn');
-      sendBtn.disabled = true;
+
+      // 读取文件附件内容
+      var fileIDs = [];
+      var fileSummaries = [];
+      if (filesToSend && filesToSend.length > 0) {
+        for (var fi = 0; fi < filesToSend.length; fi++) {
+          var fp = filesToSend[fi];
+          fileIDs.push(fp.path);
+          try {
+            var readResp = await authFetch('/v1/files/read?path=' + encodeURIComponent(fp.path));
+            if (readResp.ok) {
+              var contentType = readResp.headers.get('Content-Type') || '';
+              if (contentType.startsWith('text/') || contentType.indexOf('json') !== -1 || contentType.indexOf('javascript') !== -1 || contentType.indexOf('xml') !== -1 || contentType.indexOf('yaml') !== -1) {
+                var ftext = await readResp.text();
+                if (ftext.length > 5000) ftext = ftext.substring(0, 5000) + '\n... (内容已截断)';
+                fileSummaries.push('📄 文件: ' + fp.name + '\n```\n' + ftext + '\n```');
+              } else {
+                fileSummaries.push('📎 文件: ' + fp.name + ' (二进制文件，已附加路径)');
+              }
+            } else {
+              fileSummaries.push('📎 文件: ' + fp.name + ' (无法读取内容)');
+            }
+          } catch(e) {
+            fileSummaries.push('📎 文件: ' + fp.name + ' (读取失败: ' + e.message + ')');
+          }
+        }
+      }
+
       const { container: msgDiv, content: contentDiv } = createAssistantMessageElement();
       let fullContent = '';
       const replyTime = new Date().toISOString();
       try {
+        var messages = [];
+        if (fileSummaries.length > 0) {
+          messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
+        }
+        messages.push({ role: 'user', content: text });
+
         const resp = await fetch(apiUrl + '/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -4301,7 +5166,7 @@
           },
           body: JSON.stringify({
             model: 'openclaw:' + agentId,
-            messages: [{ role: 'user', content: text }],
+            messages: messages,
             user: activeConversationId || '',
             stream: true,
           }),
@@ -4309,8 +5174,6 @@
         if (!resp.ok) {
           const errText = await resp.text();
           contentDiv.innerHTML = '<span class="error-msg">错误 HTTP ' + resp.status + ': ' + escapeHtml(errText) + '</span>';
-          sendBtn.disabled = false;
-          document.getElementById('input').focus();
           return;
         }
         const reader = resp.body.getReader();
@@ -4334,18 +5197,14 @@
                 fullContent += delta;
                 contentDiv.innerHTML = renderMarkdown(fullContent);
               }
-            } catch (e) {
-              // skip unparseable SSE lines
-            }
+            } catch (e) {}
           }
           document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
         }
-        if (!fullContent) {
-          contentDiv.innerHTML = '(no response)';
-        }
-        const header = msgDiv.querySelector('.msg-header');
+        if (!fullContent) contentDiv.innerHTML = '(no response)';
+        var header = msgDiv.querySelector('.msg-header');
         if (header) {
-          const timeEl = document.createElement('span');
+          var timeEl = document.createElement('span');
           timeEl.className = 'msg-time';
           timeEl.textContent = formatMessageTime(replyTime);
           header.appendChild(timeEl);
@@ -4354,24 +5213,27 @@
         if (!fullContent) {
           contentDiv.innerHTML = '<span class="error-msg">网络错误: ' + escapeHtml(e.message) + '</span>';
         }
-        console.error('sendMessage stream error:', e);
+        console.error('_doSendMessage error:', e);
       }
-      sendBtn.disabled = false;
-      document.getElementById('input').focus();
+
       // 保存消息到后端（异步，不阻塞 UI）
       if (activeConversationId && fullContent) {
+        var saveBody = {
+          messages: [
+            { role: 'user', content: text, time: now },
+            { role: 'assistant', content: fullContent, time: replyTime }
+          ]
+        };
+        if (filesToSend.length > 0) {
+          saveBody.messages[0].files = filesToSend.map(function(f) { return f.path; });
+        }
         fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + token,
           },
-          body: JSON.stringify({
-            messages: [
-              { role: 'user', content: text, time: now },
-              { role: 'assistant', content: fullContent, time: replyTime }
-            ]
-          }),
+          body: JSON.stringify(saveBody),
         }).catch(function(e) { console.error('Save messages error:', e); });
       }
     }
@@ -5706,6 +6568,12 @@
         renderEntries(entries, treeContent, 0, dirPath || '');
       }).catch(function(err) {
         treeContent.innerHTML = '<div class="tree-item" style="padding-left:12px;color:var(--accent);">⚠️ ' + err.message + '</div>';
+
+    /** 快捷跳转到上传文件夹 */
+    function shortcutToUploads(e) {
+      if (e) e.stopPropagation();
+      navigateToFile('/user-files');
+    }
         showToast('目录刷新失败: ' + err.message, 'error');
       });
     }
@@ -5748,6 +6616,12 @@
     // ==================== Keyboard Shortcuts ====================
 
     document.addEventListener('keydown', function(e) {
+      // Cmd+K / Ctrl+K — open search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        switchTab('search');
+        return;
+      }
       // Ctrl+S — save in edit mode
       if (e.ctrlKey && e.key === 's') {
         if (viewerState.isEditing) {
@@ -5776,6 +6650,13 @@
       try {
         const entries = await apiLs('/');
         treeContent.innerHTML = '';
+
+        // 快捷入口：上传文件夹
+        var shortcutDiv = document.createElement('div');
+        shortcutDiv.className = 'tree-shortcuts';
+        shortcutDiv.innerHTML = '<div class="tree-item" onclick="shortcutToUploads(event)" style="cursor:pointer;padding-left:12px;color:var(--accent);">📤 上传文件</div>';
+        treeContent.appendChild(shortcutDiv);
+
         renderEntries(entries, treeContent, 0, '');
       } catch (err) {
         treeContent.innerHTML = '<div class="tree-item" style="padding-left:12px;color:var(--accent);">⚠️ ' + err.message + '</div>';
@@ -8714,10 +9595,816 @@
 
 
     const origSwitchTab2 = switchTab;
-    switchTab = function(tabName) {
-      origSwitchTab2(tabName);
-      if (tabName === 'daily') { loadDashboard(); }
+
+  /* ==================== 全局搜索 (Phase 11) ==================== */
+  let searchResultsCache = null;
+  let searchQueryCache = '';
+  let searchSelectedIdx = -1;
+  let searchAllItems = [];
+
+  /** 执行搜索 */
+  async function doSearch() {
+    var inp = document.getElementById('searchInput');
+    var q = (inp.value || '').trim();
+    if (!q) return;
+    
+    searchQueryCache = q;
+    searchSelectedIdx = -1;
+    var statusEl = document.getElementById('searchStatus');
+    var resultsEl = document.getElementById('searchResults');
+    statusEl.style.display = 'block';
+    statusEl.textContent = '搜索中…';
+    
+    try {
+      var resp = await authFetch('/v1/api/search?q=' + encodeURIComponent(q) + '&limit=20');
+      var data = await resp.json();
+      searchResultsCache = data;
+      statusEl.style.display = 'none';
+      renderSearchResults(data);
+    } catch (e) {
+      statusEl.textContent = '搜索失败: ' + e.message;
+    }
+  }
+
+  /** 渲染搜索结果 */
+  function renderSearchResults(data) {
+    var el = document.getElementById('searchResults');
+    if (!data || !data.results || data.results.length === 0) {
+      el.innerHTML = '<div class="search-empty"><span class="search-empty-icon">📭</span>无匹配结果</div>';
+      searchAllItems = [];
+      return;
+    }
+    
+    searchAllItems = [];
+    var html = '';
+    var q = searchQueryCache;
+    
+    for (var gi = 0; gi < data.results.length; gi++) {
+      var group = data.results[gi];
+      html += '<div class="search-group">';
+      html += '<div class="search-group-header"><span class="sg-icon">' + escHtml(group.icon || '') + '</span> ' + escHtml(group.group) + (group.group_label ? ' · ' + escHtml(group.group_label) : '') + ' (' + group.items.length + ')</div>';
+      for (var ii = 0; ii < group.items.length; ii++) {
+        var item = group.items[ii];
+        item._groupIcon = group.icon || '';
+        searchAllItems.push(item);
+        var itemIdx = searchAllItems.length - 1;
+        var isSel = itemIdx === searchSelectedIdx;
+        html += '<div class="search-result-item' + (isSel ? ' selected' : '') + '" data-idx="' + itemIdx + '" onclick="jumpToResult(searchAllItems[' + itemIdx + '])">';
+        html += '<span class="sr-icon">' + escHtml(group.icon || '') + '</span>';
+        html += '<div class="sr-content">';
+        html += '<div class="sr-title">' + highlightMatch(item.title, q) + '</div>';
+        if (item.subtitle) {
+          html += '<div class="sr-subtitle">' + escHtml(item.subtitle) + '</div>';
+        }
+        if (item.match_preview) {
+          html += '<div class="sr-preview">' + highlightMatch(item.match_preview, q) + '</div>';
+        }
+        html += '</div></div>';
+      }
+      html += '</div>';
+    }
+    el.innerHTML = html;
+  }
+
+  /** 关键词高亮 */
+  function highlightMatch(text, query) {
+    if (!query) return escHtml(text);
+    var escaped = escHtml(text);
+    var ql = query.toLowerCase();
+    var idx = escaped.toLowerCase().indexOf(ql);
+    if (idx >= 0) {
+      return escaped.substring(0, idx) + '<mark>' + escaped.substring(idx, idx + query.length) + '</mark>' + escaped.substring(idx + query.length);
+    }
+    return escaped;
+  }
+
+  /** HTML 转义 */
+  function escHtml(s) {
+    if (!s) return '';
+    s = String(s);
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /** 键盘导航 */
+  function handleSearchKey(event) {
+    if (event.key === 'Enter') {
+      if (searchSelectedIdx >= 0 && searchAllItems[searchSelectedIdx]) {
+        jumpToResult(searchAllItems[searchSelectedIdx]);
+      } else {
+        doSearch();
+      }
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (searchAllItems.length > 0) {
+        searchSelectedIdx = Math.min(searchSelectedIdx + 1, searchAllItems.length - 1);
+        updateSearchSelection();
+      }
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (searchAllItems.length > 0) {
+        searchSelectedIdx = Math.max(searchSelectedIdx - 1, 0);
+        updateSearchSelection();
+      }
+    }
+    if (event.key === 'Escape') {
+      searchSelectedIdx = -1;
+      updateSearchSelection();
+    }
+  }
+
+  /** 更新搜索选中状态 */
+  function updateSearchSelection() {
+    var items = document.querySelectorAll('.search-result-item');
+    items.forEach(function(el, i) {
+      if (i === searchSelectedIdx) {
+        el.classList.add('selected');
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } else {
+        el.classList.remove('selected');
+      }
+    });
+  }
+
+  /** 跳转到搜索结果 */
+  function jumpToResult(item) {
+    if (!item || !item.action) return;
+    switch (item.action) {
+      case 'open_session':
+        switchTab('chat');
+        setTimeout(function() {
+          if (typeof loadConversation === 'function' && item.action_data && item.action_data.session_id) {
+            loadConversation(item.action_data.session_id);
+            if (item.action_data.message_index >= 0) {
+              setTimeout(function() {
+                var msgs = document.querySelectorAll('#messages .message');
+                if (msgs[item.action_data.message_index]) {
+                  msgs[item.action_data.message_index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  msgs[item.action_data.message_index].style.background = 'rgba(59,130,246,0.15)';
+                  setTimeout(function() { msgs[item.action_data.message_index].style.background = ''; }, 2000);
+                }
+              }, 500);
+            }
+          }
+        }, 100);
+        break;
+      case 'open_file':
+        switchTab('files');
+        setTimeout(function() {
+          if (item.action_data && item.action_data.path) {
+            if (typeof navigateToFile === 'function') {
+              navigateToFile(item.action_data.path);
+            } else if (typeof openFile === 'function') {
+              openFile(item.action_data.path);
+            }
+          }
+        }, 200);
+        break;
+      case 'open_daily_card':
+        switchTab('daily');
+        setTimeout(function() {
+          if (item.action_data && item.action_data.card_type) {
+            var cardId = item.action_data.card_type;
+            var cardEl = document.querySelector('[data-card-type="' + cardId + '"]') ||
+                         document.querySelector('[data-card="' + cardId + '"]');
+            if (cardEl) {
+              cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              cardEl.style.boxShadow = '0 0 0 2px var(--accent)';
+              setTimeout(function() { cardEl.style.boxShadow = ''; }, 2500);
+            }
+          }
+        }, 300);
+        break;
+    }
+  }
+
+  /** 恢复搜索结果缓存 */
+  function restoreSearchCache() {
+    if (searchResultsCache) {
+      renderSearchResults(searchResultsCache);
+      searchSelectedIdx = -1;
+    }
+  }
+
+
+  /* ==================== WebSocket 实时同步 (Phase 13) ==================== */
+  let wsConnection = null;
+  let wsPingTimer = null;
+  let wsReconnectTimer = null;
+
+  /** 连接 WebSocket */
+  function connectWS() {
+    if (!authJwt) return;
+    // 关闭已有连接
+    disconnectWS();
+    
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var wsUrl = proto + '//' + location.host + '/v1/ws?token=' + encodeURIComponent(authJwt);
+    
+    try {
+      wsConnection = new WebSocket(wsUrl);
+    } catch (e) {
+      console.warn('WebSocket 连接失败:', e);
+      scheduleReconnect();
+      return;
+    }
+    
+    wsConnection.onopen = function() {
+      console.log('🔗 WebSocket 已连接');
+      // 启动心跳：每 30 秒发 ping
+      wsPingTimer = setInterval(function() {
+        if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+          wsConnection.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 30000);
+      // 清除重连计时器
+      if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
     };
+    
+    wsConnection.onmessage = function(e) {
+      try {
+        var event = JSON.parse(e.data);
+        handleWSEvent(event);
+      } catch (err) {
+        // 忽略非 JSON 消息
+      }
+    };
+    
+    wsConnection.onclose = function() {
+      console.log('🔌 WebSocket 断开');
+      if (wsPingTimer) { clearInterval(wsPingTimer); wsPingTimer = null; }
+      scheduleReconnect();
+    };
+    
+    wsConnection.onerror = function() {
+      // onclose 会接着触发，统一在 onclose 处理重连
+    };
+  }
+
+  /** 断开 WebSocket */
+  function disconnectWS() {
+    if (wsPingTimer) { clearInterval(wsPingTimer); wsPingTimer = null; }
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    if (wsConnection) {
+      wsConnection.onclose = null; // 防止触发重连
+      try { wsConnection.close(); } catch(e) {}
+      wsConnection = null;
+    }
+  }
+
+  /** 断线重连 */
+  function scheduleReconnect() {
+    if (wsReconnectTimer) return; // 已经在等待
+    wsReconnectTimer = setTimeout(function() {
+      wsReconnectTimer = null;
+      if (authJwt) connectWS();
+    }, 3000);
+  }
+
+  /** 处理 WebSocket 事件 */
+  function handleWSEvent(event) {
+    var evt = event.event || '';
+    var by = event.by || '';
+    
+    switch (evt) {
+      case 'connected':
+        console.log('✅ WebSocket 握手完成');
+        break;
+      case 'todo_changed':
+        if (typeof loadTodoItems === 'function') loadTodoItems();
+        showToast('📋 ' + (by ? by + ' ' : '') + '更新了 Todo', 'info', 3000);
+        break;
+      case 'data_changed':
+        if (typeof loadDashboard === 'function') loadDashboard();
+        showToast('📊 ' + (by ? by + ' ' : '') + '更新了数据: ' + (event.field || ''), 'info', 3000);
+        break;
+      case 'card_changed':
+        // 刷新对应卡片
+        var card = event.card || '';
+        var cardRefreshMap = {
+          'notes': 'loadNotesCard',
+          'bookmarks': 'loadBookmarksCard',
+          'photos': 'loadPhotosCard',
+          'reminders': 'loadRemindersCard',
+          'habits': 'loadHabitsCard',
+          'wishes': 'loadWishesCard'
+        };
+        var fnName = cardRefreshMap[card];
+        if (fnName && typeof window[fnName] === 'function') {
+          var cardEl = document.querySelector('[data-card-type="' + card + '"], [data-card="' + card + '"]');
+          if (cardEl) window[fnName](cardEl);
+        }
+        var cardNames = { notes: '随手记', bookmarks: '收藏夹', photos: '照片', reminders: '提醒', habits: '习惯', wishes: '心愿' };
+        showToast('🔄 ' + (by || '') + ' 更新了' + (cardNames[card] || card), 'info', 3000);
+        break;
+      case 'photo_changed':
+        if (typeof loadPhotosCard === 'function') {
+          var photoEl = document.querySelector('[data-card-type="photos"], [data-card="photos"]');
+          if (photoEl) loadPhotosCard(photoEl);
+        }
+        break;
+      case 'share_received':
+        // 有新分享 — 小红点提示
+        if (typeof loadSharesCard === 'function') loadSharesCard();
+        showToast('📤 ' + (by || '') + ' 给你分享了东西', 'info', 4000);
+        break;
+      case 'reminder_fired':
+        showToast('⏰ 提醒: ' + (event.text || ''), 'warning', 5000);
+        break;
+      case 'calendar_changed':
+        // 日历变更 — 暂不做前端刷新（日历 Tab 未实现）
+        break;
+      case 'error':
+        console.warn('WebSocket 错误:', event.message);
+        break;
+    }
+  }
+
+
+  /* ==================== 日历 (Phase 14) ==================== */
+
+  /** 可扩展的日历注册表 */
+  const calendarRegistry = {
+    // ---- 标记注册：日历格子上显示什么点 ----
+    markers: {
+      events: {
+        icon: '❤️', label: '事件', color: '#ef4444', cssClass: 'event',
+        // 从 range 数据提取标记数
+        getCount: function(dayData) {
+          return (dayData.events && dayData.events.length) || 0;
+        }
+      },
+      todos: {
+        icon: '🟢', label: 'Todo', color: '#22c55e', cssClass: 'todo',
+        getCount: function(dayData) { return dayData.todos || 0; }
+      },
+      reminders: {
+        icon: '🔔', label: '提醒', color: '#f59e0b', cssClass: 'reminder',
+        getCount: function(dayData) { return dayData.reminders || 0; }
+      }
+    },
+
+    // ---- 详情面板注册：点日期后右侧显示什么 ----
+    panels: {
+      events: {
+        title: '📅 事件', priority: 0,
+        render: function(date, data, container) { renderCalEvents(date, data.events || [], container); }
+      },
+      todos: {
+        title: '📋 Todo', priority: 10,
+        render: function(date, data, container) { renderCalTodos(date, data.todos || [], container); }
+      },
+      reminders: {
+        title: '⏰ 提醒', priority: 20,
+        render: function(date, data, container) { renderCalReminders(date, data.reminders || [], container); }
+      },
+      recipe: {
+        title: '🍽️ 食谱', priority: 30,
+        render: function(date, data, container) { renderCalRecipe(date, data.recipe || {}, container); }
+      },
+      notes: {
+        title: '📝 随手记', priority: 40,
+        render: function(date, data, container) { renderCalNotes(date, data.notes || [], container); }
+      },
+      photos: {
+        title: '📸 照片', priority: 50,
+        render: function(date, data, container) { renderCalPhotos(date, data.photos || [], container); }
+      }
+    },
+
+    // ---- 事件类型注册 ----
+    eventTypes: {
+      anniversary: { icon: '💝', color: '#e8a0a0', label: '纪念日' },
+      birthday:    { icon: '🎂', color: '#f9d56e', label: '生日' },
+      appointment: { icon: '📅', color: '#6ec6f5', label: '约会/预约' },
+      holiday:     { icon: '🎉', color: '#a0e8a0', label: '节日' },
+      other:       { icon: '📌', color: '#c0c0c0', label: '其他' }
+    },
+
+    // ---- 注册接口 ----
+    registerMarker: function(key, config) { this.markers[key] = config; },
+    registerPanel: function(key, config) { this.panels[key] = config; },
+    registerEventType: function(key, config) { this.eventTypes[key] = config; }
+  };
+
+  /** 日历状态 */
+  let calState = {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1, // 1-12
+    selectedDate: null,
+    selectedData: null,
+    rangeData: {},  // { '2026-06-01': {todos:3, reminders:1, ...} }
+    loading: false
+  };
+
+  /** 初始化日历 */
+  function initCalendar() {
+    calState.year = new Date().getFullYear();
+    calState.month = new Date().getMonth() + 1;
+    calState.selectedDate = null;
+    loadCalendarMonth();
+  }
+
+  /** 翻月 */
+  function calendarNavigate(delta) {
+    calState.month += delta;
+    if (calState.month > 12) { calState.month = 1; calState.year++; }
+    if (calState.month < 1) { calState.month = 12; calState.year--; }
+    calState.selectedDate = null;
+    loadCalendarMonth();
+  }
+
+  /** 回到今天 */
+  function calendarGoToday() {
+    calState.year = new Date().getFullYear();
+    calState.month = new Date().getMonth() + 1;
+    loadCalendarMonth();
+  }
+
+  /** 加载当月范围数据 */
+  async function loadCalendarMonth() {
+    var label = document.getElementById('calMonthLabel');
+    if (label) label.textContent = calState.year + '年' + calState.month + '月';
+
+    // 计算 from 和 to
+    var from = calState.year + '-' + String(calState.month).padStart(2, '0') + '-01';
+    var lastDay = new Date(calState.year, calState.month, 0).getDate();
+    var to = calState.year + '-' + String(calState.month).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
+
+    try {
+      var resp = await authFetch('/v1/api/calendar/range?from=' + from + '&to=' + to);
+      var data = await resp.json();
+      if (data.ok) {
+        calState.rangeData = data.range || {};
+        renderCalendarGrid();
+      }
+    } catch (e) {
+      console.warn('加载日历数据失败:', e);
+      calState.rangeData = {};
+      renderCalendarGrid();
+    }
+  }
+
+  /** 渲染月历网格 */
+  function renderCalendarGrid() {
+    var grid = document.getElementById('calendarGrid');
+    if (!grid) return;
+
+    var year = calState.year, month = calState.month;
+    var firstDay = new Date(year, month - 1, 1);
+    var startDayOfWeek = firstDay.getDay(); // 0=Sun → 调整为 0=Mon
+    startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+
+    var daysInMonth = new Date(year, month, 0).getDate();
+    var daysInPrevMonth = new Date(year, month - 1, 0).getDate();
+
+    var today = new Date();
+    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+    var html = '';
+
+    // 星期头（第一行）
+    var weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+    for (var wi = 0; wi < 7; wi++) {
+      html += '<div class="cal-cell weekday">' + weekdays[wi] + '</div>';
+    }
+
+    // 上月填充
+    for (var i = startDayOfWeek - 1; i >= 0; i--) {
+      var d = daysInPrevMonth - i;
+      var dateStr = (month === 1 ? year - 1 : year) + '-' + String(month === 1 ? 12 : month - 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      html += renderCalendarCell(d, dateStr, 'other-month');
+    }
+
+    // 当月
+    for (var d = 1; d <= daysInMonth; d++) {
+      var dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      var classes = '';
+      if (dateStr === todayStr) classes += ' today';
+      if (dateStr === calState.selectedDate) classes += ' selected';
+      html += renderCalendarCell(d, dateStr, classes);
+    }
+
+    // 下月填充
+    var remaining = 42 - (startDayOfWeek + daysInMonth); // 6 rows × 7 cols
+    for (var d = 1; d <= remaining; d++) {
+      var dateStr = (month === 12 ? year + 1 : year) + '-' + String(month === 12 ? 1 : month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      html += renderCalendarCell(d, dateStr, 'other-month');
+    }
+
+    grid.innerHTML = html;
+  }
+
+  /** 渲染单个日历格子 */
+  function renderCalendarCell(day, dateStr, extraClasses) {
+    var dayData = calState.rangeData[dateStr] || {};
+    var classes = 'cal-cell' + (extraClasses ? ' ' + extraClasses : '');
+
+    // 构建标记
+    var markersHtml = '';
+    var markerCount = 0;
+    var markerKeys = Object.keys(calendarRegistry.markers);
+    for (var i = 0; i < markerKeys.length; i++) {
+      var key = markerKeys[i];
+      var mk = calendarRegistry.markers[key];
+      var cnt = mk.getCount(dayData);
+      if (cnt > 0) {
+        if (markerCount < 3) {
+          markersHtml += '<span class="cal-marker ' + mk.cssClass + '" title="' + mk.label + ': ' + cnt + '"></span>';
+        }
+        markerCount++;
+      }
+    }
+    if (markerCount > 3) {
+      markersHtml += '<span class="cal-marker overflow">+' + (markerCount - 3) + '</span>';
+    }
+
+    return '<div class="' + classes + '" onclick="calendarSelectDate(\'' + dateStr + '\')" data-date="' + dateStr + '">' +
+           '<span class="cal-day-num">' + day + '</span>' +
+           (markersHtml ? '<div class="cal-markers">' + markersHtml + '</div>' : '') +
+           '</div>';
+  }
+
+  /** 选择日期 */
+  async function calendarSelectDate(dateStr) {
+    calState.selectedDate = dateStr;
+    renderCalendarGrid(); // 更新选中状态
+
+    // 启用添加事件按钮
+    var addBtn = document.getElementById('calAddEventBtn');
+    if (addBtn) addBtn.disabled = false;
+
+    // 更新详情头
+    var header = document.getElementById('calDetailHeader');
+    var d = new Date(dateStr);
+    var weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    if (header) {
+      header.innerHTML = '<span class="cal-detail-date">📅 ' + dateStr + ' ' + weekdays[d.getDay()] + '</span>';
+    }
+
+    // 加载详情
+    var body = document.getElementById('calDetailBody');
+    if (body) body.innerHTML = '<div class="cal-detail-placeholder"><p>加载中…</p></div>';
+
+    try {
+      var resp = await authFetch('/v1/api/calendar/' + dateStr);
+      var data = await resp.json();
+      if (data.ok) {
+        calState.selectedData = data;
+        renderCalendarDetail(data);
+      }
+    } catch (e) {
+      if (body) body.innerHTML = '<div class="cal-detail-placeholder"><p>加载失败</p></div>';
+    }
+  }
+
+  /** 渲染详情面板（按优先级排列） */
+  function renderCalendarDetail(data) {
+    var body = document.getElementById('calDetailBody');
+    if (!body) return;
+
+    var panels = Object.values(calendarRegistry.panels);
+    panels.sort(function(a, b) { return a.priority - b.priority; });
+
+    var html = '';
+    for (var i = 0; i < panels.length; i++) {
+      var sectionId = 'cal-section-' + i;
+      html += '<div class="cal-section" id="' + sectionId + '"></div>';
+    }
+
+    body.innerHTML = html;
+
+    // 异步渲染每个面板
+    for (var i = 0; i < panels.length; i++) {
+      var sectionEl = document.getElementById('cal-section-' + i);
+      if (sectionEl) {
+        panels[i].render(calState.selectedDate, data, sectionEl);
+      }
+    }
+  }
+
+  // ============ 详情面板渲染函数 ============
+
+  function renderCalEvents(date, events, container) {
+    if (!events || events.length === 0) return;
+    var html = '<div class="cal-section-title">📅 事件</div>';
+    for (var i = 0; i < events.length; i++) {
+      var e = events[i];
+      var et = calendarRegistry.eventTypes[e.type] || calendarRegistry.eventTypes['other'];
+      html += '<div class="cal-section-item event-item" style="border-left-color:' + (et.color || '#6ec6f5') + '">' +
+              '<span>' + (et.icon || '📌') + '</span>' +
+              '<span class="item-text">' + escHtml(e.title) + '</span>' +
+              (e.time ? '<span class="item-meta">' + escHtml(e.time) + '</span>' : '') +
+              '<span class="event-delete" onclick="event.stopPropagation();deleteCalendarEvent(\'' + (e.id || '') + '\')" title="删除">🗑</span>' +
+              '</div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function renderCalTodos(date, todos, container) {
+    if (!todos || todos.length === 0) return;
+    var html = '<div class="cal-section-title">📋 Todo</div>';
+    for (var i = 0; i < todos.length; i++) {
+      var t = todos[i];
+      html += '<div class="cal-section-item">' +
+              '<span class="item-checkbox' + (t.done ? ' done' : '') + '" onclick="event.stopPropagation();toggleCalendarTodo(\'' + (t.id || '') + '\', this)"></span>' +
+              '<span class="item-text">' + escHtml(t.text || t.title || '') + '</span>' +
+              (t.person ? '<span class="item-meta">' + escHtml(t.person) + '</span>' : '') +
+              '</div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function renderCalReminders(date, reminders, container) {
+    if (!reminders || reminders.length === 0) return;
+    var html = '<div class="cal-section-title">⏰ 提醒</div>';
+    for (var i = 0; i < reminders.length; i++) {
+      var r = reminders[i];
+      html += '<div class="cal-section-item">' +
+              '<span>⏰</span>' +
+              '<span class="item-text">' + escHtml(r.text || '') + '</span>' +
+              (r.time ? '<span class="item-meta">' + escHtml(r.time) + '</span>' : '') +
+              '</div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function renderCalRecipe(date, recipe, container) {
+    if (!recipe || (!recipe.lunch && !recipe.dinner)) return;
+    var html = '<div class="cal-section-title">🍽️ 食谱</div>';
+    if (recipe.lunch) {
+      html += '<div class="cal-section-item"><span>🥗</span><span class="item-text">午餐: ' + escHtml(recipe.lunch) + '</span></div>';
+    }
+    if (recipe.dinner) {
+      html += '<div class="cal-section-item"><span>🍲</span><span class="item-text">晚餐: ' + escHtml(recipe.dinner) + '</span></div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function renderCalNotes(date, notes, container) {
+    if (!notes || notes.length === 0) return;
+    var html = '<div class="cal-section-title">📝 随手记</div>';
+    for (var i = 0; i < Math.min(notes.length, 5); i++) {
+      var n = notes[i];
+      var text = (typeof n === 'string') ? n : (n.text || n.title || '');
+      html += '<div class="cal-section-item">' +
+              '<span>📝</span><span class="item-text">' + escHtml(text.substring(0, 80)) + '</span>' +
+              '</div>';
+    }
+    if (notes.length > 5) {
+      html += '<div class="cal-section-item"><span class="item-meta">…还有 ' + (notes.length - 5) + ' 条</span></div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function renderCalPhotos(date, photos, container) {
+    if (!photos || photos.length === 0) return;
+    var html = '<div class="cal-section-title">📸 照片 (' + photos.length + ')</div>';
+    container.innerHTML = html;
+  }
+
+  // ============ Todo 勾选 ============
+
+  async function toggleCalendarTodo(todoId, checkboxEl) {
+    var isDone = checkboxEl.classList.contains('done');
+    try {
+      var method = isDone ? 'DELETE' : 'POST';
+      await fetch('/v1/api/daily/todos/' + (isDone ? 'undo' : 'complete'), {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ id: todoId })
+      });
+      checkboxEl.classList.toggle('done');
+    } catch (e) {
+      console.warn('Todo操作失败:', e);
+    }
+  }
+
+  // ============ 日历事件 CRUD ============
+
+  function openCalendarEventModal() {
+    if (!calState.selectedDate) return;
+    
+    var overlay = document.createElement('div');
+    overlay.className = 'cal-modal-overlay';
+    overlay.id = 'calEventModal';
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+
+    var typeOptions = '';
+    var types = calendarRegistry.eventTypes;
+    for (var key in types) {
+      typeOptions += '<div class="cal-type-option" data-type="' + key + '" onclick="selectCalEventType(this, \'' + key + '\')">' +
+                     types[key].icon + ' ' + types[key].label + '</div>';
+    }
+
+    overlay.innerHTML = '<div class="cal-modal" onclick="event.stopPropagation()">' +
+      '<h3>添加日历事件</h3>' +
+      '<label>事件类型</label>' +
+      '<div class="cal-event-type-grid" id="calEventTypeGrid">' + typeOptions + '</div>' +
+      '<label>标题</label><input type="text" id="calEventTitle" placeholder="事件名称">' +
+      '<label>日期</label><input type="date" id="calEventDate" value="' + calState.selectedDate + '">' +
+      '<label>时间（可选）</label><input type="time" id="calEventTime">' +
+      '<label>描述（可选）</label><textarea id="calEventDesc" placeholder="备注..."></textarea>' +
+      '<div class="cal-modal-actions">' +
+      '<button class="cal-btn-cancel" onclick="document.getElementById(\'calEventModal\').remove()">取消</button>' +
+      '<button class="cal-btn-save" onclick="saveCalendarEvent()">保存</button>' +
+      '</div></div>';
+
+    document.body.appendChild(overlay);
+
+    // 默认选第一个类型
+    var firstType = Object.keys(types)[0];
+    var firstOpt = overlay.querySelector('.cal-type-option[data-type="' + firstType + '"]');
+    if (firstOpt) firstOpt.classList.add('selected');
+  }
+
+  function selectCalEventType(el, type) {
+    document.querySelectorAll('.cal-type-option').forEach(function(o) { o.classList.remove('selected'); });
+    el.classList.add('selected');
+    el._selectedType = type;
+  }
+
+  async function saveCalendarEvent() {
+    var title = document.getElementById('calEventTitle').value.trim();
+    var date = document.getElementById('calEventDate').value;
+    var time = document.getElementById('calEventTime').value;
+    var desc = document.getElementById('calEventDesc').value.trim();
+
+    if (!title || !date) return;
+
+    // 找到选中的类型
+    var selectedType = 'other';
+    var selected = document.querySelector('.cal-type-option.selected');
+    if (selected) {
+      selectedType = selected.getAttribute('data-type') || 'other';
+    }
+
+    try {
+      var resp = await authFetch('/v1/api/calendar/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title, date: date, time: time || null,
+          type: selectedType, description: desc
+        })
+      });
+      var data = await resp.json();
+      if (data.ok) {
+        document.getElementById('calEventModal').remove();
+        showToast('✅ 事件已添加', 'success', 2000);
+        // 刷新当前选中日期详情
+        if (calState.selectedDate) {
+          calendarSelectDate(calState.selectedDate);
+          // 延迟刷新月历标记
+          setTimeout(function() { loadCalendarMonth(); }, 500);
+        }
+      }
+    } catch (e) {
+      showToast('保存失败', 'error', 2000);
+    }
+  }
+
+  async function deleteCalendarEvent(eventId) {
+    if (!confirm('删除这个事件？')) return;
+    try {
+      await authFetch('/v1/api/calendar/events/' + encodeURIComponent(eventId), { method: 'DELETE' });
+      showToast('已删除', 'info', 2000);
+      if (calState.selectedDate) {
+        calendarSelectDate(calState.selectedDate);
+        setTimeout(function() { loadCalendarMonth(); }, 500);
+      }
+    } catch (e) {
+      showToast('删除失败', 'error', 2000);
+    }
+  }
+
+  // ============ switchTab 集成 ============
+  // 拦截 switchTab 给 calendar 添加初始化
+  (function() {
+    var origSwitchTab = switchTab;
+    switchTab = function(tabName) {
+      origSwitchTab(tabName);
+      if (tabName === 'calendar') { initCalendar(); }
+      // 更新 mobile 标题
+      var titles = { chat: 'Chat', files: 'Files', daily: 'Daily', search: '搜索', calendar: '日历' };
+      var mt = document.getElementById('mobileTitle');
+      if (mt) mt.textContent = titles[tabName] || tabName;
+    };
+  })();
+
+  /** Cmd+K 快捷键 */
+  document.addEventListener('keydown', function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      switchTab('search');
+      setTimeout(function() {
+        var si = document.getElementById('searchInput');
+        if (si) { si.focus(); si.select(); }
+      }, 100);
+    }
+  });
 
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -8734,6 +10421,8 @@ function hideAppContent() {
   }
 }
 function showAppContent() {
+  // 移动端布局初始化（在处理 body children 之前）
+  if (typeof initMobileLayout === 'function') initMobileLayout();
   var children = document.body.children;
   for (var i = 0; i < children.length; i++) {
     var el = children[i];
@@ -8750,6 +10439,8 @@ function showAppContent() {
   if (fp) { fp.style.display = 'none'; fp.classList.add('hidden'); }
   var cm = document.getElementById('confirmModal');
   if (cm) { cm.style.display = 'none'; cm.classList.add('hidden'); }
+  // 移动端：确保布局正确
+  if (typeof initMobileLayout === 'function') initMobileLayout();
 }
 // 强制居中登录卡片（修复某些浏览器 flex/grid/absolute 居中失效）
 if (document.body.classList.contains('logged-out')) {
@@ -8777,6 +10468,24 @@ if (document.body.classList.contains('logged-out')) {
   hideAppContent();
 }
 </script>
+  <!-- 移动端底部 Tab 栏 -->
+  <nav class="mobile-bottom-nav" id="mobileBottomNav" style="display:none;">
+    <button class="mb-tab active" data-mbtab="chat" onclick="switchTab('chat')">
+      <span class="mb-icon">💬</span><span>Chat</span>
+    </button>
+    <button class="mb-tab" data-mbtab="files" onclick="switchTab('files')">
+      <span class="mb-icon">📁</span><span>Files</span>
+    </button>
+    <button class="mb-tab" data-mbtab="daily" onclick="switchTab('daily')">
+      <span class="mb-icon">📊</span><span>Daily</span>
+    </button>
+    <button class="mb-tab" data-mbtab="search" onclick="switchTab('search')">
+      <span class="mb-icon">🔍</span><span>Search</span>
+    </button>
+    <button class="mb-tab" data-mbtab="calendar" onclick="switchTab('calendar')">
+      <span class="mb-icon">📅</span><span>日历</span>
+    </button>
+  </nav>
 </body>
 
 </html>

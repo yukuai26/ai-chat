@@ -5065,6 +5065,22 @@
       if (fnames.length > 0) userDisplayText += '\n' + fnames.map(function(fn) { return '📎 ' + fn; }).join(' ');
       addMessage('user', userDisplayText, new Date().toISOString());
 
+      // 立即保存用户消息到后端（不等 AI 回复），防止切会话后丢失
+      (function() {
+        var _text = text, _files = selectedFiles.slice();
+        if (activeConversationId) {
+          authFetch('/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messages: [{
+                role: 'user', content: _text, time: new Date().toISOString(),
+                files: _files.map(function(f) { return f.path; })
+              }]
+            })
+          }).catch(function(e) { console.error('Save error:', e); });
+        }
+      })();
       messageQueue.push({ text: text, files: selectedFiles.slice() });
       selectedFiles = [];
       renderSelectedFileTags();
@@ -5265,10 +5281,9 @@
       } catch (e) {
         if (!fullContent) contentDiv.innerHTML = '<span class="error-msg">网络错误: ' + escapeHtml(e.message) + '</span>';
       }
-      // 保存
+      // 保存助手消息（用户消息已在 enqueueMessage 时保存）
       if (activeConversationId && fullContent) {
-        var saveBody = { messages: [{ role: 'user', content: text, time: now }, { role: 'assistant', content: fullContent, time: replyTime }] };
-        if (filesToSend && filesToSend.length > 0) saveBody.messages[0].files = filesToSend.map(function(f) { return f.path; });
+        var saveBody = { messages: [{ role: 'assistant', content: fullContent, time: replyTime }] };
         fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
           body: JSON.stringify(saveBody),
@@ -9977,17 +9992,13 @@
             timeEl.textContent = formatMessageTime(req.replyTime);
             header.appendChild(timeEl);
           }
-          // 保存消息到后端
+          // 保存助手消息到后端（用户消息已在 enqueueMessage 时保存）
           if (activeConversationId && req.fullContent) {
             var saveBody = {
               messages: [
-                { role: 'user', content: req.text, time: new Date().toISOString() },
                 { role: 'assistant', content: req.fullContent, time: req.replyTime }
               ]
             };
-            if (req.filePaths && req.filePaths.length > 0) {
-              saveBody.messages[0].files = req.filePaths;
-            }
             fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },

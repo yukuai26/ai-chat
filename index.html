@@ -5140,15 +5140,15 @@
               if (contentType.startsWith('text/') || contentType.indexOf('json') !== -1 || contentType.indexOf('javascript') !== -1 || contentType.indexOf('xml') !== -1 || contentType.indexOf('yaml') !== -1) {
                 var ftext = await readResp.text();
                 if (ftext.length > 5000) ftext = ftext.substring(0, 5000) + '\n... (内容已截断)';
-                fileSummaries.push('📄 文件: ' + fp.name + '\n```\n' + ftext + '\n```');
+                fileSummaries.push('📄 文件: ' + fp.name + '\n路径: /home/ubuntu/.openclaw' + fp.path + '\n内容:\n```\n' + ftext + '\n```');
               } else {
-                fileSummaries.push('📎 文件: ' + fp.name + ' (二进制文件，已附加路径)');
+                fileSummaries.push('📎 文件: ' + fp.name + ' (二进制)\n路径: /home/ubuntu/.openclaw' + fp.path + ' (使用 read 工具读取原始内容)');
               }
             } else {
-              fileSummaries.push('📎 文件: ' + fp.name + ' (无法读取内容)');
+              fileSummaries.push('📎 文件: ' + fp.name + ' (无法读取)\n路径: /home/ubuntu/.openclaw' + fp.path + ' (尝试使用 read 工具)');
             }
           } catch(e) {
-            fileSummaries.push('📎 文件: ' + fp.name + ' (读取失败: ' + e.message + ')');
+            fileSummaries.push('📎 文件: ' + fp.name + ' (读取异常: ' + e.message + ')\n路径: /home/ubuntu/.openclaw' + fp.path + ' (尝试使用 read 工具)');
           }
         }
       }

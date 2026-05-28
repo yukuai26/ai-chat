@@ -5169,4 +5169,4 @@ if __name__ == "__main__":
     _ensure_directories()
     port = int(os.environ.get("PORT", 5050))
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
-    app.run(host="127.0.0.1", port=port, debug=debug)
+    app.run(host="127.0.0.1", port=port, debug=debug, threaded=True)

@@ -9821,8 +9821,8 @@
       case 'open_session':
         switchTab('chat');
         setTimeout(function() {
-          if (typeof loadConversation === 'function' && item.action_data && item.action_data.session_id) {
-            loadConversation(item.action_data.session_id);
+          if (typeof selectConversation === 'function' && item.action_data && item.action_data.session_id) {
+            selectConversation(item.action_data.session_id);
             if (item.action_data.message_index >= 0) {
               setTimeout(function() {
                 var msgs = document.querySelectorAll('#messages .message');

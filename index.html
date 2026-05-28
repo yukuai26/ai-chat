@@ -3740,7 +3740,7 @@
     <div class="tab-content" id="tab-files">
       <div class="breadcrumb" id="breadcrumb">
         <button class="tree-toggle-btn" onclick="toggleFileTree()" title="目录" aria-label="切换目录树">☰</button>
-        <span class="breadcrumb-item root-icon current" data-path="" onclick="navigateBreadcrumb('')">🏠 /</span>
+        <span class="breadcrumb-item root-icon current" onclick="navigateBreadcrumb('/user-files')">📁 文件</span>
       </div>
       <div class="file-browser">
         <div class="tree-backdrop" id="treeBackdrop" onclick="toggleFileTree()"></div>
@@ -6048,14 +6048,14 @@
       const bc = document.getElementById('breadcrumb');
       bc.innerHTML = '';
 
-      // Root / Home
+      // Root / 用户文件
       const rootItem = document.createElement('span');
-      rootItem.className = 'breadcrumb-item root-icon' + (path === '' || path === '/' ? ' current' : '');
-      rootItem.textContent = '🏠 /';
-      rootItem.onclick = function() { navigateBreadcrumb(''); };
+      rootItem.className = 'breadcrumb-item root-icon' + (path === '/user-files' ? ' current' : '');
+      rootItem.textContent = '📁 文件';
+      rootItem.onclick = function() { navigateBreadcrumb('/user-files'); };
       bc.appendChild(rootItem);
 
-      if (path === '' || path === '/') return;
+      if (path === '/user-files') return;
 
       const parts = path.replace(/^\//, '').split('/');
       let cumulative = '';
@@ -6734,7 +6734,7 @@
       treeContent.innerHTML = '';
       treeContent.appendChild(createInlineLoading('加载目录...'));
       try {
-        const entries = await apiLs('/');
+        const entries = await apiLs('/user-files');
         treeContent.innerHTML = '';
 
         // 快捷入口：上传文件夹
@@ -6743,7 +6743,7 @@
         shortcutDiv.innerHTML = '<div class="tree-item" onclick="shortcutToUploads(event)" style="cursor:pointer;padding-left:12px;color:var(--accent);">📤 上传文件</div>';
         treeContent.appendChild(shortcutDiv);
 
-        renderEntries(entries, treeContent, 0, '');
+        renderEntries(entries, treeContent, 0, '/user-files');
       } catch (err) {
         treeContent.innerHTML = '<div class="tree-item" style="padding-left:12px;color:var(--accent);">⚠️ ' + err.message + '</div>';
         showToast('文件目录加载失败: ' + err.message, 'error');

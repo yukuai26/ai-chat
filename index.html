@@ -5173,29 +5173,8 @@
       }
       messages.push({ role: 'user', content: text });
 
-      // 加载当前会话的历史消息作为上下文
-      var historyMessages = [];
-      try {
-        if (activeConversationId) {
-          var histResp = await fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(activeConversationId), {
-            headers: { 'Authorization': 'Bearer ' + token, 'Cache-Control': 'no-cache' },
-            cache: 'no-store',
-          });
-          if (histResp.ok) {
-            var histData = await histResp.json();
-            (histData.messages || []).forEach(function(m) {
-              historyMessages.push({ role: m.role, content: m.content });
-            });
-          }
-        }
-      } catch(e) { /* 加载失败忽略 */ }
-
+      // 上下文由 Gateway session 管理（user 字段）
       var messages = [];
-      // 先加历史上下文（最多 20 条，避免 token 爆）
-      var ctxMessages = historyMessages.slice(-20);
-      for (var ci = 0; ci < ctxMessages.length; ci++) {
-        messages.push(ctxMessages[ci]);
-      }
       if (fileSummaries.length > 0) {
         messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
       }
@@ -5229,29 +5208,8 @@
 
     /** HTTP 回退发送（WebSocket 不可用时使用） */
     async function _fallbackHttpSend(text, filesToSend, fileSummaries, filePaths, now) {
-      // 加载当前会话的历史消息作为上下文
-      var historyMessages = [];
-      try {
-        if (activeConversationId) {
-          var histResp = await fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(activeConversationId), {
-            headers: { 'Authorization': 'Bearer ' + token, 'Cache-Control': 'no-cache' },
-            cache: 'no-store',
-          });
-          if (histResp.ok) {
-            var histData = await histResp.json();
-            (histData.messages || []).forEach(function(m) {
-              historyMessages.push({ role: m.role, content: m.content });
-            });
-          }
-        }
-      } catch(e) { /* 加载失败忽略 */ }
-
+      // 上下文由 Gateway session 管理（user 字段）
       var messages = [];
-      // 先加历史上下文（最多 20 条，避免 token 爆）
-      var ctxMessages = historyMessages.slice(-20);
-      for (var ci = 0; ci < ctxMessages.length; ci++) {
-        messages.push(ctxMessages[ci]);
-      }
       if (fileSummaries.length > 0) {
         messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
       }

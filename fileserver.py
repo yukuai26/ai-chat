@@ -1209,70 +1209,299 @@ def _build_gateway_messages(
 
 
 
-def _build_card_prompt() -> str:
-    """构建 Daily 卡片操作 prompt，注入到从命令行创建的特殊会话中。"""
-    return """你是 Daily 卡片助手。你可以通过读写以下 JSON 文件来管理 Daily Dashboard 的各张卡片数据。每次操作：先读取对应文件 → 修改数据 → 写回。
 
-## 卡片数据文件路径
+# ---- Daily 卡片: 规则引擎 (apply_rules) ----
 
-📋 Todo: {todo_path}
-  格式: {{"管理员": [{{"id": 1, "text": "xxx", "done": false, "type": "daily", "date": "YYYY-MM-DD"}}], "伴侣": []}}
-  新增时 id 自增（找最大 id + 1），type 默认 "daily"
+def _default_rules(card_id):
+    """返回卡片的默认显示规则。"""
+    defaults = {
+        "todo": {"summary_template": "☑ {done}/{total} ({percent}%)", "limit": 5, "group_by": "date", "order": "desc"},
+        "data": {"summary_template": "{fields_count} 项数据", "fields": ["weight", "water", "exercise"]},
+        "recipe": {"summary_template": "今日: {today_meals}", "mode": "today"},
+        "wishes": {"summary_template": "{total} 个心愿（{in_progress} 进行中）", "limit": 5, "order": "created", "filters": {}},
+        "notes": {"summary_template": "{count} 条随手记", "limit": 3, "order": "created_desc"},
+        "bookmarks": {"summary_template": "{count} 个收藏", "limit": 3, "order": "created_desc"},
+        "photos": {"summary_template": "{count} 张照片", "limit": 4, "layout": "grid"},
+        "shares": {"summary_template": "未读 {unread} 条", "limit": 5, "order": "created_desc"},
+        "reminders": {"summary_template": "{pending} 项待提醒", "limit": 5, "order": "time_asc"},
+        "habits": {"summary_template": "{today_done}/{today_total} 已完成", "layout": "calendar"},
+    }
+    return defaults.get(card_id, {"summary_template": "{count} 条", "limit": 5})
 
-📊 数据追踪: {data_dir}/管理员.json 和 {data_dir}/伴侣.json
-  格式: {{"weight": {{"2026-05-28": 72}}, "water": {{"2026-05-28": 5}}, "exercise": {{"2026-05-28": "跑步30min"}}}}
-  字段自由定义
 
-🍽️ 食谱: {recipe_path}
-  格式: {{"周一": {{"lunch": {{"name": "沙拉", "calories": 200}}, "dinner": {{"name": "牛排", "calories": 600}}}}}}
+def _compute_display(card_id, data, rules):
+    """根据数据和规则计算 display 内容。"""
+    summary_tpl = rules.get("summary_template", "{count} 条")
+    admin_data = data.get("管理员", [])
 
-💡 心愿: {wishes_path}
-  格式: [{{"id": "w1", "title": "拍饭分析", "description": "...", "status": "idea", "tags": [], "createdBy": "管理员"}}]
-  状态流转: idea → discussing → designing → implementing → done
+    if card_id == "todo":
+        tasks = data.get("管理员", []) + data.get("伴侣", [])
+        done = sum(1 for t in tasks if t.get("done"))
+        total = len(tasks)
+        percent = f"{int(done/total*100)}%" if total > 0 else "0%"
+        summary = summary_tpl.format(done=done, total=total, percent=percent)
+        limit = rules.get("limit", 5)
+        sorted_tasks = sorted(tasks, key=lambda t: t.get("date", ""), reverse=True)[:limit]
+        badge = {"text": f"{total-done} 条待办", "color": "orange"} if total > done else None
+        return {"summary": summary, "badge": badge, "items": sorted_tasks, "total": total, "done": done}
 
-📝 随手记: {notes_path}
-  格式: {{"管理员": [{{"id": "n1", "text": "想法...", "mood": "💡", "tags": [], "images": [], "created": "ISO8601"}}]}}
+    elif card_id == "data":
+        total_fields = 0
+        display_fields = rules.get("fields", [])
+        field_data = {}
+        for person, person_data in data.items():
+            for f in display_fields:
+                if f in person_data and person_data[f]:
+                    items = sorted(person_data[f].items())
+                    latest = items[-1]
+                    field_data[person + "_" + f] = {"latest": latest[1], "date": latest[0], "person": person}
+                    total_fields += 1
+        summary = summary_tpl.format(fields_count=total_fields)
+        return {"summary": summary, "fields": field_data}
 
-🔗 收藏: {bookmarks_path}
-  格式: {{"管理员": [{{"id": "b1", "url": "https://...", "title": "标题", "description": "", "tags": [], "created": "ISO8601"}}]}}
+    elif card_id == "recipe":
+        if isinstance(data, dict):
+            weekday_map = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+            today = weekday_map[datetime.now().weekday()]
+            today_data = data.get(today, {})
+            meals = []
+            if today_data.get("lunch"): meals.append(today_data["lunch"].get("name", "?"))
+            if today_data.get("dinner"): meals.append(today_data["dinner"].get("name", "?"))
+            today_meals = " / ".join(meals) if meals else "待定"
+            summary = summary_tpl.format(today_meals=today_meals)
+            return {"summary": summary, "today": today_data, "today_label": today}
+        return {"summary": "无数据"}
 
-📸 照片: {photos_path}
-  格式: {{"管理员": [{{"id": "p1", "image": "/user-files/photos/xxx.jpg", "caption": "说明", "likes": [], "comments": [], "tags": [], "created": "ISO8601"}}]}}
+    elif card_id == "wishes":
+        wishes = data if isinstance(data, list) else []
+        total = len(wishes)
+        in_progress = sum(1 for w in wishes if w.get("status") not in ("done", "idea"))
+        limit = rules.get("limit", 5)
+        summary = summary_tpl.format(total=total, in_progress=in_progress)
+        return {"summary": summary, "items": wishes[:limit], "total": total, "in_progress": in_progress}
 
-📤 分享: {shares_path}
-  格式: {{"sent": [{{"id": "s1", "from": "管理员", "to": "伴侣", "type": "link", "content": "...", "title": "..."}}], "received": []}}
+    elif card_id == "notes":
+        notes = admin_data if isinstance(admin_data, list) else []
+        count = len(notes)
+        limit = rules.get("limit", 3)
+        summary = summary_tpl.format(count=count)
+        sorted_notes = sorted(notes, key=lambda n: n.get("created", ""), reverse=True)[:limit]
+        return {"summary": summary, "items": sorted_notes, "total": count}
 
-⏰ 提醒: {reminders_path}
-  格式: {{"管理员": [{{"id": "r1", "text": "下午3点开会", "time": "15:00", "date": "2026-05-28", "repeat": null, "done": false}}]}}
-  repeat: null(单次) | "daily" | "weekly"
+    elif card_id == "bookmarks":
+        bookmarks = admin_data if isinstance(admin_data, list) else []
+        count = len(bookmarks)
+        limit = rules.get("limit", 3)
+        summary = summary_tpl.format(count=count)
+        sorted_bm = sorted(bookmarks, key=lambda b: b.get("created", ""), reverse=True)[:limit]
+        return {"summary": summary, "items": sorted_bm, "total": count}
 
-✅ 习惯: {habits_path}
-  格式: {{"管理员": {{"habits": [{{"id": "h1", "name": "运动", "icon": "🏃", "target": "daily"}}], "logs": {{"h1": {{"2026-05-28": true}}}}}}}}
+    elif card_id == "photos":
+        photos = admin_data if isinstance(admin_data, list) else []
+        count = len(photos)
+        limit = rules.get("limit", 4)
+        summary = summary_tpl.format(count=count)
+        latest = sorted(photos, key=lambda p: p.get("created", ""), reverse=True)[:limit]
+        return {"summary": summary, "items": latest, "total": count, "layout": rules.get("layout", "grid")}
 
-📰 新闻: {news_dir}/YYYY-MM-DD.json（每天08:00 cron自动爬取）
-  格式: {{"categories": [{{"name": "科技", "items": [{{"title": "...", "summary": "...", "url": "..."}}]}}]}}
+    elif card_id == "shares":
+        sent = data.get("sent", [])
+        received = data.get("received", [])
+        unread = sum(1 for s in received if not s.get("read"))
+        summary = summary_tpl.format(unread=unread)
+        return {"summary": summary, "unread": unread, "sent_count": len(sent), "received_count": len(received)}
+
+    elif card_id == "reminders":
+        reminders = admin_data if isinstance(admin_data, list) else []
+        pending = sum(1 for r in reminders if not r.get("done"))
+        limit = rules.get("limit", 5)
+        summary = summary_tpl.format(pending=pending)
+        sorted_r = sorted(reminders, key=lambda r: (r.get("done", False), r.get("time", "23:59")))[:limit]
+        return {"summary": summary, "items": sorted_r, "total": len(reminders), "pending": pending}
+
+    elif card_id == "habits":
+        habits_data = data.get("管理员", {}) if isinstance(data.get("管理员"), dict) else {}
+        habits = habits_data.get("habits", [])
+        logs = habits_data.get("logs", {})
+        today_str = datetime.today().strftime("%Y-%m-%d")
+        day_short = today_str[-5:]
+        done = sum(1 for h in habits if logs.get(h.get("id"), {}).get(today_str))
+        total = len(habits)
+        summary = summary_tpl.format(today_done=done, today_total=total)
+        return {"summary": summary, "habits": habits, "today_done": done, "today_total": total, "day": day_short}
+
+    else:
+        count = len(admin_data) if isinstance(admin_data, list) else len(data)
+        return {"summary": summary_tpl.format(count=count), "items": admin_data[:rules.get("limit", 5)]}
+
+
+def apply_rules(card_id):
+    """通用规则引擎：读取 data.json + rules.json → 计算 → 写入 display.json。"""
+    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    data_path = os.path.join(card_dir, "data.json")
+    rules_path = os.path.join(card_dir, "rules.json")
+    display_path = os.path.join(card_dir, "display.json")
+
+    data = {}
+    # 数据追踪卡片特殊处理：从 PROFILES_DIR 合并多人文件
+    if card_id == "data":
+        if os.path.isdir(PROFILES_DIR):
+            for fn in sorted(os.listdir(PROFILES_DIR)):
+                if fn.endswith(".json"):
+                    person = fn[:-5]
+                    pp = os.path.join(PROFILES_DIR, fn)
+                    if os.path.isfile(pp) and os.path.getsize(pp) > 0:
+                        with open(pp, "r", encoding="utf-8") as f:
+                            try:
+                                data[person] = json.load(f)
+                            except json.JSONDecodeError:
+                                pass
+    elif os.path.isfile(data_path) and os.path.getsize(data_path) > 0:
+        with open(data_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+    rules = {}
+    if os.path.isfile(rules_path) and os.path.getsize(rules_path) > 0:
+        with open(rules_path, "r", encoding="utf-8") as f:
+            rules = json.load(f)
+    else:
+        rules = _default_rules(card_id)
+
+    display = _compute_display(card_id, data, rules)
+    display["updated"] = datetime.now().isoformat()
+
+    os.makedirs(card_dir, exist_ok=True)
+    with open(display_path, "w", encoding="utf-8") as f:
+        json.dump(display, f, ensure_ascii=False, indent=2)
+
+    logger.info(f"apply_rules({card_id}): display.json 已更新")
+    return display
+
+
+@app.route("/v1/api/daily/apply-rules", methods=["POST"])
+@require_token
+def api_apply_rules():
+    """POST /v1/api/daily/apply-rules — 对单张或多张卡片应用显示规则。"""
+    req_data = request.get_json(silent=True)
+    if not req_data:
+        return error_response("缺少请求体", 400)
+
+    card_ids = []
+    if "card_id" in req_data:
+        card_ids = [req_data["card_id"]]
+    elif "card_ids" in req_data:
+        card_ids = req_data["card_ids"]
+    else:
+        for d in sorted(os.listdir(USER_DATA_DIR)):
+            dpath = os.path.join(USER_DATA_DIR, d)
+            if os.path.isdir(dpath) and os.path.isfile(os.path.join(dpath, "data.json")):
+                card_ids.append(d)
+
+    results = {}
+    for cid in card_ids:
+        try:
+            display = apply_rules(cid)
+            results[cid] = {"ok": True, "summary": display.get("summary", "")}
+        except Exception as e:
+            results[cid] = {"ok": False, "error": str(e)}
+
+    return jsonify({"ok": True, "results": results})
+
+
+# ---- Daily 卡片: 操作 Prompt（升级版）----
+
+def _build_card_prompt():
+    """构建 Daily 卡片操作 prompt，注入到从命令行创建的特殊会话中。
+
+    使用 replace 而非 format 避免 JSON 花括号冲突。
+    """
+    template = """你是 Daily 卡片助手。每张卡片有三层结构：数据（你写）→ 显示准则（配置）→ 实际显示（自动生成）。
+
+## 每张卡片的目录结构
+
+user-data/{card_id}/
+  data.json       ← 原始记录（你负责读写）
+  rules.json      ← 显示准则（声明式 JSON，控制怎么展示）
+  display.json    ← 实际显示内容（前端直接读，由 apply_rules 自动生成）
+  heartbeat.json  ← 心跳配置（cron 定时刷新，可选）
+
+设计原则：
+- 改数据内容 → 改 data.json → 然后调 apply_rules 刷新 display
+- 改展示方式 → 改 rules.json → 然后调 apply_rules
+- 改心跳频率 → 改 heartbeat.json
+
+## 调 apply_rules 刷新 display
+
+改完 data.json 或 rules.json 后，用 exec 执行（替换 card_id）：
+  curl -s -X POST http://127.0.0.1:5050/v1/api/daily/apply-rules -H "Content-Type: application/json" -H "Authorization: Bearer e0fb40cef753818c92577e3c8fe2af53" -d '{"card_id": "替换为卡片id"}'
+
+## 十二张卡片
+
+📋 Todo: __TODO_DIR__/
+  data.json: {"管理员": [{"id": 1, "text": "xxx", "done": false, "type": "daily", "date": "YYYY-MM-DD"}], "伴侣": []}
+  新增时 id 自增（最大 id + 1），type 默认 "daily"
+  rules.json 字段: limit(条数), group_by(date/person), order(desc/priority)
+
+📊 数据追踪: __DATA_DIR__/管理员.json 和 __DATA_DIR__/伴侣.json
+  格式: {"weight": {"2026-05-28": 72}, "water": {...}, "exercise": {...}}
+  字段自由定义。rules.json 字段: fields(["weight","water","exercise"])
+
+🍽️ 食谱: __RECIPE_DIR__/data.json
+  格式: {"周一": {"lunch": {"name": "沙拉", "calories": 200}}}
+  rules.json 字段: mode(today/week)
+
+💡 心愿: __WISHES_DIR__/data.json
+  格式: [{"id": "w1", "title": "拍饭分析", "status": "idea", "tags": [], "createdBy": "管理员"}]
+  状态: idea → discussing → designing → implementing → done
+  rules.json 字段: limit, filters({"status":"designing"})
+
+📝 随手记: __NOTES_DIR__/data.json
+  格式: {"管理员": [{"id": "n1", "text": "...", "mood": "💡", "tags": [], "images": [], "created": "ISO8601"}]}
+  rules.json 字段: limit(最新N条)
+
+🔗 收藏: __BOOKMARKS_DIR__/data.json
+  格式: {"管理员": [{"id": "b1", "url": "https://...", "title": "...", "tags": [], "created": "ISO8601"}]}
+  rules.json 字段: limit, filter_tag
+
+📸 照片: __PHOTOS_DIR__/data.json
+  格式: {"管理员": [{"id": "p1", "image": "/user-files/...", "caption": "...", "likes": [], "comments": []}]}
+  rules.json 字段: limit, layout(grid/masonry)
+
+📤 分享: __SHARES_DIR__/data.json
+  格式: {"sent": [{"id": "s1", "from": "管理员", "to": "伴侣", ...}], "received": []}
+
+⏰ 提醒: __REMINDERS_DIR__/data.json
+  格式: {"管理员": [{"id": "r1", "text": "下午3点开会", "time": "15:00", "date": "2026-05-28", "repeat": null, "done": false}]}
+
+✅ 习惯: __HABITS_DIR__/data.json
+  格式: {"管理员": {"habits": [{"id": "h1", "name": "运动", "icon": "🏃"}], "logs": {"h1": {"2026-05-28": true}}}}}
+
+📰 新闻: __NEWS_DIR__/YYYY-MM-DD.json（每天 08:00 cron 自动爬取）
 
 ## 操作规则
 
-1. **先读后写**：修改任何卡片数据前，先用 read 工具读取对应 JSON 文件
-2. **用 write 工具写回**：修改完成后用 write 工具写回 JSON 文件
-3. **用 exec 工具也可以**：可以用 cat/echo 等命令读写文件
-4. **简洁确认**：操作完成后简要确认，如「已记录：管理员 今日体重 72kg」
-5. **文件名固定**：JSON 文件名固定不要改
-6. **保留已有数据**：新增条目时不要覆盖已有的其他条目
-""".format(
-        todo_path=TODOS_PATH,
-        data_dir=PROFILES_DIR,
-        recipe_path=RECIPE_PATH,
-        wishes_path=WISHES_PATH,
-        notes_path=NOTES_PATH,
-        bookmarks_path=BOOKMARKS_PATH,
-        photos_path=PHOTOS_PATH,
-        shares_path=SHARES_PATH,
-        reminders_path=REMINDERS_PATH,
-        habits_path=HABITS_PATH,
-        news_dir=NEWS_DIR,
-    )
+1. 先读后写：改 data.json 或 rules.json 前先 read 读取当前文件内容
+2. 改了必刷新：写完 data/rules 后立即 exec curl 调 apply_rules 刷新 display.json
+3. 展示改 rules：用户说「多展示几条」「按优先级排序」「改成只显示进行中的」→ 改 rules.json
+4. 数据改 data：用户说「记一下体重 72」「添加一个提醒」→ 改 data.json
+5. 添加 TODO 时用 @todo 前缀更快（不走这个流程）
+6. 简洁确认：只回复操作结果，如「已更新体重 72kg」「Todo 卡片现在展示 10 条」
+7. 新增条目时不要覆盖已有数据，合并到现有列表
+"""
+    return (template
+        .replace("__TODO_DIR__", TODO_DIR)
+        .replace("__DATA_DIR__", PROFILES_DIR)
+        .replace("__RECIPE_DIR__", RECIPE_DIR)
+        .replace("__WISHES_DIR__", WISHES_DIR)
+        .replace("__NOTES_DIR__", NOTES_DIR)
+        .replace("__BOOKMARKS_DIR__", BOOKMARKS_DIR)
+        .replace("__PHOTOS_DIR__", PHOTOS_DIR)
+        .replace("__SHARES_DIR__", SHARES_DIR)
+        .replace("__REMINDERS_DIR__", REMINDERS_DIR)
+        .replace("__HABITS_DIR__", HABITS_DIR)
+        .replace("__NEWS_DIR__", NEWS_DIR))
+
+
 
 @app.route("/v1/sessions/<session_id>/messages", methods=["POST"])
 @require_token
@@ -1946,6 +2175,8 @@ def _parse_command(text: str) -> dict:
     # @ 开头但未匹配任何前缀 → 不改写，由 caller 决定回退
     return {"prefix": None, "person": None, "text": text, "matched": False, "action": None, "api": None}
 
+
+@app.route("/v1/api/daily/command", methods=["POST"])
 
 @app.route("/v1/api/daily/command", methods=["POST"])
 @require_token

@@ -107,6 +107,7 @@ WHITELIST = [
     "/home/ubuntu/.openclaw/workspace-assistant",
     "/home/ubuntu/.openclaw/workspace-build-cat",
     "/home/ubuntu/.openclaw/user-files",
+    "/home/ubuntu/.openclaw/user-data/nutrition",
 ]
 
 
@@ -436,10 +437,19 @@ def _ensure_directories():
     创建：
     - /home/ubuntu/.openclaw/user-files/  用户上传/生成的文件
     - /home/ubuntu/.openclaw/user-sessions/  会话存储目录
+    - /home/ubuntu/.openclaw/user-data/nutrition/  营养追踪数据目录
 
     目录不存在时自动创建，已存在则跳过。
     """
-    dirs = [USER_FILES_DIR, SESSION_DIR, USER_DATA_DIR]
+    dirs = [
+        USER_FILES_DIR,
+        SESSION_DIR,
+        USER_DATA_DIR,
+        os.path.join(USER_DATA_DIR, 'nutrition'),
+        os.path.join(USER_DATA_DIR, 'nutrition', 'recipes'),
+        os.path.join(USER_DATA_DIR, 'nutrition', 'meals'),
+        os.path.join(USER_DATA_DIR, 'nutrition', 'recommendations'),
+    ]
     for d in dirs:
         try:
             p = Path(d)
@@ -447,6 +457,38 @@ def _ensure_directories():
             logger.info(f"目录已就绪: {d}")
         except Exception as e:
             logger.error(f"创建目录失败: {d}, 错误: {e}")
+
+    # 初始化营养健康档案默认模板
+    profile_path = os.path.join(USER_DATA_DIR, 'nutrition', 'profile.json')
+    if not os.path.exists(profile_path):
+        try:
+            with open(profile_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "person": "管理员",
+                    "height_cm": None,
+                    "weight_kg": None,
+                    "age": None,
+                    "gender": "male",
+                    "activity_level": "moderate",
+                    "goal": "maintain",
+                    "preferences": {
+                        "allergies": [],
+                        "dislikes": [],
+                        "favorites": ["火锅", "海鲜", "川菜"],
+                        "diet_type": "omnivore"
+                    },
+                    "daily_targets": {
+                        "calories": 2400,
+                        "protein_g": 80,
+                        "carbs_g": 300,
+                        "fat_g": 65,
+                        "fiber_g": 25
+                    },
+                    "updated": None
+                }, f, ensure_ascii=False, indent=2)
+            logger.info(f"已创建默认健康档案: {profile_path}")
+        except Exception as e:
+            logger.error(f"创建健康档案失败: {e}")
 
 
 # ---- 工具函数 ----

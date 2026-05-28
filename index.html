@@ -6,7 +6,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Chat v20260528-1600</title>
+  <title>AI Chat v20260528-1603</title>
   <script defer src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
   <style>
     /* 确保全屏覆盖 */
@@ -3809,6 +3809,7 @@
                  onkeydown="if(event.key==='Enter')doSearch()" autocomplete="off" />
           <button id="searchBtn" onclick="doSearch()">搜索</button>
         </div>
+        <div id="searchStatus" style="display:none;" class="search-status"></div>
         <div class="search-results" id="searchResults">
           <div class="search-hint">
             <div class="s-hint-icon">🔍</div>
@@ -9718,17 +9719,18 @@
     searchSelectedIdx = -1;
     var statusEl = document.getElementById('searchStatus');
     var resultsEl = document.getElementById('searchResults');
-    statusEl.style.display = 'block';
-    statusEl.textContent = '搜索中…';
+    if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '搜索中…'; }
+    if (resultsEl) resultsEl.innerHTML = '';
     
     try {
       var resp = await authFetch('/v1/api/search?q=' + encodeURIComponent(q) + '&limit=20');
       var data = await resp.json();
       searchResultsCache = data;
-      statusEl.style.display = 'none';
+      if (statusEl) statusEl.style.display = 'none';
       renderSearchResults(data);
     } catch (e) {
-      statusEl.textContent = '搜索失败: ' + e.message;
+      if (statusEl) statusEl.textContent = '搜索失败: ' + e.message;
+      if (resultsEl) resultsEl.innerHTML = '<div class="search-empty"><span class="search-empty-icon">❌</span>搜索失败: ' + (e.message || '') + '</div>';
     }
   }
 

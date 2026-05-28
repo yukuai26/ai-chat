@@ -6,7 +6,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Chat v20260528-1615</title>
+  <title>AI Chat v20260528-1700</title>
   <script defer src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
   <style>
     /* 确保全屏覆盖 */
@@ -7096,8 +7096,17 @@
               loadDashboard();
             }
           } else if (data.type === 'chat') {
-            // 自然语言回退
-            showCommandToast(data.content || '无回复', 'info');
+            // 自然语言回退 - 创建了新的 Daily 会话，跳转到聊天页面
+            if (data.session_id) {
+              // 打开新创建的 Daily 会话（selectConversation 会自动切 Chat Tab 并加载消息）
+              if (typeof selectConversation === 'function') {
+                selectConversation(data.session_id);
+              } else {
+                showCommandToast('✅ 已创建 Daily 对话', 'success');
+              }
+            } else {
+              showCommandToast(data.content || '无回复', 'info');
+            }
           }
         } else {
           showCommandToast('⚠️ ' + (data.error || '请求失败'), 'error');

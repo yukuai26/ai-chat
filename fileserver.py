@@ -1177,7 +1177,10 @@ def _build_gateway_messages(
         role = msg.get("role", "")
         content = msg.get("content", "")
 
-        if role == "user":
+        if role == "system":
+            # 透传 system 消息（如卡片 prompt、文件摘要）
+            messages.append(msg)
+        elif role == "user":
             files = msg.get("files", [])
             if files:
                 summaries = [_parse_file_attachment(f)["summary"] for f in files]
@@ -1203,6 +1206,73 @@ def _build_gateway_messages(
     return messages
 
 
+
+
+
+def _build_card_prompt() -> str:
+    """构建 Daily 卡片操作 prompt，注入到从命令行创建的特殊会话中。"""
+    return """你是 Daily 卡片助手。你可以通过读写以下 JSON 文件来管理 Daily Dashboard 的各张卡片数据。每次操作：先读取对应文件 → 修改数据 → 写回。
+
+## 卡片数据文件路径
+
+📋 Todo: {todo_path}
+  格式: {{"管理员": [{{"id": 1, "text": "xxx", "done": false, "type": "daily", "date": "YYYY-MM-DD"}}], "伴侣": []}}
+  新增时 id 自增（找最大 id + 1），type 默认 "daily"
+
+📊 数据追踪: {data_dir}/管理员.json 和 {data_dir}/伴侣.json
+  格式: {{"weight": {{"2026-05-28": 72}}, "water": {{"2026-05-28": 5}}, "exercise": {{"2026-05-28": "跑步30min"}}}}
+  字段自由定义
+
+🍽️ 食谱: {recipe_path}
+  格式: {{"周一": {{"lunch": {{"name": "沙拉", "calories": 200}}, "dinner": {{"name": "牛排", "calories": 600}}}}}}
+
+💡 心愿: {wishes_path}
+  格式: [{{"id": "w1", "title": "拍饭分析", "description": "...", "status": "idea", "tags": [], "createdBy": "管理员"}}]
+  状态流转: idea → discussing → designing → implementing → done
+
+📝 随手记: {notes_path}
+  格式: {{"管理员": [{{"id": "n1", "text": "想法...", "mood": "💡", "tags": [], "images": [], "created": "ISO8601"}}]}}
+
+🔗 收藏: {bookmarks_path}
+  格式: {{"管理员": [{{"id": "b1", "url": "https://...", "title": "标题", "description": "", "tags": [], "created": "ISO8601"}}]}}
+
+📸 照片: {photos_path}
+  格式: {{"管理员": [{{"id": "p1", "image": "/user-files/photos/xxx.jpg", "caption": "说明", "likes": [], "comments": [], "tags": [], "created": "ISO8601"}}]}}
+
+📤 分享: {shares_path}
+  格式: {{"sent": [{{"id": "s1", "from": "管理员", "to": "伴侣", "type": "link", "content": "...", "title": "..."}}], "received": []}}
+
+⏰ 提醒: {reminders_path}
+  格式: {{"管理员": [{{"id": "r1", "text": "下午3点开会", "time": "15:00", "date": "2026-05-28", "repeat": null, "done": false}}]}}
+  repeat: null(单次) | "daily" | "weekly"
+
+✅ 习惯: {habits_path}
+  格式: {{"管理员": {{"habits": [{{"id": "h1", "name": "运动", "icon": "🏃", "target": "daily"}}], "logs": {{"h1": {{"2026-05-28": true}}}}}}}}
+
+📰 新闻: {news_dir}/YYYY-MM-DD.json（每天08:00 cron自动爬取）
+  格式: {{"categories": [{{"name": "科技", "items": [{{"title": "...", "summary": "...", "url": "..."}}]}}]}}
+
+## 操作规则
+
+1. **先读后写**：修改任何卡片数据前，先用 read 工具读取对应 JSON 文件
+2. **用 write 工具写回**：修改完成后用 write 工具写回 JSON 文件
+3. **用 exec 工具也可以**：可以用 cat/echo 等命令读写文件
+4. **简洁确认**：操作完成后简要确认，如「已记录：管理员 今日体重 72kg」
+5. **文件名固定**：JSON 文件名固定不要改
+6. **保留已有数据**：新增条目时不要覆盖已有的其他条目
+""".format(
+        todo_path=TODOS_PATH,
+        data_dir=PROFILES_DIR,
+        recipe_path=RECIPE_PATH,
+        wishes_path=WISHES_PATH,
+        notes_path=NOTES_PATH,
+        bookmarks_path=BOOKMARKS_PATH,
+        photos_path=PHOTOS_PATH,
+        shares_path=SHARES_PATH,
+        reminders_path=REMINDERS_PATH,
+        habits_path=HABITS_PATH,
+        news_dir=NEWS_DIR,
+    )
 
 @app.route("/v1/sessions/<session_id>/messages", methods=["POST"])
 @require_token
@@ -1734,15 +1804,24 @@ def put_card_by_id(card_id):
 # ---- 每日 Dashboard: 统一指令中枢 (DB3) ----
 
 KNOWN_PERSONS = ["管理员", "伴侣"]
-TODOS_PATH = os.path.join(USER_DATA_DIR, "todos.json")
-RECIPE_PATH = os.path.join(USER_DATA_DIR, "recipe.json")
-WISHES_PATH = os.path.join(USER_DATA_DIR, "wishes.json")
-NOTES_PATH = os.path.join(USER_DATA_DIR, "notes.json")
-BOOKMARKS_PATH = os.path.join(USER_DATA_DIR, "bookmarks.json")
-PHOTOS_PATH = os.path.join(USER_DATA_DIR, "photos.json")
-SHARES_PATH = os.path.join(USER_DATA_DIR, "shares.json")
-REMINDERS_PATH = os.path.join(USER_DATA_DIR, "reminders.json")
-HABITS_PATH = os.path.join(USER_DATA_DIR, "habits.json")
+TODO_DIR = os.path.join(USER_DATA_DIR, "todo")
+TODOS_PATH = os.path.join(TODO_DIR, "tasks.json")
+RECIPE_DIR = os.path.join(USER_DATA_DIR, "recipe")
+RECIPE_PATH = os.path.join(RECIPE_DIR, "weekly.json")
+WISHES_DIR = os.path.join(USER_DATA_DIR, "wishes")
+WISHES_PATH = os.path.join(WISHES_DIR, "list.json")
+NOTES_DIR = os.path.join(USER_DATA_DIR, "notes")
+NOTES_PATH = os.path.join(NOTES_DIR, "data.json")
+BOOKMARKS_DIR = os.path.join(USER_DATA_DIR, "bookmarks")
+BOOKMARKS_PATH = os.path.join(BOOKMARKS_DIR, "data.json")
+PHOTOS_DIR = os.path.join(USER_DATA_DIR, "photos")
+PHOTOS_PATH = os.path.join(PHOTOS_DIR, "data.json")
+SHARES_DIR = os.path.join(USER_DATA_DIR, "shares")
+SHARES_PATH = os.path.join(SHARES_DIR, "records.json")
+REMINDERS_DIR = os.path.join(USER_DATA_DIR, "reminders")
+REMINDERS_PATH = os.path.join(REMINDERS_DIR, "data.json")
+HABITS_DIR = os.path.join(USER_DATA_DIR, "habits")
+HABITS_PATH = os.path.join(HABITS_DIR, "data.json")
 
 
 def _load_todos():
@@ -1758,6 +1837,7 @@ def _load_todos():
 
 def _save_todos(data: dict):
     """写入 Todo 文件。"""
+    os.makedirs(os.path.dirname(TODOS_PATH), exist_ok=True)
     os.makedirs(os.path.dirname(TODOS_PATH), exist_ok=True)
     with open(TODOS_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -1925,19 +2005,59 @@ def daily_command():
             "message": f"指令 {prefix} 已解析，处理器将在后续 Phase 实现",
         })
 
-    # 未匹配前缀 → 回退自然语言，走 Gateway
-    logger.info(f"指令中枢 → 自然语言回退: {text[:80]}")
+    # 未匹配前缀 → 回退自然语言：创建带卡片 prompt 的特殊会话
+    logger.info(f"指令中枢 → 自然语言回退，创建 Daily 会话: {text[:80]}")
     try:
+        import uuid, datetime
+
+        # 创建新会话
+        now = datetime.datetime.now()
+        session_id = f"sess_daily_{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+        session_file = os.path.join(SESSION_DIR, f"{session_id}.json")
+
+        # 构建会话：卡片 prompt 作为 system 消息
+        card_prompt = _build_card_prompt()
+        session_data = {
+            "id": session_id,
+            "title": f"Daily 指令 {now.strftime('%m月%d日 %H:%M')}",
+            "created": now.isoformat(),
+            "updated": now.isoformat(),
+            "messages": [
+                {"role": "system", "content": card_prompt},
+                {"role": "user", "content": text}
+            ],
+            "tags": ["daily"]
+        }
+
+        # 保存会话文件
+        os.makedirs(SESSION_DIR, exist_ok=True)
+        with open(session_file, "w", encoding="utf-8") as f:
+            json.dump(session_data, f, ensure_ascii=False, indent=2)
+
+        logger.info(f"Daily 会话已创建: {session_id}")
+
+        # 调用 Gateway 获取 AI 回复（带卡片 prompt 上下文）
         messages = _build_gateway_messages(
-            [],
-            f"用户通过指令中枢发送了以下消息: {text}",
+            [{"role": "system", "content": card_prompt}],
+            text,
             None,
         )
         assistant_msg = _call_gateway(messages)
+
+        # 将 AI 回复追加到会话
+        session_data["messages"].append({
+            "role": "assistant",
+            "content": assistant_msg.get("content", "")
+        })
+        session_data["updated"] = datetime.datetime.now().isoformat()
+        with open(session_file, "w", encoding="utf-8") as f:
+            json.dump(session_data, f, ensure_ascii=False, indent=2)
+
         return jsonify({
             "ok": True,
             "type": "chat",
             "prefix": None,
+            "session_id": session_id,
             "content": assistant_msg.get("content", ""),
             "time": assistant_msg.get("time", ""),
         })
@@ -2645,7 +2765,7 @@ def todos_weekly_view():
 #  个人数据 API (DB12)
 # ============================================================
 
-PROFILES_DIR = os.path.join(USER_DATA_DIR, "profiles")
+PROFILES_DIR = os.path.join(USER_DATA_DIR, "data")
 DATA_FIELDS = {"weight", "exercise", "water", "sleep", "journal", "fitness", "finance", "meal"}
 
 DEFAULT_PERSON_DATA = {
@@ -2879,6 +2999,7 @@ def _load_recipe() -> dict:
 def _save_recipe(data: dict):
     """保存食谱文件。"""
     os.makedirs(os.path.dirname(RECIPE_PATH), exist_ok=True)
+    os.makedirs(os.path.dirname(RECIPE_PATH), exist_ok=True)
     with open(RECIPE_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
@@ -3108,6 +3229,7 @@ def _load_wishes() -> list:
 def _save_wishes(data: list):
     """保存心愿文件。"""
     os.makedirs(os.path.dirname(WISHES_PATH), exist_ok=True)
+    os.makedirs(os.path.dirname(WISHES_PATH), exist_ok=True)
     with open(WISHES_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
@@ -3127,6 +3249,7 @@ def _load_notes() -> dict:
 
 def _save_notes(data: dict):
     """写入随手记文件。"""
+    os.makedirs(os.path.dirname(NOTES_PATH), exist_ok=True)
     os.makedirs(os.path.dirname(NOTES_PATH), exist_ok=True)
     with open(NOTES_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -3299,6 +3422,7 @@ def _load_bookmarks() -> dict:
 
 def _save_bookmarks(data: dict):
     """写入收藏夹文件。"""
+    os.makedirs(os.path.dirname(BOOKMARKS_PATH), exist_ok=True)
     os.makedirs(os.path.dirname(BOOKMARKS_PATH), exist_ok=True)
     with open(BOOKMARKS_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -3525,6 +3649,7 @@ def _load_photos() -> dict:
 def _save_photos(data: dict):
     """写入照片元数据文件。"""
     os.makedirs(os.path.dirname(PHOTOS_PATH), exist_ok=True)
+    os.makedirs(os.path.dirname(PHOTOS_PATH), exist_ok=True)
     with open(PHOTOS_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
@@ -3569,7 +3694,7 @@ def photos_list():
             if person not in KNOWN_PERSONS:
                 return error_response(f"未知用户: {person}", 400)
 
-            photos_dir = os.path.join(USER_DATA_DIR, "photos")
+            photos_dir = PHOTOS_DIR
             os.makedirs(photos_dir, exist_ok=True)
             tz = ZoneInfo("Asia/Shanghai")
             ts = datetime.now(tz).strftime("%Y%m%d_%H%M%S")
@@ -3775,6 +3900,7 @@ def _load_shares() -> dict:
 
 def _save_shares(data: dict):
     os.makedirs(os.path.dirname(SHARES_PATH), exist_ok=True)
+    os.makedirs(os.path.dirname(SHARES_PATH), exist_ok=True)
     with open(SHARES_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
@@ -3853,6 +3979,7 @@ def _load_reminders() -> dict:
 
 
 def _save_reminders(data: dict):
+    os.makedirs(os.path.dirname(REMINDERS_PATH), exist_ok=True)
     os.makedirs(os.path.dirname(REMINDERS_PATH), exist_ok=True)
     with open(REMINDERS_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -3993,6 +4120,7 @@ def _load_habits() -> dict:
 
 
 def _save_habits(data: dict):
+    os.makedirs(os.path.dirname(HABITS_PATH), exist_ok=True)
     os.makedirs(os.path.dirname(HABITS_PATH), exist_ok=True)
     with open(HABITS_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

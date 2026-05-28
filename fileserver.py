@@ -6162,6 +6162,186 @@ def monthly_summary():
     return jsonify(result)
 
 
+# ---- 营养追踪 API ----
+
+NUTRITION_DIR = os.path.join(USER_DATA_DIR, "nutrition")
+
+def _nutrition_path(*parts: str) -> str:
+    """构造营养数据目录下的文件路径。"""
+    return os.path.join(NUTRITION_DIR, *parts)
+
+
+def _nutrition_read(filename: str, default=None):
+    """读取营养数据 JSON 文件，不存在时返回 default。"""
+    path = _nutrition_path(filename)
+    if not os.path.exists(path):
+        return default
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return default
+
+
+def _nutrition_write(filename: str, data: dict):
+    """写入营养数据 JSON 文件。"""
+    path = _nutrition_path(filename)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _get_week_key(date_obj: date) -> str:
+    """返回 ISO 年份和周数，如 2026-W22。"""
+    iso = date_obj.isocalendar()
+    return f"{iso[0]}-W{iso[1]:02d}"
+
+
+def _get_weekday_cn(date_obj: date) -> str:
+    """返回中文星期名。"""
+    days = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+    return days[date_obj.weekday()]
+
+
+def _get_weekday_en(date_obj: date) -> str:
+    """返回英文星期名（小写）。"""
+    days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    return days[date_obj.weekday()]
+
+
+@app.route("/v1/api/nutrition/today", methods=["GET"])
+@require_token
+def nutrition_today():
+    """GET /v1/api/nutrition/today - 今日营养概况（卡片缩略数据）。
+
+    返回:
+      {ok, date, weekday, has_recipe, recipe_menu, has_recommendation,
+       recommendation, meals, today_calories, today_protein_g, today_carbs_g,
+       today_fat_g, target_calories, remaining_calories, week_summary}
+    """
+    tz = ZoneInfo("Asia/Shanghai")
+    now = datetime.now(tz)
+    today = now.date()
+    today_str = today.isoformat()
+    weekday_cn = _get_weekday_cn(today)
+    weekday_en = _get_weekday_en(today)
+    week_key = _get_week_key(today)
+
+    # 加载配置文件（健康档案）
+    profile = _nutrition_read("profile.json") or {}
+    targets = profile.get("daily_targets", {})
+    target_calories = targets.get("calories", 2400)
+
+    # 加载食谱
+    recipe_data = _nutrition_read(f"recipes/{week_key}.json")
+    has_recipe = recipe_data is not None
+    recipe_menu = []
+    if has_recipe:
+        day_recipe = recipe_data.get("days", {}).get(weekday_en, {})
+        recipe_menu = day_recipe.get("menu", [])
+
+    # 加载推荐
+    rec_data = _nutrition_read(f"recommendations/{today_str}.json")
+    has_recommendation = rec_data is not None
+    recommendation = None
+    if has_recommendation:
+        rec = rec_data.get("recommendation", {})
+        recommendation = {
+            "ingredients": rec.get("ingredients", []),
+        }
+
+    # 加载餐食记录
+    meal_data = _nutrition_read(f"meals/{today_str}.json")
+    today_calories = 0
+    today_protein = 0
+    today_carbs = 0
+    today_fat = 0
+    meals_status = {"breakfast": {"logged": False, "calories": None},
+                    "lunch": {"logged": False, "recommended_calories": None},
+                    "dinner": {"logged": False, "calories": None}}
+
+    if meal_data:
+        for meal_name in ["breakfast", "lunch", "dinner"]:
+            m = meal_data.get("meals", {}).get(meal_name, {})
+            if m.get("items") and len(m.get("items", [])) > 0:
+                meals_status[meal_name]["logged"] = True
+                meals_status[meal_name]["calories"] = m.get("total_calories", 0)
+                today_calories += m.get("total_calories") or 0
+                today_protein += m.get("total_protein_g") or 0
+                today_carbs += m.get("total_carbs_g") or 0
+                today_fat += m.get("total_fat_g") or 0
+            elif m.get("recommended"):
+                meals_status[meal_name]["recommended_calories"] = (
+                    m.get("recommended", {}).get("nutrition", {}).get("calories"))
+
+    remaining_calories = max(0, target_calories - today_calories)
+
+    # 本周汇总
+    week_summary = _compute_week_summary(today, week_key)
+
+    return jsonify({
+        "ok": True,
+        "date": today_str,
+        "weekday": weekday_cn,
+        "has_recipe": has_recipe,
+        "recipe_menu": recipe_menu,
+        "has_recommendation": has_recommendation,
+        "recommendation": recommendation,
+        "meals": meals_status,
+        "today_calories": today_calories,
+        "today_protein_g": today_protein,
+        "today_carbs_g": today_carbs,
+        "today_fat_g": today_fat,
+        "target_calories": target_calories,
+        "remaining_calories": remaining_calories,
+        "week_summary": week_summary,
+    })
+
+
+def _compute_week_summary(today: date, week_key: str):
+    """计算本周营养汇总：日均热量、记录天数、趋势。"""
+    isoy = today.isocalendar()
+    year, week_num = isoy[0], isoy[1]
+    total_cal = 0
+    logged_days = 0
+    daily_values = []
+
+    # 从周一到周日
+    monday = today - timedelta(days=today.weekday())
+    for i in range(7):
+        d = monday + timedelta(days=i)
+        d_str = d.isoformat()
+        md = _nutrition_read(f"meals/{d_str}.json")
+        day_cal = 0
+        if md:
+            for meal_name in ["breakfast", "lunch", "dinner"]:
+                m = md.get("meals", {}).get(meal_name, {})
+                day_cal += m.get("total_calories") or 0
+            if day_cal > 0:
+                logged_days += 1
+                total_cal += day_cal
+        daily_values.append(day_cal if day_cal > 0 else 0)
+
+    avg = round(total_cal / logged_days) if logged_days > 0 else 0
+    # 简单趋势：如果数据点太少，标记 stable
+    trend = "stable"
+    if logged_days >= 3 and len(daily_values) >= 3:
+        non_zero = [v for v in daily_values if v > 0]
+        if len(non_zero) >= 2:
+            if non_zero[-1] > non_zero[0] * 1.1:
+                trend = "up"
+            elif non_zero[-1] < non_zero[0] * 0.9:
+                trend = "down"
+
+    return {
+        "week_label": week_key,
+        "daily_avg_calories": avg,
+        "total_logged_days": logged_days,
+        "trend": trend,
+        "daily_values": daily_values,
+    }
+
+
 # ---- 错误处理 ----
 
 @app.errorhandler(400)

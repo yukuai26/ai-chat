@@ -5090,8 +5090,8 @@
         hintEl.textContent = '⏳ 还有 ' + messageQueue.length + ' 条消息等待发送...';
         document.getElementById('messages').appendChild(hintEl);
       }
-      // 强制浏览器渲染用户气泡（否则用户看不到自己发的消息直到 AI 回复）
-      await new Promise(function(r) { requestAnimationFrame(r); });
+      // 强制浏览器渲染用户气泡（单层 rAF 只排队、不等渲染完成；双层确保已 paint）
+      await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
       await _doSendMessage(item.text, item.files);
       // 移除排队提示
       var hints = document.querySelectorAll('.queue-hint');

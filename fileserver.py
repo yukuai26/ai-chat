@@ -2037,11 +2037,11 @@ def put_card_by_id(card_id):
 
 KNOWN_PERSONS = ["管理员", "伴侣"]
 TODO_DIR = os.path.join(USER_DATA_DIR, "todo")
-TODOS_PATH = os.path.join(TODO_DIR, "tasks.json")
+TODOS_PATH = os.path.join(TODO_DIR, "data.json")
 RECIPE_DIR = os.path.join(USER_DATA_DIR, "recipe")
-RECIPE_PATH = os.path.join(RECIPE_DIR, "weekly.json")
+RECIPE_PATH = os.path.join(RECIPE_DIR, "data.json")
 WISHES_DIR = os.path.join(USER_DATA_DIR, "wishes")
-WISHES_PATH = os.path.join(WISHES_DIR, "list.json")
+WISHES_PATH = os.path.join(WISHES_DIR, "data.json")
 NOTES_DIR = os.path.join(USER_DATA_DIR, "notes")
 NOTES_PATH = os.path.join(NOTES_DIR, "data.json")
 BOOKMARKS_DIR = os.path.join(USER_DATA_DIR, "bookmarks")
@@ -2049,7 +2049,7 @@ BOOKMARKS_PATH = os.path.join(BOOKMARKS_DIR, "data.json")
 PHOTOS_DIR = os.path.join(USER_DATA_DIR, "photos")
 PHOTOS_PATH = os.path.join(PHOTOS_DIR, "data.json")
 SHARES_DIR = os.path.join(USER_DATA_DIR, "shares")
-SHARES_PATH = os.path.join(SHARES_DIR, "records.json")
+SHARES_PATH = os.path.join(SHARES_DIR, "data.json")
 REMINDERS_DIR = os.path.join(USER_DATA_DIR, "reminders")
 REMINDERS_PATH = os.path.join(REMINDERS_DIR, "data.json")
 HABITS_DIR = os.path.join(USER_DATA_DIR, "habits")
@@ -2057,14 +2057,38 @@ HABITS_PATH = os.path.join(HABITS_DIR, "data.json")
 
 
 def _load_todos():
-    """读取 Todo 文件，不存在或错误时返回空字典。"""
+    """读取 Todo 文件，自动兼容新旧两种格式。
+
+    旧格式: {"管理员": {"daily": [...], "weekly": [...]}}（嵌套 category）
+    新格式: {"管理员": [...], "伴侣": [...]}（扁平，AI 写的）
+    返回统一为旧格式（嵌套 category，后端兼容）。
+    """
     try:
         if os.path.isfile(TODOS_PATH) and os.path.getsize(TODOS_PATH) > 0:
             with open(TODOS_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
     except (json.JSONDecodeError, IOError) as e:
         logger.warning(f"todos.json 读取失败: {e}")
-    return {}
+        return {}
+
+    if not data:
+        return {}
+
+    # 检测格式：看第一个人的值是不是 dict（旧格式有 "daily"/"weekly" key）
+    first_val = next(iter(data.values())) if data else None
+    if isinstance(first_val, dict) and ("daily" in first_val or "weekly" in first_val):
+        # 旧格式，直接返回
+        return data
+
+    # 新格式（扁平列表）：转换为旧格式
+    # 把所有 item 放进 "daily" 类别
+    result = {}
+    for person, items in data.items():
+        if isinstance(items, list):
+            result[person] = {"daily": items}
+        else:
+            result[person] = items
+    return result
 
 
 def _save_todos(data: dict):
@@ -2468,6 +2492,61 @@ def _build_card_specific_messages(text):
             logger.info(f"注入卡片专属 prompt: {card_id} (score={score})")
 
     return extra_messages
+
+
+# ---- API: 卡片 display.json 读取（前端统一入口）----
+
+@app.route("/v1/api/daily/cards/display", methods=["GET"])
+@require_token
+def get_all_card_displays():
+    """GET /v1/api/daily/cards/display — 返回所有卡片的 display.json 内容。
+
+    前端 `loadDashboard()` 调这一个接口即可获取全部卡片数据。
+    如果 display.json 不存在，会先调 apply_rules 生成。
+    """
+    results = {}
+    for d in sorted(os.listdir(USER_DATA_DIR)):
+        dpath = os.path.join(USER_DATA_DIR, d)
+        if not os.path.isdir(dpath):
+            continue
+        display_path = os.path.join(dpath, "display.json")
+        if os.path.isfile(display_path) and os.path.getsize(display_path) > 0:
+            try:
+                with open(display_path, "r", encoding="utf-8") as f:
+                    results[d] = json.load(f)
+            except (json.JSONDecodeError, IOError):
+                pass
+        else:
+            data_path = os.path.join(dpath, "data.json")
+            if os.path.isfile(data_path) and os.path.getsize(data_path) > 0:
+                try:
+                    display = apply_rules(d)
+                    results[d] = display
+                except Exception as e:
+                    logger.warning(f"apply_rules({d}) 失败: {e}")
+
+    return jsonify({"ok": True, "cards": results})
+
+
+@app.route("/v1/api/daily/cards/display/<card_id>", methods=["GET"])
+@require_token
+def get_card_display(card_id):
+    """GET /v1/api/daily/cards/display/todo — 返回单张卡片的 display.json。"""
+    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    display_path = os.path.join(card_dir, "display.json")
+
+    display = {}
+    if os.path.isfile(display_path) and os.path.getsize(display_path) > 0:
+        with open(display_path, "r", encoding="utf-8") as f:
+            display = json.load(f)
+    else:
+        try:
+            display = apply_rules(card_id)
+        except Exception as e:
+            return jsonify({"ok": True, "card_id": card_id, "display": {"summary": "无数据"}})
+
+    return jsonify({"ok": True, "card_id": card_id, "display": display})
+
 
 
 # ---- API: 管理卡片 prompt ----
@@ -3358,14 +3437,41 @@ def _profile_path(person: str) -> str:
 
 
 def _load_person_data(person: str) -> dict:
-    """读取个人数据文件。"""
+    """读取个人数据文件，自动兼容新旧两种格式。
+
+    旧格式（数组）: {"weight": [{"date": "2026-05-28", "value": 72}]}
+    新格式（字典）: {"weight": {"2026-05-28": 72}}
+    返回统一为旧格式（数组），后端兼容。
+    """
     path = _profile_path(person)
     try:
         if os.path.isfile(path) and os.path.getsize(path) > 0:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if isinstance(data, dict):
-                    return data
+                if not isinstance(data, dict):
+                    return dict(DEFAULT_PERSON_DATA)
+
+                # 检测并标准化格式
+                result = {}
+                for field, val in data.items():
+                    if isinstance(val, dict) and all(isinstance(v, (int, float)) for v in val.values()):
+                        # 新格式: {"2026-05-28": 72} → 转为数组
+                        result[field] = [
+                            {"date": d, "value": v}
+                            for d, v in sorted(val.items())
+                        ]
+                    elif isinstance(val, dict) and any(isinstance(v, (int, float, str)) and len(k) >= 10 for k, v in val.items()):
+                        # 也可能是新格式的变体（字符串值如 "跑步30min"）
+                        result[field] = [
+                            {"date": d, "value": v}
+                            for d, v in sorted(val.items())
+                        ]
+                    elif isinstance(val, list):
+                        result[field] = val
+                    else:
+                        result[field] = val
+
+                return result
     except (json.JSONDecodeError, IOError) as e:
         logger.warning(f"{person} 数据读取失败: {e}")
     # 初始化空数据
@@ -3560,14 +3666,50 @@ WEEKDAY_MAP = {
 
 
 def _load_recipe() -> dict:
-    """读取食谱文件。"""
+    """读取食谱文件，自动兼容新旧两种格式。
+
+    旧格式: {"1": {"lunch": "沙拉", "dinner": "鱼"}}（数字星期 + 字符串值）
+    新格式: {"周一": {"lunch": {"name": "沙拉", "calories": 300}}}（中文星期 + 对象值）
+    返回统一为旧格式（数字星期 + 字符串值，前端兼容）。
+    """
     try:
         if os.path.isfile(RECIPE_PATH) and os.path.getsize(RECIPE_PATH) > 0:
             with open(RECIPE_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
     except (json.JSONDecodeError, IOError) as e:
-        logger.warning(f"recipe.json 读取失败: {e}")
-    return {}
+        logger.warning(f"recipe 读取失败: {e}")
+        return {}
+
+    # 检测格式：看第一个 key 是数字还是中文
+    if not data:
+        return {}
+
+    DAY_TO_NUM = {"周一": "1", "周二": "2", "周三": "3", "周四": "4",
+                   "周五": "5", "周六": "6", "周日": "7"}
+    first_key = next(iter(data.keys()))
+
+    # 已经是旧格式（数字 key）
+    if first_key.isdigit():
+        return data
+
+    # 新格式：转换中文星期 → 数字，meal 对象 → 字符串
+    result = {}
+    for day_cn, meals in data.items():
+        if day_cn in DAY_TO_NUM:
+            day_num = DAY_TO_NUM[day_cn]
+            result[day_num] = {}
+            for meal_type in ("lunch", "dinner", "breakfast"):
+                meal = meals.get(meal_type)
+                if isinstance(meal, dict):
+                    name = meal.get("name", "")
+                    cal = meal.get("calories")
+                    if cal:
+                        result[day_num][meal_type] = f"{name} ({cal}kcal)"
+                    else:
+                        result[day_num][meal_type] = name
+                elif isinstance(meal, str):
+                    result[day_num][meal_type] = meal
+    return result
 
 
 def _save_recipe(data: dict):

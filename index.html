@@ -7101,6 +7101,10 @@
               // 打开新创建的 Daily 会话（selectConversation 会自动切 Chat Tab 并加载消息）
               if (typeof selectConversation === 'function') {
                 selectConversation(data.session_id);
+                // 刷新侧边栏会话列表
+                if (typeof loadConversations === 'function') {
+                  setTimeout(function() { loadConversations(); }, 500);
+                }
               } else {
                 showCommandToast('✅ 已创建 Daily 对话', 'success');
               }

@@ -17,6 +17,78 @@ from zoneinfo import ZoneInfo
 from pathlib import Path
 from functools import wraps
 from difflib import SequenceMatcher
+import jieba
+
+# m3e 语义搜索 — 延迟加载（首次使用才加载模型，避免启动慢）
+_st_model = None
+_session_embeddings_cache = {}  # {session_id: {"embedding": ndarray, "uuid": "session_updated_hash"}}
+
+def _get_st_model():
+    """延迟加载 m3e-base 模型（~400MB，首次加载 ~10秒）"""
+    global _st_model
+    if _st_model is None:
+        import os as _os
+        _os.environ.setdefault('HTTP_PROXY', 'http://172.29.4.175:22222')
+        _os.environ.setdefault('HTTPS_PROXY', 'http://172.29.4.175:22222')
+        from sentence_transformers import SentenceTransformer
+        _st_model = SentenceTransformer('moka-ai/m3e-base', device='cpu')
+        logging.info('[precise-search] m3e-base 模型已加载')
+    return _st_model
+
+def _build_session_abstract(sess):
+    """从 session 构建可搜索摘要（标题 + 最近3条消息首行）"""
+    parts = [sess.get('title', '')]
+    msgs = sess.get('messages', [])
+    for msg in msgs[-3:]:
+        content = msg.get('content', '')
+        if isinstance(content, list):
+            content = ' '.join(str(c.get('text', '')) for c in content if isinstance(c, dict))
+        content = str(content)[:200]
+        if content.strip():
+            parts.append(content)
+    return '\n'.join(parts)
+
+def _jieba_word_match(query, text, min_word_overlap=0.3):
+    """jieba 词级别匹配：返回 (match, score, preview)"""
+    if not text:
+        return False, 0, ''
+    text_str = str(text)[:1000]
+    query_words = set(jieba.lcut(query))
+    text_words = jieba.lcut(text_str)
+    # 去停用词（简单版）
+    stopwords = {'的', '了', '是', '在', '我', '有', '和', '与', '或', '不', '也', '就', '都', '要', '把', '被'}
+    qw = query_words - stopwords
+    # 精确词匹配 + 部分匹配（query词是text词的子串）
+    matched = 0
+    matched_positions = []
+    for qword in qw:
+        for i, tword in enumerate(text_words):
+            if tword in stopwords:
+                continue
+            if qword.lower() == tword.lower() or qword.lower() in tword.lower() or tword.lower() in qword.lower():
+                matched += 1
+                matched_positions.append(i)
+                break
+    if not qw:
+        # fallback: 空 query 词不匹配
+        query_str = query.strip().lower()
+        return query_str in text_str.lower(), 1.0 if query_str in text_str.lower() else 0.0, text_str[:80]
+    score = matched / max(len(qw), 1)
+    if score < min_word_overlap:
+        return False, score, ''
+    # 构建 preview
+    if matched_positions:
+        mid = matched_positions[len(matched_positions)//2]
+        start_idx = max(0, mid - 3)
+        end_idx = min(len(text_words), mid + 4)
+        preview = ''.join(text_words[start_idx:end_idx])
+        if start_idx > 0:
+            preview = '…' + preview
+        if end_idx < len(text_words):
+            preview += '…'
+    else:
+        preview = text_str[:80]
+    return True, score, preview
 from flask import Flask, request, jsonify, send_file
 from flask_sock import Sock
 
@@ -4237,8 +4309,9 @@ def _search_card_data(query, card_id, person, limit=5):
 @app.route("/v1/api/search", methods=["GET"])
 @require_token
 def global_search():
-    """GET /v1/api/search?q=关键词&limit=20 — 跨所有数据源语义模糊搜索"""
+    """GET /v1/api/search?q=关键词&limit=20&mode=precise — 跨所有数据源搜索"""
     query = request.args.get("q", "").strip()
+    mode = request.args.get("mode", "fast")  # fast | precise
     limit = int(request.args.get("limit", "20") or "20")
     if not query:
         return jsonify({"ok": True, "results": [], "total": 0, "query": ""})
@@ -4246,11 +4319,24 @@ def global_search():
     person = _get_person()
     results = []
     SESSION_DIR_PATH = "/home/ubuntu/.openclaw/user-sessions"
+
+    # 根据 mode 选择匹配函数
+    if mode == "precise":
+        _title_match_fn = lambda q, t, th: _jieba_word_match(q, t, min_word_overlap=0.3)[0]
+        _msg_match_fn = lambda q, t: _jieba_word_match(q, t, min_word_overlap=0.25)
+        _use_semantic = True
+    else:
+        _title_match_fn = lambda q, t, th: _fuzzy_match(q, t, th)[0]
+        _msg_match_fn = lambda q, t: _fuzzy_match(q, str(t))
+        _use_semantic = False
     tz = ZoneInfo("Asia/Shanghai")
 
     # 1. 对话 Session（含消息定位）
     try:
         conv_items = []
+        all_abstracts = []
+        all_sids = []
+        session_map = {}
         for fn in sorted(os.listdir(SESSION_DIR_PATH), reverse=True):
             if not fn.endswith(".json") or fn == "session-index.json":
                 continue
@@ -4259,38 +4345,68 @@ def global_search():
                 with open(fp, "r", encoding="utf-8") as f:
                     sess = json.load(f)
                 title = sess.get("title", "") or fn
-                title_ok, _, _ = _fuzzy_match(query, title, 0.4)
+                title_ok = _title_match_fn(query, title, 0.4)
                 msg_count = 0
                 match_idx = -1
                 msg_preview = ""
+                best_score = 0.0
                 for i, msg in enumerate(sess.get("messages", [])):
                     content = msg.get("content", "")
                     if isinstance(content, list):
                         content = " ".join(str(c.get("text", "")) for c in content if isinstance(c, dict))
-                    ok, score, preview = _fuzzy_match(query, str(content))
-                    if ok and (match_idx < 0 or score > 0.8):
+                    ok, score, preview = _msg_match_fn(query, str(content))
+                    if ok and (match_idx < 0 or score > best_score):
                         match_idx = i
                         msg_preview = preview
                     msg_count += 1
                 if title_ok or match_idx >= 0:
                     sid = fn.replace(".json", "")
-                    conv_items.append({
+                    item = {
                         "id": sid,
                         "title": title,
                         "subtitle": f"{msg_count} 条消息",
                         "match_preview": msg_preview if not title_ok else "",
                         "action": "open_session",
                         "action_data": {"session_id": sid, "message_index": match_idx if match_idx >= 0 else 0},
-                        "_score": 0.0 if title_ok else 0.5,
+                        "_score": 1.0 if title_ok else best_score,
                         "_time": sess.get("updated", "")
-                    })
+                    }
+                    conv_items.append(item)
+                    if _use_semantic:
+                        abstract = _build_session_abstract(sess)
+                        if abstract.strip() and best_score < 0.9:
+                            all_abstracts.append(abstract)
+                            all_sids.append(sid)
+                            session_map[sid] = item
             except Exception:
                 pass
-        conv_items.sort(key=lambda x: (x["_score"], x["_time"] or ""), reverse=False)
+        # 精确模式：用 m3e 做语义补充
+        if _use_semantic and all_abstracts:
+            try:
+                model = _get_st_model()
+                if model:
+                    q_emb = model.encode(query)
+                    abs_embs = model.encode(all_abstracts)
+                    from sklearn.metrics.pairwise import cosine_similarity
+                    similarities = cosine_similarity([q_emb], abs_embs)[0]
+                    for i, sid in enumerate(all_sids):
+                        sim = float(similarities[i])
+                        if sim > 0.5:
+                            item = session_map.get(sid)
+                            if item and sim > item.get("_score", 0):
+                                item["_score"] = sim
+                                if not item.get("match_preview"):
+                                    item["match_preview"] = "🔮 语义匹配"
+                    logging.info(f'[precise-search] semantic done: query="{query[:50]}", {len(all_sids)} sessions')
+            except Exception as e:
+                logging.warning(f'[precise-search] semantic failed: {e}')
+
+        conv_items.sort(key=lambda x: (x.get("_score", 0), x.get("_time", "") or ""), reverse=True)
         if conv_items:
-            for item in conv_items[:5]:
-                del item["_score"]; del item["_time"]
-            results.append({"group": "对话", "icon": "💬", "items": conv_items[:5]})
+            for item in conv_items[:10]:
+                item.pop("_score", None)
+                item.pop("_time", None)
+            results.append({"group": "对话", "icon": "💬", "items": conv_items[:10]})
     except Exception:
         pass
 

@@ -6,7 +6,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Chat v20260528-1603</title>
+  <title>AI Chat v20260528-1615</title>
   <script defer src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
   <style>
     /* 确保全屏覆盖 */
@@ -3806,8 +3806,8 @@
       <div class="search-container">
         <div class="search-bar">
           <input type="text" id="searchInput" placeholder="搜索对话、文件、Daily 卡片..." 
-                 onkeydown="if(event.key==='Enter')doSearch()" autocomplete="off" />
-          <button id="searchBtn" onclick="doSearch()">搜索</button>
+                 onkeydown="if(event.key==='Enter')doSearch(event.shiftKey)" autocomplete="off" />
+          <button id="searchBtn" onclick="doSearch(false)">搜索</button> <button id="preciseBtn" onclick="doSearch(true)" class="search-btn precise-btn">🔬 精确</button>
         </div>
         <div id="searchStatus" style="display:none;" class="search-status"></div>
         <div class="search-results" id="searchResults">
@@ -9701,7 +9701,8 @@
   var searchAllItems = [];
 
   /** 执行搜索 */
-  async function doSearch() {
+  async function doSearch(precise) {
+    precise = !!precise;
     // 先切换到搜索 Tab
     if (typeof switchTab === 'function') switchTab('search');
     var inp = document.getElementById('searchInput');
@@ -9719,11 +9720,11 @@
     searchSelectedIdx = -1;
     var statusEl = document.getElementById('searchStatus');
     var resultsEl = document.getElementById('searchResults');
-    if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '搜索中…'; }
+    if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = precise ? '🔬 精确搜索中（jieba分词 + 语义匹配，预计 10-30 秒）…' : '搜索中…'; }
     if (resultsEl) resultsEl.innerHTML = '';
     
     try {
-      var resp = await authFetch('/v1/api/search?q=' + encodeURIComponent(q) + '&limit=20');
+      var resp = await authFetch('/v1/api/search?q=' + encodeURIComponent(q) + '&limit=20' + (precise ? '&mode=precise' : ''));
       var data = await resp.json();
       searchResultsCache = data;
       if (statusEl) statusEl.style.display = 'none';

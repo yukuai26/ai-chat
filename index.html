@@ -5165,6 +5165,17 @@
           if (crResp.ok) {
             var crData = await crResp.json();
             activeConversationId = crData.id;
+            // 新会话立即保存用户消息（不等 AI 回复），防止切会话后丢失
+            (function() {
+              var _text = text, _now = now, _files = filesToSend ? filesToSend.slice() : [];
+              authFetch('/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  messages: [{ role: 'user', content: _text, time: _now, files: _files.map(function(f) { return f.path; }) }]
+                })
+              }).catch(function(e) { console.error('Save error:', e); });
+            })();
             loadConversations();
           }
         } catch(e) {}

@@ -157,6 +157,7 @@ CHAT_TIMEOUT = 120  # Gateway 调用超时（秒）
 SESSION_DIR = "/home/ubuntu/.openclaw/user-sessions"
 USER_FILES_DIR = "/home/ubuntu/.openclaw/user-files"
 USER_DATA_DIR = "/home/ubuntu/.openclaw/user-data"
+DAILY_DATA_DIR = os.path.join(USER_DATA_DIR, "daily-data")
 USERS_FILE = os.path.join(USER_DATA_DIR, "users.json")
 JWT_SECRET_FILE = "/home/ubuntu/.openclaw/jwt-secret"
 
@@ -1336,7 +1337,7 @@ def _compute_display(card_id, data, rules):
 
 def apply_rules(card_id):
     """通用规则引擎：读取 data.json + rules.json → 计算 → 写入 display.json。"""
-    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    card_dir = os.path.join(DAILY_DATA_DIR, card_id)
     data_path = os.path.join(card_dir, "data.json")
     rules_path = os.path.join(card_dir, "rules.json")
     display_path = os.path.join(card_dir, "display.json")
@@ -1391,8 +1392,8 @@ def api_apply_rules():
     elif "card_ids" in req_data:
         card_ids = req_data["card_ids"]
     else:
-        for d in sorted(os.listdir(USER_DATA_DIR)):
-            dpath = os.path.join(USER_DATA_DIR, d)
+        for d in sorted(os.listdir(DAILY_DATA_DIR)):
+            dpath = os.path.join(DAILY_DATA_DIR, d)
             if os.path.isdir(dpath) and os.path.isfile(os.path.join(dpath, "data.json")):
                 card_ids.append(d)
 
@@ -2036,23 +2037,23 @@ def put_card_by_id(card_id):
 # ---- 每日 Dashboard: 统一指令中枢 (DB3) ----
 
 KNOWN_PERSONS = ["管理员", "伴侣"]
-TODO_DIR = os.path.join(USER_DATA_DIR, "todo")
+TODO_DIR = os.path.join(DAILY_DATA_DIR, "todo")
 TODOS_PATH = os.path.join(TODO_DIR, "data.json")
-RECIPE_DIR = os.path.join(USER_DATA_DIR, "recipe")
+RECIPE_DIR = os.path.join(DAILY_DATA_DIR, "recipe")
 RECIPE_PATH = os.path.join(RECIPE_DIR, "data.json")
-WISHES_DIR = os.path.join(USER_DATA_DIR, "wishes")
+WISHES_DIR = os.path.join(DAILY_DATA_DIR, "wishes")
 WISHES_PATH = os.path.join(WISHES_DIR, "data.json")
-NOTES_DIR = os.path.join(USER_DATA_DIR, "notes")
+NOTES_DIR = os.path.join(DAILY_DATA_DIR, "notes")
 NOTES_PATH = os.path.join(NOTES_DIR, "data.json")
-BOOKMARKS_DIR = os.path.join(USER_DATA_DIR, "bookmarks")
+BOOKMARKS_DIR = os.path.join(DAILY_DATA_DIR, "bookmarks")
 BOOKMARKS_PATH = os.path.join(BOOKMARKS_DIR, "data.json")
-PHOTOS_DIR = os.path.join(USER_DATA_DIR, "photos")
+PHOTOS_DIR = os.path.join(DAILY_DATA_DIR, "photos")
 PHOTOS_PATH = os.path.join(PHOTOS_DIR, "data.json")
-SHARES_DIR = os.path.join(USER_DATA_DIR, "shares")
+SHARES_DIR = os.path.join(DAILY_DATA_DIR, "shares")
 SHARES_PATH = os.path.join(SHARES_DIR, "data.json")
-REMINDERS_DIR = os.path.join(USER_DATA_DIR, "reminders")
+REMINDERS_DIR = os.path.join(DAILY_DATA_DIR, "reminders")
 REMINDERS_PATH = os.path.join(REMINDERS_DIR, "data.json")
-HABITS_DIR = os.path.join(USER_DATA_DIR, "habits")
+HABITS_DIR = os.path.join(DAILY_DATA_DIR, "habits")
 HABITS_PATH = os.path.join(HABITS_DIR, "data.json")
 
 
@@ -2238,7 +2239,7 @@ def _detect_card_from_text(text):
 
 def _load_card_prompt(card_id):
     """加载卡片的专属 prompt。如果 prompt.json 不存在则创建默认模板。"""
-    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    card_dir = os.path.join(DAILY_DATA_DIR, card_id)
     prompt_path = os.path.join(card_dir, "prompt.json")
 
     if not os.path.isfile(prompt_path) or os.path.getsize(prompt_path) == 0:
@@ -2455,7 +2456,7 @@ _CARD_PROMPT_DEFAULTS = {
 
 def _ensure_default_prompt(card_id):
     """为卡片创建默认 prompt.json。"""
-    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    card_dir = os.path.join(DAILY_DATA_DIR, card_id)
     prompt_path = os.path.join(card_dir, "prompt.json")
     os.makedirs(card_dir, exist_ok=True)
 
@@ -2505,8 +2506,8 @@ def get_all_card_displays():
     如果 display.json 不存在，会先调 apply_rules 生成。
     """
     results = {}
-    for d in sorted(os.listdir(USER_DATA_DIR)):
-        dpath = os.path.join(USER_DATA_DIR, d)
+    for d in sorted(os.listdir(DAILY_DATA_DIR)):
+        dpath = os.path.join(DAILY_DATA_DIR, d)
         if not os.path.isdir(dpath):
             continue
         display_path = os.path.join(dpath, "display.json")
@@ -2532,7 +2533,7 @@ def get_all_card_displays():
 @require_token
 def get_card_display(card_id):
     """GET /v1/api/daily/cards/display/todo — 返回单张卡片的 display.json。"""
-    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    card_dir = os.path.join(DAILY_DATA_DIR, card_id)
     display_path = os.path.join(card_dir, "display.json")
 
     display = {}
@@ -2555,7 +2556,7 @@ def get_card_display(card_id):
 @require_token
 def get_card_prompt(card_id):
     """GET /v1/api/daily/prompt/todo — 读取卡片的专属 prompt。"""
-    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    card_dir = os.path.join(DAILY_DATA_DIR, card_id)
     prompt_path = os.path.join(card_dir, "prompt.json")
 
     if not os.path.isfile(prompt_path):
@@ -2575,7 +2576,7 @@ def update_card_prompt(card_id):
     if not body:
         return error_response("缺少请求体", 400)
 
-    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    card_dir = os.path.join(DAILY_DATA_DIR, card_id)
     prompt_path = os.path.join(card_dir, "prompt.json")
 
     # 读取旧数据（可选合并）
@@ -2888,7 +2889,7 @@ def put_card_config(card_id):
 #  新闻 API (DB5)
 # ============================================================
 
-NEWS_DIR = os.path.join(USER_DATA_DIR, "news")
+NEWS_DIR = os.path.join(DAILY_DATA_DIR, "news")
 DEFAULT_SOURCES_PATH = os.path.join(NEWS_DIR, "sources.json")
 
 DEFAULT_NEWS_SOURCES = [
@@ -3418,7 +3419,7 @@ def todos_weekly_view():
 #  个人数据 API (DB12)
 # ============================================================
 
-PROFILES_DIR = os.path.join(USER_DATA_DIR, "data")
+PROFILES_DIR = os.path.join(DAILY_DATA_DIR, "data")
 DATA_FIELDS = {"weight", "exercise", "water", "sleep", "journal", "fitness", "finance", "meal"}
 
 DEFAULT_PERSON_DATA = {

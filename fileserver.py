@@ -755,7 +755,9 @@ def list_sessions():
                 continue
 
         sessions.sort(key=lambda s: s.get("updated", ""), reverse=True)
-        return jsonify({"sessions": sessions}), 200
+        resp = jsonify({"sessions": sessions})
+        resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        return resp, 200
 
     except OSError as e:
         logger.error(f"读取 Session 列表失败: {e}")
@@ -806,7 +808,9 @@ def get_session(session_id):
                 logger.info(f"Session 更新: {session_id}")
                 return jsonify({"ok": True, "id": session_id, "title": data.get("title", "")}), 200
 
-            return jsonify(data), 200
+            resp = jsonify(data)
+            resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            return resp, 200
         else:
             logger.warning(f"Session 路径校验失败: {session_id} 解析到 {session_resolved}")
             return error_response("Session ID 无效", 400)

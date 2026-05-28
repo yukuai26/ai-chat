@@ -400,6 +400,25 @@ def _resolve_path(rel_path: str) -> Path:
             if bp.is_dir():
                 return bp
 
+    # 2.6 当请求路径的第一段匹配某白名单根目录的 basename 时，直接在该根下解析子路径
+    # 修复：/user-files/charts/temp.png 应解析到 user-files/ 而非 workspace-assistant/user-files/...
+    parts = clean.split("/")
+    if parts and parts[0]:
+        for base in WHITELIST:
+            bp = Path(base).resolve()
+            if parts[0] == bp.name:
+                try:
+                    candidate = bp
+                    for p in parts[1:]:
+                        candidate = candidate / p
+                    candidate = candidate.resolve()
+                    candidate_str = str(candidate)
+                    base_str = str(bp)
+                    if candidate_str == base_str or candidate_str.startswith(base_str + os.sep):
+                        return candidate
+                except (ValueError, OSError):
+                    continue
+
     # 3. 遍历白名单，尝试解析
     for base in WHITELIST:
         base_path = Path(base).resolve()

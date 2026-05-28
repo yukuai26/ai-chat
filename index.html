@@ -4700,15 +4700,43 @@
     }
 
     function renderMarkdown(text) {
-      text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
-        '<pre><code>' + escapeHtml(code.trim()) + '</code></pre>');
+      // 先保护 code 块，避免替换 code 里的路径
+      var codeBlocks = [];
+      text = text.replace(/```(\w*)\n([\s\S]*?)```/g, function(match, lang, code) {
+        codeBlocks.push('<pre><code>' + escapeHtml(code.trim()) + '</code></pre>');
+        return '\x00CODE_BLOCK_' + (codeBlocks.length - 1) + '\x00';
+      });
       text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
       text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      // Markdown 文件链接: [文字](/user-files/...)
+      text = text.replace(/\[([^\]]+)\]\(\/user-files\/([^)]+)\)/g, function(m, label, path) {
+        return '<a href="#" class="file-link" onclick="navigateToFile(\'/user-files/' + escapeHtmlAttr(path) + '\'); return false;" title="\u5728\u6587\u4ef6\u6d4f\u89c8\u5668\u6253\u5f00">' + label + '</a>';
+      });
+      // 绝对路径: /home/ubuntu/.openclaw/user-files/...
+      text = text.replace(/\/home\/ubuntu\/\.openclaw\/user-files\/([^\s\)\]<,;]+)/g, function(m, path) {
+        return '<a href="#" class="file-link" onclick="navigateToFile(\'/user-files/' + escapeHtmlAttr(path) + '\'); return false;" title="\u5728\u6587\u4ef6\u6d4f\u89c8\u5668\u6253\u5f00">\u{1F4C1} /user-files/' + path + '</a>';
+      });
       text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
       text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
       text = text.replace(/\n\n/g, '</p><p>');
       text = '<p>' + text.replace(/\n/g, '<br>') + '</p>';
+      // 恢复 code 块
+      text = text.replace(/\x00CODE_BLOCK_(\d+)\x00/g, function(m, idx) {
+        return codeBlocks[parseInt(idx)] || '';
+      });
       return text;
+    }
+
+    /** 点击文件链接时跳转到文件浏览器 Tab 并直接打开文件 */
+    function navigateToFile(filePath) {
+      switchTab('files');
+      // 提取文件名
+      var parts = filePath.split('/');
+      var filename = parts[parts.length - 1] || filePath;
+      // 等 Tab 切换 + 文件浏览器初始化完成后打开
+      setTimeout(function() {
+        renderFileViewer(filePath, filename);
+      }, 300);
     }
 
     function escapeHtml(s) {
@@ -5191,6 +5219,8 @@
 
       // 上下文由 Gateway session 管理（user 字段）
       var messages = [];
+      // 系统指令：告诉模型文件该存哪里（每轮都带，确保模型知道）
+      messages.push({ role: 'system', content: '文件操作规则:\n- 你创建的所有文件必须保存到 /home/ubuntu/.openclaw/user-files/ 目录下\n- 可在 user-files 下新建子目录组织文件\n- 回复中引用文件时使用 Markdown 链接格式: [显示文字](/user-files/相对路径)\n  例如: [图表.png](/user-files/charts/temp.png)\n  用户点击链接后可直接跳转到文件浏览器查看文件' });
       if (fileSummaries.length > 0) {
         messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
       }
@@ -5226,6 +5256,8 @@
     async function _fallbackHttpSend(text, filesToSend, fileSummaries, filePaths, now) {
       // 上下文由 Gateway session 管理（user 字段）
       var messages = [];
+      // 系统指令：告诉模型文件该存哪里（每轮都带，确保模型知道）
+      messages.push({ role: 'system', content: '文件操作规则:\n- 你创建的所有文件必须保存到 /home/ubuntu/.openclaw/user-files/ 目录下\n- 可在 user-files 下新建子目录组织文件\n- 回复中引用文件时使用 Markdown 链接格式: [显示文字](/user-files/相对路径)\n  例如: [图表.png](/user-files/charts/temp.png)\n  用户点击链接后可直接跳转到文件浏览器查看文件' });
       if (fileSummaries.length > 0) {
         messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
       }

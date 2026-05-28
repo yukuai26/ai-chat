@@ -1209,7 +1209,6 @@ def _build_gateway_messages(
 
 
 
-
 # ---- Daily 卡片: 规则引擎 (apply_rules) ----
 
 def _default_rules(card_id):
@@ -1408,6 +1407,7 @@ def api_apply_rules():
     return jsonify({"ok": True, "results": results})
 
 
+
 # ---- Daily 卡片: 操作 Prompt（升级版）----
 
 def _build_card_prompt():
@@ -1415,7 +1415,7 @@ def _build_card_prompt():
 
     使用 replace 而非 format 避免 JSON 花括号冲突。
     """
-    template = """你是 Daily 卡片助手。每张卡片有三层结构：数据（你写）→ 显示准则（配置）→ 实际显示（自动生成）。
+    template = """你是 Daily 卡片助手。每张卡片有四层结构：数据 → 规则 → 显示 → 经验。
 
 ## 每张卡片的目录结构
 
@@ -1423,12 +1423,15 @@ user-data/{card_id}/
   data.json       ← 原始记录（你负责读写）
   rules.json      ← 显示准则（声明式 JSON，控制怎么展示）
   display.json    ← 实际显示内容（前端直接读，由 apply_rules 自动生成）
+  prompt.json     ← 卡片专属经验（领域知识、最佳实践、用户偏好、示例）
   heartbeat.json  ← 心跳配置（cron 定时刷新，可选）
 
 设计原则：
 - 改数据内容 → 改 data.json → 然后调 apply_rules 刷新 display
 - 改展示方式 → 改 rules.json → 然后调 apply_rules
+- 改卡片行为经验 → 改 prompt.json（用户说「记住...」「以后别...」「经验是...」时修改）
 - 改心跳频率 → 改 heartbeat.json
+- 系统会自动注入涉及卡片的专属 prompt 消息，包含该卡片的领域知识和最佳实践
 
 ## 调 apply_rules 刷新 display
 
@@ -1487,6 +1490,7 @@ user-data/{card_id}/
 5. 添加 TODO 时用 @todo 前缀更快（不走这个流程）
 6. 简洁确认：只回复操作结果，如「已更新体重 72kg」「Todo 卡片现在展示 10 条」
 7. 新增条目时不要覆盖已有数据，合并到现有列表
+8. 经验改 prompt：用户说「以后记体重用kg」「记住我不吃辣」→ 读对应卡片的 prompt.json → 更新 domain_knowledge/best_practices/user_preferences → 写回
 """
     return (template
         .replace("__TODO_DIR__", TODO_DIR)
@@ -1500,7 +1504,6 @@ user-data/{card_id}/
         .replace("__REMINDERS_DIR__", REMINDERS_DIR)
         .replace("__HABITS_DIR__", HABITS_DIR)
         .replace("__NEWS_DIR__", NEWS_DIR))
-
 
 
 @app.route("/v1/sessions/<session_id>/messages", methods=["POST"])
@@ -2176,7 +2179,344 @@ def _parse_command(text: str) -> dict:
     return {"prefix": None, "person": None, "text": text, "matched": False, "action": None, "api": None}
 
 
-@app.route("/v1/api/daily/command", methods=["POST"])
+# ---- 每日卡片: 卡片级 prompt 系统 ----
+
+# 卡片关键词映射（用于从用户输入中检测目标卡片）
+CARD_KEYWORDS = {
+    "todo": ["todo", "待办", "任务", "待办事项", "干活", "要做", "列表"],
+    "data": ["体重", "喝水", "运动", "记录", "追踪", "打卡", "指标", "数据", "公斤", "kg", "饮水量", "杯水", "步数"],
+    "recipe": ["食谱", "菜单", "吃", "午饭", "晚饭", "早餐", "午餐", "晚餐", "饭", "卡路里", "热量", "做饭"],
+    "wishes": ["心愿", "愿望", "想法", "想", "计划做", "梦想", "点子"],
+    "notes": ["随手记", "笔记", "想法", "灵感", "记录", "心情", "memo", "备忘"],
+    "bookmarks": ["收藏", "书签", "链接", "网址", "bookmark", "保存"],
+    "photos": ["照片", "图片", "拍照", "相册", "截屏", "截图"],
+    "shares": ["分享", "发送给", "发给", "共享", "share"],
+    "reminders": ["提醒", "闹钟", "定时", "记得", "别忘了", "通知"],
+    "habits": ["习惯", "坚持", "打卡", "签到", "每日", "habit"],
+    "news": ["新闻", "资讯", "新闻", "热点", "消息"],
+}
+
+
+def _detect_card_from_text(text):
+    """从用户输入中检测涉及哪些卡片。返回 [(card_id, score), ...] 按匹配度排序。"""
+    text_lower = text.lower()
+    results = {}
+    for card_id, keywords in CARD_KEYWORDS.items():
+        score = 0
+        for kw in keywords:
+            if kw in text_lower:
+                score += len(kw)  # 长关键词权重更高
+        if score > 0:
+            results[card_id] = score
+    sorted_cards = sorted(results.items(), key=lambda x: x[1], reverse=True)
+    return sorted_cards
+
+
+def _load_card_prompt(card_id):
+    """加载卡片的专属 prompt。如果 prompt.json 不存在则创建默认模板。"""
+    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    prompt_path = os.path.join(card_dir, "prompt.json")
+
+    if not os.path.isfile(prompt_path) or os.path.getsize(prompt_path) == 0:
+        _ensure_default_prompt(card_id)
+
+    with open(prompt_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    domain = data.get("domain_knowledge", "")
+    practices = data.get("best_practices", [])
+    preferences = data.get("user_preferences", [])
+    examples = data.get("examples", [])
+
+    parts = [f"## {data.get('card_name', card_id)} 卡片专属经验\n"]
+
+    if domain:
+        parts.append(f"**领域知识**：{domain}\n")
+    if practices:
+        parts.append("**最佳实践**：")
+        for p in practices:
+            parts.append(f"- {p}")
+        parts.append("")
+    if preferences:
+        parts.append("**用户偏好**：")
+        for p in preferences:
+            parts.append(f"- {p}")
+        parts.append("")
+
+    if examples:
+        parts.append("**示例**：")
+        for ex in examples:
+            parts.append(f"- 输入：「{ex['in']}」→ 操作：{ex['out']}")
+        parts.append("")
+
+    return "\n".join(parts)
+
+
+_CARD_PROMPT_DEFAULTS = {
+    "todo": {
+        "card_name": "Todo 待办",
+        "domain_knowledge": "管理员习惯把大事拆成小任务，一个 Todo 描述一件事。工作类任务优先级最高。",
+        "best_practices": [
+            "id 用最大 id + 1，不要重复",
+            "type 默认 'daily'，重要不紧急的事用 'work'",
+            "同一件事不要拆成过多子任务（不超过 5 个）",
+            "完成任务标记 done=true，不要删除"
+        ],
+        "user_preferences": [
+            "优先级：工作 > 生活 > 娱乐",
+            "每天新增不超过 10 条（避免积压）"
+        ],
+        "examples": [
+            {"in": "今天要做三件事：写报告、开会、买菜", "out": "添加 3 条 Todo，id 递增，type=daily，done=false"},
+            {"in": "明天要把 Phase 12 剩下的 3 个 TODO 做完", "out": "添加 1 条 Todo（概括为'完成 Phase 12 剩余 TODO'），type=work"}
+        ]
+    },
+    "data": {
+        "card_name": "数据追踪",
+        "domain_knowledge": "管理员关注体重(kg)、饮水量(杯)、运动时长(分钟)三项核心指标。每天记录一次，多次记录时保留最后一次。",
+        "best_practices": [
+            "体重精确到 0.1kg（如 72.5），每天固定时间（早晨空腹）记录最准",
+            "饮水量按杯计（1 杯 ≈ 250ml），日目标 8 杯",
+            "运动时长用中文描述（如'跑步30min'、'游泳45min'），方便展示",
+            "新增字段先在 data.json 的各人物文件中加顶层 key，再写当日值"
+        ],
+        "user_preferences": [
+            "目标体重：68kg",
+            "日饮水目标：8 杯（约 2L）",
+            "日运动目标：30 分钟",
+            "连续 3 天饮水不足需提醒"
+        ],
+        "examples": [
+            {"in": "今天体重 72", "out": "读 管理员.json → 在 weight 字段加 {\"2026-05-28\": 72} → 写回 → curl apply_rules data"},
+            {"in": "今天喝了 6 杯水", "out": "读 管理员.json → 在 water 字段加 {\"2026-05-28\": 6} → 写回 → curl apply_rules data"}
+        ]
+    },
+    "recipe": {
+        "card_name": "食谱",
+        "domain_knowledge": "一周七天映射（周一~周日），每天有午餐(lunch)和晚餐(dinner)。每道菜记录名称和估算热量。",
+        "best_practices": [
+            "热量按道菜估算而非精确计算（快餐 600-800kcal，家常菜 300-500kcal）",
+            "单日午餐+晚餐总量控制在 1000-1400kcal 为宜",
+            "如果只设了午餐没设晚餐，不要自动补齐"
+        ],
+        "user_preferences": [
+            "午餐偏好轻食（沙拉、三明治、便当）",
+            "晚餐可以丰盛些",
+            "周末可能不下厨（外卖/外食）"
+        ],
+        "examples": [
+            {"in": "今天午饭吃沙拉", "out": "找到今天对应的星期，在 lunch 下写 {\"name\":\"沙拉\",\"calories\":250}"},
+            {"in": "周三晚饭牛排 600kcal", "out": "在\"周三\"的 dinner 下写 {\"name\":\"牛排\",\"calories\":600}"}
+        ]
+    },
+    "wishes": {
+        "card_name": "心愿",
+        "domain_knowledge": "心愿按成熟度分阶段：idea（想法阶段）→ discussing（讨论中）→ designing（设计）→ implementing（实施）→ done（完成）。管理员很少直接删除心愿，更多是归档。",
+        "best_practices": [
+            "新心愿默认 status='idea'，描述写清想要什么",
+            "推进到下一阶段时更新 status 字段，不要新建一条",
+            "心愿 id 格式 w + 数字（w1, w2...），新建时取最大 id + 1",
+            "可以加 tags 分类（如 ['tech', 'home', 'travel']）"
+        ],
+        "user_preferences": [
+            "偏好一次添加 1 个心愿（不批量添加）",
+            "心愿没有截止日期，不设 deadline"
+        ],
+        "examples": [
+            {"in": "我想做一个拍饭分析的小工具", "out": "创建新心愿 {\"id\":\"w1\",\"title\":\"拍饭分析小工具\",\"status\":\"idea\",\"tags\":[\"tech\"],\"createdBy\":\"管理员\"}"},
+            {"in": "把 w3 推进到设计阶段", "out": "读 wishes/data.json → 找到 id=w3 → 改 status='designing' → 写回"}
+        ]
+    },
+    "notes": {
+        "card_name": "随手记",
+        "domain_knowledge": "随手记录想法、灵感、心情。短则一句话，长可带图片。用 mood 表情标记心情。",
+        "best_practices": [
+            "id 格式 n + 数字，自增",
+            "mood 用单个 emoji（💡/😊/😢/🤔/🔥/📝）",
+            "tags 用数组，方便后续筛选",
+            "images 存 /user-files/ 下的路径"
+        ],
+        "user_preferences": [
+            "默认 mood: 💡",
+            "不自动给 notes 加标签（让用户自然语言说明时再加）"
+        ],
+        "examples": [
+            {"in": "记一下：今天发现一个好用的工具叫 foo", "out": "创建笔记 id=nX, text='今天发现一个好用的工具叫 foo', mood='💡'"},
+            {"in": "心情不好，今天不想说话", "out": "创建笔记 mood='😢', text='心情不好，今天不想说话'"}
+        ]
+    },
+    "bookmarks": {
+        "card_name": "收藏",
+        "domain_knowledge": "收藏网页链接、文章。记录 URL、标题、标签。",
+        "best_practices": [
+            "id 格式 b + 数字，自增",
+            "url 必须是完整 URL（https:// 开头）",
+            "用 tags 分类（如 ['技术','前端','工具']）"
+        ],
+        "user_preferences": [
+            "管理员可能一次收藏多个链接"
+        ],
+        "examples": [
+            {"in": "收藏这个链接 https://example.com 技术", "out": "创建收藏 id=bX, url='https://example.com', title='example', tags=['技术']"}
+        ]
+    },
+    "photos": {
+        "card_name": "照片",
+        "domain_knowledge": "照片墙。图片存在 /user-files/ 下，这里只存元数据和路径。",
+        "best_practices": [
+            "id 格式 p + 数字，自增",
+            "image 字段存 /user-files/ 下的相对路径",
+            "caption 简洁（不超过 50 字）"
+        ],
+        "user_preferences": [],
+        "examples": []
+    },
+    "shares": {
+        "card_name": "分享",
+        "domain_knowledge": "记录两个人之间互相分享的链接、笔记、照片等。sent 是发出去的，received 是收到的。",
+        "best_practices": [
+            "type 指分享类型：link/note/photo/file",
+            "received 里的条目默认 read=false，读了要改"
+        ],
+        "user_preferences": [
+            "管理员通常向「伴侣」分享"
+        ],
+        "examples": [
+            {"in": "把这个发给伴侣", "out": "在 sent 数组添加新条目，from=管理员，to=伴侣"}
+        ]
+    },
+    "reminders": {
+        "card_name": "提醒",
+        "domain_knowledge": "定时提醒。支持单次和重复（daily/weekly）。时间用 HH:MM 格式。",
+        "best_practices": [
+            "id 格式 r + 数字，自增",
+            "time 用 HH:MM（24 小时制）",
+            "repeat 为 null（单次）、'daily' 或 'weekly'",
+            "过了时间的提醒不要自动删除，标记 done=true 就行"
+        ],
+        "user_preferences": [
+            "默认提醒时间不要乱设（不要设凌晨），用户会指定时间"
+        ],
+        "examples": [
+            {"in": "下午3点提醒我开会", "out": "创建提醒 time='15:00', date=今天, repeat=null, done=false"},
+            {"in": "每天晚上9点提醒我喝水", "out": "创建提醒 time='21:00', repeat='daily'"}
+        ]
+    },
+    "habits": {
+        "card_name": "习惯",
+        "domain_knowledge": "每日打卡习惯。habits 定义习惯列表，logs 记录每日完成情况。",
+        "best_practices": [
+            "id 格式 h + 数字，自增",
+            "icon 用单个 emoji",
+            "target 通常为 'daily'",
+            "logs 格式 {\"h1\": {\"2026-05-28\": true}}"
+        ],
+        "user_preferences": [],
+        "examples": [
+            {"in": "加一个习惯：每天运动", "out": "在 habits 数组加 {\"id\":\"hX\",\"name\":\"运动\",\"icon\":\"🏃\",\"target\":\"daily\"}"},
+            {"in": "今天运动了，打卡", "out": "在 logs 里设 logs['hX']['2026-05-28'] = true"}
+        ]
+    },
+    "news": {
+        "card_name": "新闻",
+        "domain_knowledge": "每日自动爬取的新闻资讯。每天一个文件 YYYY-MM-DD.json，按分类组织。通常不需要手动修改。",
+        "best_practices": [
+            "新闻卡片是只读的（爬虫自动更新），一般不要手动改"
+        ],
+        "user_preferences": [],
+        "examples": []
+    }
+}
+
+
+def _ensure_default_prompt(card_id):
+    """为卡片创建默认 prompt.json。"""
+    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    prompt_path = os.path.join(card_dir, "prompt.json")
+    os.makedirs(card_dir, exist_ok=True)
+
+    default = _CARD_PROMPT_DEFAULTS.get(card_id, {
+        "card_name": card_id,
+        "domain_knowledge": "",
+        "best_practices": [],
+        "user_preferences": [],
+        "examples": []
+    })
+
+    with open(prompt_path, "w", encoding="utf-8") as f:
+        json.dump(default, f, ensure_ascii=False, indent=2)
+
+    logger.info(f"已创建默认 prompt.json: {card_id}")
+    return default
+
+
+def _build_card_specific_messages(text):
+    """检测文本涉及的卡片，返回额外的 system 消息（卡片专属 prompt）。"""
+    detected = _detect_card_from_text(text)
+
+    extra_messages = []
+    added = set()
+    for card_id, score in detected:
+        if card_id in added:
+            continue
+        if score < 3:  # 太短的关键词忽略（如单字"吃"）
+            continue
+        card_prompt = _load_card_prompt(card_id)
+        if card_prompt:
+            extra_messages.append({"role": "system", "content": card_prompt})
+            added.add(card_id)
+            logger.info(f"注入卡片专属 prompt: {card_id} (score={score})")
+
+    return extra_messages
+
+
+# ---- API: 管理卡片 prompt ----
+
+@app.route("/v1/api/daily/prompt/<card_id>", methods=["GET"])
+@require_token
+def get_card_prompt(card_id):
+    """GET /v1/api/daily/prompt/todo — 读取卡片的专属 prompt。"""
+    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    prompt_path = os.path.join(card_dir, "prompt.json")
+
+    if not os.path.isfile(prompt_path):
+        _ensure_default_prompt(card_id)
+
+    with open(prompt_path, "r", encoding="utf-8") as f:
+        prompt_data = json.load(f)
+
+    return jsonify({"ok": True, "card_id": card_id, "prompt": prompt_data})
+
+
+@app.route("/v1/api/daily/prompt/<card_id>", methods=["PUT"])
+@require_token
+def update_card_prompt(card_id):
+    """PUT /v1/api/daily/prompt/todo — 更新卡片的专属 prompt。"""
+    body = request.get_json(silent=True)
+    if not body:
+        return error_response("缺少请求体", 400)
+
+    card_dir = os.path.join(USER_DATA_DIR, card_id)
+    prompt_path = os.path.join(card_dir, "prompt.json")
+
+    # 读取旧数据（可选合并）
+    old = {}
+    if os.path.isfile(prompt_path):
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            try:
+                old = json.load(f)
+            except json.JSONDecodeError:
+                pass
+
+    # 合并：对新字段覆盖，老字段保留
+    old.update(body)
+
+    os.makedirs(card_dir, exist_ok=True)
+    with open(prompt_path, "w", encoding="utf-8") as f:
+        json.dump(old, f, ensure_ascii=False, indent=2)
+
+    logger.info(f"卡片 prompt 已更新: {card_id}")
+    return jsonify({"ok": True, "card_id": card_id, "prompt": old})
 
 @app.route("/v1/api/daily/command", methods=["POST"])
 @require_token
@@ -2246,15 +2586,18 @@ def daily_command():
         session_id = f"sess_daily_{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
         session_file = os.path.join(SESSION_DIR, f"{session_id}.json")
 
-        # 构建会话：卡片 prompt 作为 system 消息
-        card_prompt = _build_card_prompt()
+        # 构建会话：基础卡片 prompt + 卡片专属经验
+        base_prompt = _build_card_prompt()
+        card_messages = _build_card_specific_messages(text)
+
         session_data = {
             "id": session_id,
             "title": f"Daily 指令 {now.strftime('%m月%d日 %H:%M')}",
             "created": now.isoformat(),
             "updated": now.isoformat(),
             "messages": [
-                {"role": "system", "content": card_prompt},
+                {"role": "system", "content": base_prompt},
+                *card_messages,
                 {"role": "user", "content": text}
             ],
             "tags": ["daily"]
@@ -2267,9 +2610,9 @@ def daily_command():
 
         logger.info(f"Daily 会话已创建: {session_id}")
 
-        # 调用 Gateway 获取 AI 回复（带卡片 prompt 上下文）
+        # 调用 Gateway 获取 AI 回复（基础 prompt + 卡片专属经验）
         messages = _build_gateway_messages(
-            [{"role": "system", "content": card_prompt}],
+            [{"role": "system", "content": base_prompt}] + card_messages,
             text,
             None,
         )

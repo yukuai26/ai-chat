@@ -4565,6 +4565,67 @@ def ws_handler(ws):
             data = json.loads(msg) if isinstance(msg, str) else {}
             if data.get('type') == 'ping':
                 ws.send(json.dumps({"type": "pong"}))
+                continue
+
+            # ---- AI 对话（通过 WebSocket 绕开 Cloudflare Tunnel 100s 超时） ----
+            if data.get('type') == 'chat':
+                chat_messages = data.get('messages', [])
+                chat_user = data.get('user', '')
+                chat_model = data.get('model', 'openclaw:assistant')
+                req_id = data.get('request_id', '')
+
+                try:
+                    gateway_resp = requests.post(
+                        'http://127.0.0.1:18789/v1/chat/completions',
+                        json={
+                            'model': chat_model,
+                            'messages': chat_messages,
+                            'user': chat_user,
+                            'stream': True,
+                        },
+                        headers={'Authorization': f'Bearer {API_TOKEN}'},
+                        stream=True,
+                        timeout=(30, 600),
+                    )
+
+                    if gateway_resp.status_code != 200:
+                        err_text = gateway_resp.text[:500] if gateway_resp.text else ''
+                        ws.send(json.dumps({
+                            'type': 'chat_error',
+                            'message': f'Gateway 返回 {gateway_resp.status_code}: {err_text}',
+                            'request_id': req_id,
+                        }))
+                        continue
+
+                    for line in gateway_resp.iter_lines(decode_unicode=True):
+                        if line and line.startswith('data: '):
+                            data_str = line[6:]
+                            if data_str.strip() == '[DONE]':
+                                break
+                            try:
+                                chunk = json.loads(data_str)
+                                delta = chunk.get('choices', [{}])[0].get('delta', {}).get('content', '')
+                                if delta:
+                                    ws.send(json.dumps({
+                                        'type': 'chat_delta',
+                                        'content': delta,
+                                        'request_id': req_id,
+                                    }))
+                            except json.JSONDecodeError:
+                                pass
+
+                    ws.send(json.dumps({
+                        'type': 'chat_done',
+                        'request_id': req_id,
+                    }))
+
+                except Exception as e:
+                    ws.send(json.dumps({
+                        'type': 'chat_error',
+                        'message': str(e)[:500],
+                        'request_id': req_id,
+                    }))
+                continue
     except Exception:
         pass
     finally:

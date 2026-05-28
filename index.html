@@ -5098,7 +5098,10 @@
       processQueue();
     }
 
-    /** 实际发送一条消息到 Gateway */
+    /** WS 对话请求追踪表 { request_id: { contentDiv, msgDiv, fullContent, resolve, reject, replyTime, text, filePaths } } */
+    let wsChatRequests = {};
+
+    /** 实际发送一条消息 —— 通过 WebSocket 绕开 Cloudflare Tunnel 超时 */
     async function _doSendMessage(text, filesToSend) {
       const now = new Date().toISOString();
 
@@ -5148,27 +5151,70 @@
         }
       }
 
+      // 确保 WebSocket 已连接
+      if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
+        // 等待 WebSocket 连接（最多 5 秒）
+        try { connectWS(); } catch(e) {}
+        var waitStart = Date.now();
+        while ((!wsConnection || wsConnection.readyState !== WebSocket.OPEN) && Date.now() - waitStart < 5000) {
+          await new Promise(function(r) { setTimeout(r, 200); });
+        }
+        if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
+          // 回退：直接 HTTP 请求
+          return _fallbackHttpSend(text, filesToSend, fileSummaries, fileIDs, now);
+        }
+      }
+
+      var messages = [];
+      if (fileSummaries.length > 0) {
+        messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
+      }
+      messages.push({ role: 'user', content: text });
+
+      const { container: msgDiv, content: contentDiv } = createAssistantMessageElement();
+      var requestId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+      var filePaths = fileIDs;
+
+      return new Promise(function(resolve, reject) {
+        wsChatRequests[requestId] = {
+          contentDiv: contentDiv,
+          msgDiv: msgDiv,
+          fullContent: '',
+          resolve: resolve,
+          reject: reject,
+          replyTime: new Date().toISOString(),
+          text: text,
+          filePaths: filePaths,
+        };
+
+        wsConnection.send(JSON.stringify({
+          type: 'chat',
+          messages: messages,
+          user: activeConversationId || '',
+          model: 'openclaw:' + agentId,
+          request_id: requestId,
+        }));
+      });
+    }
+
+    /** HTTP 回退发送（WebSocket 不可用时使用） */
+    async function _fallbackHttpSend(text, filesToSend, fileSummaries, filePaths, now) {
       const { container: msgDiv, content: contentDiv } = createAssistantMessageElement();
       let fullContent = '';
       const replyTime = new Date().toISOString();
       try {
         var messages = [];
-        if (fileSummaries.length > 0) {
+        if (fileSummaries && fileSummaries.length > 0) {
           messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
         }
         messages.push({ role: 'user', content: text });
 
         const resp = await fetch(apiUrl + '/v1/chat/completions', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token,
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
           body: JSON.stringify({
-            model: 'openclaw:' + agentId,
-            messages: messages,
-            user: activeConversationId || '',
-            stream: true,
+            model: 'openclaw:' + agentId, messages: messages,
+            user: activeConversationId || '', stream: true,
           }),
         });
         if (!resp.ok) {
@@ -5193,10 +5239,7 @@
             try {
               const json = JSON.parse(data);
               const delta = json.choices?.[0]?.delta?.content;
-              if (delta) {
-                fullContent += delta;
-                contentDiv.innerHTML = renderMarkdown(fullContent);
-              }
+              if (delta) { fullContent += delta; contentDiv.innerHTML = renderMarkdown(fullContent); }
             } catch (e) {}
           }
           document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
@@ -5210,32 +5253,18 @@
           header.appendChild(timeEl);
         }
       } catch (e) {
-        if (!fullContent) {
-          contentDiv.innerHTML = '<span class="error-msg">网络错误: ' + escapeHtml(e.message) + '</span>';
-        }
-        console.error('_doSendMessage error:', e);
+        if (!fullContent) contentDiv.innerHTML = '<span class="error-msg">网络错误: ' + escapeHtml(e.message) + '</span>';
+      }
+      // 保存
+      if (activeConversationId && fullContent) {
+        var saveBody = { messages: [{ role: 'user', content: text, time: now }, { role: 'assistant', content: fullContent, time: replyTime }] };
+        if (filesToSend && filesToSend.length > 0) saveBody.messages[0].files = filesToSend.map(function(f) { return f.path; });
+        fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify(saveBody),
+        }).catch(function(e) { console.error('Save error:', e); });
       }
 
-      // 保存消息到后端（异步，不阻塞 UI）
-      if (activeConversationId && fullContent) {
-        var saveBody = {
-          messages: [
-            { role: 'user', content: text, time: now },
-            { role: 'assistant', content: fullContent, time: replyTime }
-          ]
-        };
-        if (filesToSend.length > 0) {
-          saveBody.messages[0].files = filesToSend.map(function(f) { return f.path; });
-        }
-        fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token,
-          },
-          body: JSON.stringify(saveBody),
-        }).catch(function(e) { console.error('Save messages error:', e); });
-      }
     }
 
     // ==================== 会话列表组件 (F20) ====================
@@ -9915,6 +9944,56 @@
         break;
       case 'calendar_changed':
         // 日历变更 — 暂不做前端刷新（日历 Tab 未实现）
+        break;
+      // ---- AI 对话（WebSocket 流式返回） ----
+      case 'chat_delta':
+        var req = wsChatRequests[event.request_id];
+        if (req) {
+          req.fullContent += (event.content || '');
+          req.contentDiv.innerHTML = renderMarkdown(req.fullContent);
+          var msgs = document.getElementById('messages');
+          if (msgs) msgs.scrollTop = msgs.scrollHeight;
+        }
+        break;
+      case 'chat_done':
+        var req = wsChatRequests[event.request_id];
+        if (req) {
+          delete wsChatRequests[event.request_id];
+          if (!req.fullContent) req.contentDiv.innerHTML = '(no response)';
+          var header = req.msgDiv.querySelector('.msg-header');
+          if (header) {
+            var timeEl = document.createElement('span');
+            timeEl.className = 'msg-time';
+            timeEl.textContent = formatMessageTime(req.replyTime);
+            header.appendChild(timeEl);
+          }
+          // 保存消息到后端
+          if (activeConversationId && req.fullContent) {
+            var saveBody = {
+              messages: [
+                { role: 'user', content: req.text, time: new Date().toISOString() },
+                { role: 'assistant', content: req.fullContent, time: req.replyTime }
+              ]
+            };
+            if (req.filePaths && req.filePaths.length > 0) {
+              saveBody.messages[0].files = req.filePaths;
+            }
+            fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify(saveBody),
+            }).catch(function(e) { console.error('Save error:', e); });
+          }
+          req.resolve();
+        }
+        break;
+      case 'chat_error':
+        var req = wsChatRequests[event.request_id];
+        if (req) {
+          delete wsChatRequests[event.request_id];
+          req.contentDiv.innerHTML = '<span class="error-msg">错误: ' + escapeHtml(event.message || '') + '</span>';
+          req.reject(new Error(event.message));
+        }
         break;
       case 'error':
         console.warn('WebSocket 错误:', event.message);

@@ -9894,7 +9894,7 @@
 
   /** 处理 WebSocket 事件 */
   function handleWSEvent(event) {
-    var evt = event.event || '';
+    var evt = event.event || event.type || '';
     var by = event.by || '';
     
     switch (evt) {

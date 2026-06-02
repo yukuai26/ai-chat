@@ -1,41 +1,277 @@
 {
-  "summary": "今日: 黑椒牛柳 / 清蒸莲藕肉丸 / 红烧茄子 / 泡椒酸豆角炒鸡珍(中辣)…",
+  "summary": "🥗 周二 推荐: 沙姜盐焗鸡180g(去皮)(240kcal) + 清炒红薯叶120g(40kcal) + 韭菜豆芽100g(45kcal) + 五常大米120g(熟)(155kcal) + 红豆丸子汤(甜)半碗(控糖)(70kcal) = 550kcal | 已摄入 yukuai26 暂无 gugugu 暂无",
+  "sections": [
+    {
+      "title": "🍽️ 今日食谱 (周二)",
+      "type": "table",
+      "rows": [
+        {
+          "cells": [
+            {
+              "text": "主荤菜",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "手撕羊排、爆炒鱿鱼(微辣)、沙姜盐焗鸡、板栗红烧肉"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "素菜",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "碎辣椒炒鸡蛋(中辣)、莴笋炒肉片、韭菜豆芽、清炒红薯叶"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "主食",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "五常大米"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "小吃",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "灌汤小笼包"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "五谷杂粮",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "糯玉米、临安小香薯"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "汤粥",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "红豆丸子汤(甜)"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "小菜",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "五香榨菜、秘制辣椒酱"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "🥗 午餐推荐配比",
+      "type": "table",
+      "rows": [
+        {
+          "cells": [
+            {
+              "text": "沙姜盐焗鸡"
+            },
+            {
+              "text": "180g(去皮)"
+            },
+            {
+              "text": "240kcal"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "清炒红薯叶"
+            },
+            {
+              "text": "120g"
+            },
+            {
+              "text": "40kcal"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "韭菜豆芽"
+            },
+            {
+              "text": "100g"
+            },
+            {
+              "text": "45kcal"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "五常大米"
+            },
+            {
+              "text": "120g(熟)"
+            },
+            {
+              "text": "155kcal"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "红豆丸子汤(甜)"
+            },
+            {
+              "text": "半碗(控糖)"
+            },
+            {
+              "text": "70kcal"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "合计",
+              "style": "font-weight:bold"
+            },
+            {
+              "text": ""
+            },
+            {
+              "text": "550kcal (P:40g C:46g F:16g)",
+              "style": "font-weight:bold"
+            }
+          ]
+        }
+      ],
+      "footer": {
+        "text": "💡 盐焗鸡去皮高蛋白低脂 + 双绿叶菜补纤维 + 控量主食，汤偏甜建议只喝半碗，符合减脂目标"
+      }
+    },
+    {
+      "title": "🍿 本周非正餐摄入 · yukuai26",
+      "type": "text",
+      "text": "暂无记录"
+    },
+    {
+      "title": "🍿 本周非正餐摄入 · gugugu",
+      "type": "text",
+      "text": "暂无记录"
+    },
+    {
+      "title": "💊 营养健康推荐 · yukuai26",
+      "type": "text",
+      "text": "暂无摄入记录，记录饮食后可获得营养建议 📝"
+    },
+    {
+      "title": "💊 营养健康推荐 · gugugu",
+      "type": "text",
+      "text": "暂无摄入记录，记录饮食后可获得营养建议 📝"
+    }
+  ],
+  "updated": "2026-06-02T11:00:43.010280+08:00",
   "today": {
     "lunch": {
       "menu": {
         "主荤菜": [
-          "黑椒牛柳",
-          "清蒸莲藕肉丸",
-          "火焰醉鹅",
-          "水煮肉片(微辣)"
+          "手撕羊排",
+          "爆炒鱿鱼(微辣)",
+          "沙姜盐焗鸡",
+          "板栗红烧肉"
         ],
         "素菜": [
-          "红烧茄子",
-          "泡椒酸豆角炒鸡珍(中辣)",
-          "咸蛋黄焗土豆",
-          "白灼生菜"
+          "碎辣椒炒鸡蛋(中辣)",
+          "莴笋炒肉片",
+          "韭菜豆芽",
+          "清炒红薯叶"
         ],
         "主食": [
-          "五常大米",
-          "五谷杂粮饭"
+          "五常大米"
         ],
         "小吃": [
-          "双皮奶卷"
+          "灌汤小笼包"
         ],
         "五谷杂粮": [
           "糯玉米",
-          "紫薯"
+          "临安小香薯"
         ],
         "汤粥": [
-          "酒酿蛋花丸子汤(甜)"
+          "红豆丸子汤(甜)"
         ],
         "小菜": [
-          "剁椒贡菜",
+          "五香榨菜",
           "秘制辣椒酱"
         ]
       }
     }
   },
-  "today_label": "周四",
-  "updated": "2026-05-28T23:55:33.456585"
+  "today_label": "周二",
+  "recommendation": {
+    "dish": "沙姜盐焗鸡 + 清炒红薯叶 + 韭菜豆芽 + 五常大米 + 红豆丸子汤",
+    "items": [
+      {
+        "name": "沙姜盐焗鸡",
+        "portion": "180g(去皮)",
+        "calories": 240
+      },
+      {
+        "name": "清炒红薯叶",
+        "portion": "120g",
+        "calories": 40
+      },
+      {
+        "name": "韭菜豆芽",
+        "portion": "100g",
+        "calories": 45
+      },
+      {
+        "name": "五常大米",
+        "portion": "120g(熟)",
+        "calories": 155
+      },
+      {
+        "name": "红豆丸子汤(甜)",
+        "portion": "半碗(控糖)",
+        "calories": 70
+      }
+    ],
+    "protein": "40g",
+    "carbs": "46g",
+    "fat": "16g",
+    "veggies": "220g",
+    "total_calories": 550,
+    "tip": "盐焗鸡去皮高蛋白低脂 + 双绿叶菜补纤维 + 控量主食，汤偏甜建议只喝半碗，符合减脂目标"
+  },
+  "today_intake": {
+    "breakfast": 0,
+    "lunch": 0,
+    "dinner": 0,
+    "total": 0
+  },
+  "week_total": 0
 }

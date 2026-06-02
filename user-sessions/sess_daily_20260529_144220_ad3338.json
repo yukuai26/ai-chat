@@ -1,0 +1,19 @@
+{
+  "id": "sess_daily_20260529_144220_ad3338",
+  "title": "Daily 指令 05月29日 14:42",
+  "created": "2026-05-29T14:42:20.490230",
+  "updated": "2026-05-29T14:42:20.490230",
+  "messages": [
+    {
+      "role": "system",
+      "content": "## 当前 Dashboard 卡片清单\n\n以下是所有已安装的卡片及其用途。具体操作某个卡片前，先读它的 prompt.json 和数据文件。\n\n- **bookmarks** (`bookmarks/`)\n- **数据追踪** (`data/`) — 管理员关注体重、饮水量、运动时长和睡眠质量\n- **习惯** (`habits/`) — 每日打卡习惯。habits 定义习惯列表，logs 记录每日完成情况。\n- **新闻** (`news/`) — 每日自动爬取的新闻资讯。每天一个文件 YYYY-MM-DD.json，按分类组织。通常不需要手动修改。\n- **随手记** (`notes/`) — 随手记录想法、灵感、心情。短则一句话，长可带图片。用 mood 表情标记心情。\n- **照片** (`photos/`) — 照片墙。图片存在 /user-files/ 下，这里只存元数据和路径。\n- **食谱** (`recipe/`) — 管理每周食谱和每日摄入记录。weekly_plan 存完整一周食谱（周一~周日），由用户 yukuai26 每周提供。intake_log 是永久数据库，按日期存储两个用户的所有餐食记录，绝不删除。display 只展示当天。\n- **reminders** (`reminders/`)\n- **shares** (`shares/`)\n- **todo** (`todo/`)\n- **wishes** (`wishes/`)\n\n路径前缀：`/home/ubuntu/.openclaw/user-data/daily-data/`\n每张卡有 data.json / rules.json / display.json / prompt.json。\n改完数据后执行 curl apply_rules 刷新 display。"
+    },
+    {
+      "role": "user",
+      "content": "测试卡片清单"
+    }
+  ],
+  "tags": [
+    "daily"
+  ]
+}

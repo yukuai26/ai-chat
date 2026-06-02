@@ -1,8 +1,9 @@
 {
-  "summary": "☑ 0/0 (0%%)",
-  "badge": null,
-  "items": [],
+  "summary": "📋 0 个待办",
+  "active": [],
+  "today": [],
+  "work": [],
   "total": 0,
-  "done": 0,
-  "updated": "2026-05-28T17:32:42.613325"
+  "done_count": 0,
+  "generated": "2026-05-29T17:47:57.250956+08:00"
 }

@@ -7,5 +7,29 @@
     "caption 简洁（不超过 50 字）"
   ],
   "user_preferences": [],
-  "examples": []
+  "examples": [],
+  "data_schema": {
+    "description": "每个用户一个 key，数组存照片",
+    "structure": {
+      "yukuai26": [
+        {
+          "id": "string",
+          "image": "/user-files/...",
+          "caption": "string",
+          "created": "ISO8601"
+        }
+      ],
+      "gugugu": [
+        {
+          "id": "string",
+          "image": "/user-files/...",
+          "caption": "string",
+          "created": "ISO8601"
+        }
+      ]
+    }
+  },
+  "apply_rules_behavior": {
+    "summary_generation": "从 rules.json 的 summary_tpl 模板渲染"
+  }
 }

@@ -1,72 +1,126 @@
 {
-  "mode": "recipe_dashboard",
+  "mode": "today",
   "sections": [
     {
-      "id": "today_intake",
-      "title": "📊 今日摄入",
-      "template": "{total_calories} kcal（早 {breakfast_cal} / 午 {lunch_cal} / 晚 {dinner_cal}）",
-      "source": "intake_log.today",
-      "show_when": "always"
+      "id": "today_menu",
+      "title": "🍽️ 今日食谱",
+      "source": "today_plan.lunch.menu",
+      "show_when": "has_today_plan",
+      "display": "full_menu"
     },
     {
       "id": "lunch_recommendation",
-      "title": "🍽️ 午餐推荐",
-      "template": "{plan_name}\n配比: 蛋白质 {protein}g / 碳水 {carbs}g / 脂肪 {fat}g\n建议热量: {target_cal} kcal",
-      "source": "weekly_plan.today.lunch",
-      "show_when": "weekday"
+      "title": "🥗 午餐推荐配比",
+      "source": "today_recommendation",
+      "show_when": "has_recommendation"
     },
     {
-      "id": "week_summary",
-      "title": "📈 本周摄入",
-      "template": "累计 {week_total_cal} kcal | 日均 {week_avg_cal} kcal\n蛋白质均 {week_avg_protein}g | 碳水均 {week_avg_carbs}g | 脂肪均 {week_avg_fat}g\n已记录 {days_logged} 天",
-      "source": "intake_log.this_week",
-      "show_when": "always"
+      "id": "today_intake",
+      "title": "📊 今日摄入",
+      "source": "intake_log.today",
+      "show_when": "has_today_intake",
+      "display": "per_user_meals"
     },
     {
-      "id": "health_tip",
-      "title": "💡 健康提示",
-      "template": "{tip}",
+      "id": "calorie_budget",
+      "title": "🎯 热量预算",
       "source": "computed",
-      "show_when": "has_data"
+      "show_when": "has_today_intake"
     },
     {
-      "id": "next_week_alert",
-      "title": "📮 提醒",
-      "template": "请发送下周食谱图片～",
-      "source": "computed",
-      "show_when": "weekend_no_next_week_plan"
+      "id": "weekly_snack_intake",
+      "title": "🍿 本周非正餐摄入",
+      "source": "intake_log.this_week.non_meal",
+      "show_when": "expand_only",
+      "display": "categorized_summary",
+      "description": "统计本周(周一至今天)非正餐摄入(夜宵/零食/水果/饮品等)，按分类汇总热量，只显示yukuai26",
+      "user": "yukuai26"
+    },
+    {
+      "id": "nutrition_advice",
+      "title": "💊 营养健康推荐",
+      "source": "computed_from_recent_intake",
+      "show_when": "expand_only",
+      "display": "advice_text",
+      "description": "根据最近摄入的营养情况给出健康推荐建议，只显示yukuai26",
+      "user": "yukuai26"
     }
   ],
-  "display_logic": {
-    "weekday": "展示今日摄入 + 午餐推荐配比 + 本周摄入汇总 + 健康提示",
-    "weekend_no_plan": "展示本周摄入汇总 + 提示发送下周食谱",
-    "weekend_has_plan": "展示本周摄入汇总 + 下周食谱预览"
+  "display_render": {
+    "description": "display.json 渲染规则",
+    "output_format": {
+      "summary": "今日食谱摘要 + 已摄入热量",
+      "today_label": "周X",
+      "today_menu": "当天完整菜单（所有分类全部列出，不省略）",
+      "recommendation": {
+        "items": [{"name": "菜名", "portion": "Xg", "calories": 0}],
+        "total": {"calories": 0, "protein": "Xg", "carbs": "Xg", "fat": "Xg"},
+        "tip": "一句话建议"
+      },
+      "today_intake": {
+        "yukuai26": [{"meal": "breakfast/lunch/dinner/snack", "name": "...", "calories": 0, "macros": {"protein": "Xg", "carbs": "Xg", "fat": "Xg"}, "time": "HH:MM"}],
+        "gugugu": []
+      },
+      "today_total": {
+        "yukuai26": {"calories": 0, "protein": "Xg", "carbs": "Xg", "fat": "Xg"},
+        "gugugu": {"calories": 0, "protein": "Xg", "carbs": "Xg", "fat": "Xg"}
+      },
+      "weekly_snack_intake": {
+        "description": "本周非正餐摄入汇总(只含yukuai26)",
+        "categories": {
+          "夜宵": {"calories": 0, "items": ["xxx"]},
+          "零食": {"calories": 0, "items": ["xxx"]},
+          "水果": {"calories": 0, "items": ["xxx"]},
+          "饮品": {"calories": 0, "items": ["xxx"]}
+        },
+        "total_calories": 0
+      },
+      "nutrition_advice": {
+        "description": "根据近期摄入给出营养健康建议(只含yukuai26)",
+        "advice": "建议文本"
+      },
+      "updated": "ISO8601"
+    }
   },
   "computation_rules": {
     "daily_target": {
-      "description": "无 user_profile 时使用默认值，有时按 TDEE 计算",
       "default_calories": 2000,
-      "default_macros": {
-        "protein_ratio": 0.25,
-        "carbs_ratio": 0.5,
-        "fat_ratio": 0.25
+      "meal_ratios": {
+        "breakfast": 0.25,
+        "lunch": 0.35,
+        "dinner": 0.35,
+        "snack": 0.05
       }
     },
     "lunch_recommendation": {
-      "description": "根据当天食谱菜品，按目标热量的35%分配午餐，给出食材克数配比",
-      "lunch_calorie_ratio": 0.35,
-      "consider": [
-        "user_profile",
-        "user_preferences",
-        "weekly_plan.today.lunch"
-      ]
+      "target": "500-600kcal",
+      "principles": [
+        "高蛋白低脂低碳（减脂期）",
+        "荤素搭配，绿叶蔬菜优先",
+        "主食适量100-150g（减脂期缩减碳水）",
+        "品种多样，同餐不重复食材和烹饪方式",
+        "避免中辣及以上菜品（微辣可选）",
+        "优先推荐清炒/蒜蓉/白灼等低油烹饪方式的绿叶蔬菜"
+      ],
+      "output": "每道菜标注建议克数和热量"
     },
-    "health_tip_triggers": [
-      "蛋白质连续3天低于目标 → 提示增加蛋白质",
-      "单日热量超过目标120% → 提示控制",
-      "连续2天未记录 → 提示记录",
-      "碳水占比超60% → 提示均衡"
-    ]
+    "weekly_snack_classification": {
+      "夜宵": "晚上9点后的进食",
+      "零食": "非正餐时间的加工食品、糕点、膨化食品等",
+      "水果": "各类水果",
+      "饮品": "奶茶、咖啡、果汁、碳酸饮料等",
+      "其他": "未归类的非正餐摄入"
+    },
+    "nutrition_advice_rules": {
+      "based_on": "最近7天摄入记录",
+      "focus": ["蛋白质是否达标", "维生素/微量元素缺口", "膳食纤维", "水分摄入", "碳水脂肪比例"],
+      "output": "简短实用的建议，2-3条"
+    }
   },
-  "summary_template": "今日: {today_meals}"
+  "data_retention": {
+    "weekly_plan": "用户发整周食谱时完整存储周一到周日，新一周覆盖上一周",
+    "intake_log": "永久保留，按日期 YYYY-MM-DD 为 key，绝不删除历史数据",
+    "display": "只展示当天食谱和当天摄入，非正餐汇总和营养建议仅展开时显示"
+  },
+  "summary_template": "🥗 推荐: {recommendation_items_detail} = {recommendation_total_cal}kcal | 已摄入 {total_cal}kcal"
 }

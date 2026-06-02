@@ -1,0 +1,31 @@
+{
+  "card_name": "todo",
+  "data_schema": {
+    "description": "每个用户一个 key，数组存 todo 条目",
+    "structure": {
+      "yukuai26": [
+        {
+          "id": "number",
+          "text": "string",
+          "done": "boolean",
+          "type": "daily|work|personal",
+          "date": "YYYY-MM-DD"
+        }
+      ],
+      "gugugu": [
+        {
+          "id": "number",
+          "text": "string",
+          "done": "boolean",
+          "type": "daily|work|personal",
+          "date": "YYYY-MM-DD"
+        }
+      ]
+    }
+  },
+  "best_practices": [],
+  "user_preferences": [],
+  "apply_rules_behavior": {
+    "summary_generation": "代码自动生成 done/total 计数摘要"
+  }
+}

@@ -22,5 +22,22 @@
       "in": "今天喝了 6 杯水",
       "out": "读 管理员.json → 在 water 字段加 {\"2026-05-28\": 6} → 写回 → curl apply_rules data"
     }
-  ]
+  ],
+  "data_schema": {
+    "description": "每人一个独立 json 文件",
+    "structure": {
+      "weight": {
+        "YYYY-MM-DD": "kg"
+      },
+      "water": {
+        "YYYY-MM-DD": "cups"
+      },
+      "exercise": {
+        "YYYY-MM-DD": "description"
+      }
+    }
+  },
+  "apply_rules_behavior": {
+    "summary_generation": "代码取各指标最新日期的值"
+  }
 }

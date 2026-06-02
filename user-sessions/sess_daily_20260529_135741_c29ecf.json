@@ -1,0 +1,35 @@
+{
+  "id": "sess_daily_20260529_135741_c29ecf",
+  "title": "Daily 指令 05月29日 13:57",
+  "created": "2026-05-29T13:57:41.460187",
+  "updated": "2026-05-29T14:02:21.238763+08:00",
+  "messages": [
+    {
+      "role": "system",
+      "content": "## 食谱 卡片专属经验\n\n**领域知识**：管理每周食谱和每日摄入记录。weekly_plan 存完整一周食谱（周一~周日），由用户 yukuai26 每周提供。intake_log 是永久数据库，按日期存储两个用户的所有餐食记录，绝不删除。display 只展示当天。\n\n**最佳实践**：\n- 用户 yukuai26 每周发食谱图片时，解析完整一周（周一~周日）写入 weekly_plan，覆盖上周\n- weekly_plan 存完整七天，每天根据星期几展示对应那天的完整菜单\n- display 必须展示当天食谱的所有分类和所有菜品，不可省略\n- 两个用户（yukuai26、gugugu）都可能随时上传餐食照片\n- 收到餐食照片时：识别食物 → 估算热量和宏量营养素 → 存入 intake_log/{date}/{user}/{meal}\n- intake_log 是永久数据库，按 YYYY-MM-DD 为 key，历史数据绝不删除\n- 每条摄入记录包含：name, calories, macros(protein/carbs/fat), time, image(可选)\n- 热量估算参考：快餐 600-800kcal，家常菜 300-500kcal，轻食 200-350kcal，零食 100-300kcal\n- 心跳 11:00 触发时：展示当天完整食谱 + 生成午餐推荐（每道菜标注 Xg 和热量）\n- display.json 展示当天食谱全貌 + 当天两个用户的摄入汇总\n- 新一周食谱到来时覆盖 weekly_plan，但 intake_log 永远累加不删\n\n**用户偏好**：\n- 午餐偏好轻食（沙拉、三明治、便当）\n- 晚餐可以丰盛些\n- 周末可能不下厨（外卖/外食）\n- 关注整体热量和营养均衡\n- 身高体重等以后提供，届时更新 user_profile\n"
+    },
+    {
+      "role": "user",
+      "content": "食谱的推荐菜我增加一点个人的喜好，首先是中辣以上的菜少一点，然后是希望尽可能品种多样，然后是喜欢绿叶蔬菜，然后是目前处于减肥减脂期"
+    },
+    {
+      "role": "assistant",
+      "content": "没有现成的 memory md 文件。让我把你的偏好更新到卡片经验中，并记录到 memory 文件里。Now let me look at the current card config to find where food preferences are stored:好，我看到了当前的数据结构。现在我把你的新偏好加进去：然后更新推荐规则，让以后生成午餐推荐时自动遵循这些偏好：同时更新系统提示里的用户偏好部分。让我也更新 Project Context 中的卡片经验：已经全部更新好了！总结一下记录的偏好：\n\n1. **辣度控制** — 中辣及以上的菜少推荐，微辣可接受，重辣避免\n2. **品种多样** — 同一餐尽量不重复食材和烹饪方式\n3. **绿叶蔬菜优先** — 空心菜、小白菜、菠菜、油麦菜、生菜等优先推荐\n4. **减脂期适配** — 高蛋白低脂低碳，午餐热量目标从 600-700kcal 下调到 500-600kcal，主食量也适当缩减（100-150g）\n\n之后每天的午餐推荐都会按这些偏好来搭配 👍",
+      "time": "2026-05-29T05:57:46.280Z"
+    },
+    {
+      "role": "user",
+      "content": "我记得不是有个食谱卡片的经验吗，你不是改这个吗",
+      "time": "2026-05-29T06:01:14.860Z",
+      "files": []
+    },
+    {
+      "role": "assistant",
+      "content": "你说的对！\"食谱 卡片专属经验\"是在 card-assistant agent 的系统提示里注入的那段 Project Context。让我看看 card-assistant 的 agent 目录：我看到 card-assistant 的 agent 目录下只有 models.json。那\"食谱 卡片专属经验\"实际上就是系统提示里的 Project Context 部分——也就是我当前看到的那段嵌入在 system prompt 中的内容。这段内容来自于我的 workspace 根目录下的某个文件。让我查找它：等一下，card-assistant 的 workspace 设置为 `/home/ubuntu/.openclaw`（就是根目录），但还有个 `workspace-card-assistant` 目录。让我看看那个 SOUL.md，它可能就包含\"卡片专属经验\"：现在我明白了！你说的\"卡片专属经验\"就是 `prompt.json`。我之前已经正确修改了 `/home/ubuntu/.openclaw/user-data/daily-data/recipe/prompt.json` 的 `user_preferences` 部分。\n\n但你提到的是系统提示里那段\"食谱 卡片专属经验\"——它就是当前 session 的 Project Context 里注入的那段文字。让我看看这段是怎么注入的，以及是否需要同步更新：\n\n那段 Project Context 中的\"食谱 卡片专属经验\"内容里的 `**用户偏好**` 部分实际上就是从 `prompt.json` 来的。我已经更新了 `prompt.json`，所以下一次 session 启动时会自动同步。\n\n但同时我注意到你的意思是：你希望我**主要**改的就是 `prompt.json`（卡片经验文件），而不是去改那些 `rules.json` 和 `data.json`。让我确认一下最终的 prompt.json 状态：好的，`prompt.json`（卡片经验文件）已经更新完毕。你的偏好已经写进去了：\n\n- ✅ 中辣及以上的菜少推荐，微辣可接受，重辣避免\n- ✅ 品种多样化，同一餐尽量不重复食材和烹饪方式\n- ✅ 偏爱绿叶蔬菜（空心菜、小白菜、菠菜、油麦菜、生菜、西兰花等）\n- ✅ 目前处于减肥减脂期，优先高蛋白低脂低碳搭配\n- ✅ 午餐推荐热量目标下调至 500-600kcal\n\n另外我也同步更新了 `rules.json` 里午餐推荐的原则（减脂导向、绿叶蔬菜优先、避辣、多样化），和 `data.json` 里的 `user_profile.preferences` + `dietary_goal`。三个文件保持一致，下次心跳生成午餐推荐时就会按这些偏好来了。",
+      "time": "2026-05-29T06:01:20.595Z"
+    }
+  ],
+  "tags": [
+    "daily"
+  ]
+}

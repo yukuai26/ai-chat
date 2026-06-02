@@ -1,0 +1,29 @@
+{
+  "id": "sess_daily_20260529_111342_3974a2",
+  "title": "Daily 指令 05月29日 11:13",
+  "created": "2026-05-29T11:13:42.283061",
+  "updated": "2026-05-29T11:37:43.674301+08:00",
+  "messages": [
+    {
+      "role": "system",
+      "content": "## 食谱 卡片专属经验\n\n**领域知识**：管理每日食谱和摄入记录。weekly_plan 只存当天的食谱（用户发图后解析写入当天对应的周X key），intake_log 按日期记录实际三餐摄入。user_profile 存身高体重等用于个性化推荐。\n\n**最佳实践**：\n- 用户发食谱图片时，解析当天的菜品写入 weekly_plan.周X.lunch.menu\n- 如果用户发的是整周食谱图片，只解析当天的写入 weekly_plan，其余不存\n- weekly_plan 只保留当天一个 key（如 周五），每天心跳或新食谱覆盖\n- 用户发餐食照片时，识别食物并估算热量和宏量营养素，存入 intake_log/{date}/{meal}\n- 热量估算：快餐 600-800kcal，家常菜 300-500kcal，轻食 200-350kcal\n- 宏量营养素格式：{protein: 'Xg', carbs: 'Xg', fat: 'Xg'}\n- intake_log 的 key 为日期 YYYY-MM-DD\n- 心跳触发时根据当天食谱生成午餐推荐配比，写入 display.json\n- 周六日心跳如果没有食谱则在 display 提示用户发食谱\n- display.json 由 apply_rules 引擎自动渲染，心跳时也可直接覆盖写入更丰富的内容\n\n**用户偏好**：\n- 午餐偏好轻食（沙拉、三明治、便当）\n- 晚餐可以丰盛些\n- 周末可能不下厨（外卖/外食）\n- 关注整体热量和营养均衡\n- 身高体重等以后提供，届时更新 user_profile\n"
+    },
+    {
+      "role": "user",
+      "content": "看一下现在食谱卡片的设置"
+    },
+    {
+      "role": "user",
+      "content": "test_hello",
+      "time": "2026-05-29T11:37:38.667536+08:00"
+    },
+    {
+      "role": "user",
+      "content": "verify_pub",
+      "time": "2026-05-29T11:37:43.674289+08:00"
+    }
+  ],
+  "tags": [
+    "daily"
+  ]
+}

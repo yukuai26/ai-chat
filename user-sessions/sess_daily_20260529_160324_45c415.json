@@ -1,0 +1,24 @@
+{
+  "id": "sess_daily_20260529_160324_45c415",
+  "title": "Daily 指令 05月29日 16:03",
+  "created": "2026-05-29T16:03:24.487399",
+  "updated": "2026-05-29T16:06:18.224186+08:00",
+  "messages": [
+    {
+      "role": "system",
+      "content": "当前说话的用户：yukuai26"
+    },
+    {
+      "role": "user",
+      "content": "现在食谱卡片是怎么运行的"
+    },
+    {
+      "role": "assistant",
+      "content": "这两个文件是空的。让我看看 workspace-assistant 下的卡片设计文档和 autobuild 相关内容：这个是关于飞书卡片和 autobuild 的。让我看看是否有专门的\"食谱卡片\"相关代码：现在让我看看食谱卡片的前端渲染部分以及卡片展示模式：Now let me look at how the recipe card is rendered in the front-end:现在我对食谱卡片的运行机制有了完整了解。让我看一下数据文件的实际内容：现在我有了完整的了解。让我给你总结：\n\n---\n\n## 食谱卡片运行机制\n\n食谱卡片是 Dashboard 系统中的一张卡片，运行在 `fileserver.py` 后端 + `index.html` 前端的架构上。\n\n### 📂 数据存储\n\n路径：`/home/ubuntu/.openclaw/user-data/daily-data/recipe/`\n\n| 文件 | 作用 |\n|------|------|\n| `data.json` | 核心数据库 — 包含 `weekly_plan`（每周菜单）、`intake_log`（摄入记录）、`user_profile`（用户偏好） |\n| `display.json` | 展示层 — 当天要渲染的内容（摘要、推荐搭配、摄入汇总） |\n| `rules.json` | 展示规则 — 定义卡片分区、摘要模板、计算逻辑 |\n| `prompt.json` | AI 行为指引 — 告诉 AI 怎么处理食谱数据 |\n| `heartbeat.json` | 定时触发 — 工作日/周末 11:00 自动刷新 display |\n\n### 🔄 运行流程\n\n1. **数据输入**：\n   - 用户 yukuai26 每周发食谱图片 → AI 解析 → 写入 `data.json` 的 `weekly_plan`（覆盖上周）\n   - 用户拍餐食照片 → AI 识别食物+估热量 → 追加到 `intake_log/{日期}/{用户}`（永不删除）\n\n2. **定时刷新（heartbeat）**：\n   - 工作日 11:00：取当天星期几对应的菜单 → 生成午餐推荐搭配（标注克数+热量，控制 500-600kcal）→ 汇总已有摄入 → 覆盖写入 `display.json`\n   - 周末 11:00：检查下周食谱是否到位 + 汇总本周摄入\n\n3. **API 层**（Flask 路由）：\n   - `GET /v1/api/daily/recipe/today` — 返回今日食谱\n   - `GET /v1/api/daily/recipe/week` — 返回整周食谱\n   - `GET /v1/api/daily/recipe/week-snacks` — 本周非正餐摄入统计\n   - `GET /v1/api/daily/recipe/nutrition-tips` — 营养健康建议\n   - `POST /v1/api/daily/recipe/upload` — 文本上传食谱（解析 \"周一 午餐:XX 晚餐:XX\" 格式）\n\n4. **前端渲染**：\n   - **缩略模式**：显示今天星期几 + 早/午/晚餐内容（调 `/recipe/today`）\n   - **展开模式**：整周表格（周一~周日 × 午餐/晚餐）+ 上传按钮 + 两个可折叠子区域（非正餐摄入、营养推荐）\n   - 当天行高亮（🔸标记）\n\n### 🧠 AI 智能部分\n\n- 收到食谱图片 → 解析完整七天菜单（所有分类：主荤菜、素菜、主食、汤粥、五谷杂粮、小吃、小菜）\n- 收到餐食照片 → 识别食物名 + 估算热量/蛋白质/碳水/脂肪 + 记录时间\n- 午餐推荐基于用户偏好：高蛋白低脂低碳、避免中辣以上、绿叶蔬菜优先、品种多样\n\n### 👥 用户\n\n两个用户参与：`yukuai26`（你，提供食谱+记录摄入）和 `gugugu`（也可记录摄入），目前处于减脂期。",
+      "time": "2026-05-29T08:03:30.155Z"
+    }
+  ],
+  "tags": [
+    "daily"
+  ]
+}

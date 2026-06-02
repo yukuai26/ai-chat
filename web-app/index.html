@@ -3671,27 +3671,9 @@
       <button class="login-btn" onclick="doLogin()">登 录</button>
       <div id="jsDebug" style="color:#999;font-size:11px;text-align:center;margin-top:8px;">⏳ JS 加载中...</div>
       <div class="login-error" id="loginError"></div>
-      <div class="login-footer">
-        没有账号？<a href="#" onclick="showRegisterModal(event)" style="color:var(--accent);">注册</a>
-      </div>
     </div>
   </div>
 
-  <!-- 注册页弹窗 (AU16) -->
-  <div class="login-overlay" id="registerOverlay" style="display:none;">
-    <div class="login-card">
-      <div class="login-logo">✨ 注册</div>
-      <div class="login-subtitle">输入邀请码创建账号</div>
-      <input type="text" id="registerCode" class="login-input" placeholder="邀请码">
-      <input type="text" id="registerUser" class="login-input" placeholder="用户名（字母+数字）" autocomplete="username">
-      <input type="password" id="registerPass" class="login-input" placeholder="密码（至少4位）" autocomplete="new-password">
-      <button class="login-btn" onclick="doRegister()">注 册</button>
-      <div class="login-error" id="registerError"></div>
-      <div class="login-footer">
-        已有账号？<a href="#" onclick="showLoginOnly()" style="color:var(--accent);">返回登录</a>
-      </div>
-    </div>
-  </div>
 
   <!-- 左栏 — 会话列表 -->
   <div class="conv-panel" id="convPanel">
@@ -3733,7 +3715,6 @@
       </div>
       <div class="user-menu" id="userMenu" style="display:none;position:absolute;top:42px;right:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(0,0,0,0.1);z-index:100;min-width:140px;padding:4px 0;">
         <div style="padding:8px 14px;font-size:11px;color:var(--text-tertiary);border-bottom:1px solid var(--border);">伴侣: <span id="partnerName">-</span></div>
-        <button onclick="generateInviteCode()" style="display:block;width:100%;text-align:left;padding:8px 14px;border:none;background:none;cursor:pointer;font-size:12px;color:var(--text-primary);">🎫 生成邀请码</button>
         <button onclick="doLogout()" style="display:block;width:100%;text-align:left;padding:8px 14px;border:none;background:none;cursor:pointer;font-size:12px;color:var(--text-primary);">🚪 退出登录</button>
       </div>
     </div>
@@ -3815,13 +3796,6 @@
         </div>
       </div>
       <div class="cmd-file-tags" id="cmdFileTags"></div>
-      <div class="dashboard-command-bar" id="dashboard-command-bar">
-        <span class="cmd-hint" id="cmdHint">@todo @done @data ...</span>
-        <button class="cmd-attach-btn" id="cmdAttachBtn" title="选择文件" onclick="openDashboardFilePicker()">📎</button>
-        <input type="text" class="cmd-input" id="cmdInput"
-          placeholder="输入指令，如 @todo 管理员 买牛奶"
-          onkeydown="if(event.key==='Enter') sendCommand()" />
-        <button class="cmd-send" id="cmdSend" onclick="sendCommand()">发送</button>
       </div>
     </div>
 
@@ -4102,40 +4076,6 @@
         errEl.textContent = '网络错误，请稍后重试';
       }
     }
-
-    // AU16: 注册
-    async function doRegister() {
-      const code = document.getElementById('registerCode').value.trim();
-      const user = document.getElementById('registerUser').value.trim();
-      const pass = document.getElementById('registerPass').value;
-      const errEl = document.getElementById('registerError');
-      errEl.textContent = '';
-
-      if (!code || !user || !pass) { errEl.textContent = '请填写所有字段'; return; }
-      if (pass.length < 4) { errEl.textContent = '密码至少 4 位'; return; }
-      if (!/^[a-zA-Z0-9]+$/.test(user)) { errEl.textContent = '用户名只能包含字母和数字'; return; }
-
-      try {
-        const resp = await fetch('/v1/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: user, password: pass, invite_code: code, display_name: user })
-        });
-        const data = await resp.json();
-        if (!resp.ok || !data.ok) {
-          errEl.textContent = data.error || '注册失败';
-          return;
-        }
-        saveAuth(data.token, data.user);
-        showAppContent();
-        document.getElementById('registerOverlay').style.display = 'none';
-        if (data.partner_initial_password) {
-          alert('伴侣账号初始密码: ' + data.partner_initial_password + '\n请告知伴侣尽快修改密码。');
-        }
-        initAfterLogin();
-      } catch(e) {
-        errEl.textContent = '网络错误';
-      }
     }
 
     // AU15: 退出登录
@@ -4149,12 +4089,7 @@
       document.getElementById('loginPass').value = '';
     }
 
-    function showRegisterModal(e) { e.preventDefault();
-      document.getElementById('loginOverlay').style.display = 'none';
-      document.getElementById('registerOverlay').style.display = 'flex';
-    }
     function showLoginOnly() {
-      document.getElementById('registerOverlay').style.display = 'none';
       document.getElementById('loginOverlay').style.display = 'flex';
     }
 
@@ -4166,17 +4101,6 @@
       document.getElementById('userMenu').style.display = 'none';
     });
 
-    async function generateInviteCode() {
-      try {
-        const resp = await authFetch('/v1/api/auth/invites', { method: 'POST' });
-        const data = await resp.json();
-        if (data.ok) {
-          prompt('复制邀请码发给伴侣（一次性使用）：', data.invite_code);
-        } else {
-          alert(data.error || '生成失败');
-        }
-      } catch(e) { alert('网络错误'); }
-    }
 
     // AU13: 初始化后加载用户信息
     async function initAfterLogin() {
@@ -6971,34 +6895,36 @@
         const data = await resp.json();
         dashboardCards = data.cards || [];
         renderDashboardGrid();
-        updateCommandHint();
         setupCommandBarDragDrop();
         setupCmdTagSync();
-        // 加载已实现卡片内容
-        const newsCard = document.querySelector('[data-card-id="news"]');
-        if (newsCard) loadNewsCard(newsCard);
-        const todoCard = document.querySelector('[data-card-id="todo"]');
-        if (todoCard) loadTodoCard(todoCard);
-        const dataCard = document.querySelector('[data-card-id="data"]');
-        if (dataCard) loadDataCard(dataCard);
-        const recipeCard = document.querySelector('[data-card-id="recipe"]');
-        if (recipeCard) loadRecipeCard(recipeCard);
-        const wishesCard = document.querySelector('[data-card-id="wishes"]');
-        if (wishesCard) loadWishesCard(wishesCard);
-        const notesCard = document.querySelector('[data-card-id="notes"]');
-        if (notesCard) loadNotesCard(notesCard);
-        const bookmarksCard = document.querySelector('[data-card-id="bookmarks"]');
-        if (bookmarksCard) loadBookmarksCard(bookmarksCard);
-        const photosCard = document.querySelector('[data-card-id="photos"]');
-        if (photosCard) loadPhotosCard(photosCard);
-        const sharesCard = document.querySelector('[data-card-id="shares"]');
-        if (sharesCard) loadSharesCard(sharesCard);
-        const remindersCard = document.querySelector('[data-card-id="reminders"]');
-        if (remindersCard) loadRemindersCard(remindersCard);
-        const habitsCard = document.querySelector('[data-card-id="habits"]');
-        if (habitsCard) loadHabitsCard(habitsCard);
-        const summaryCard = document.querySelector('[data-card-id="summary"]');
-        if (summaryCard) loadSummaryCard(summaryCard);
+
+        // 从 display.json 更新所有卡片摘要（覆盖硬编码默认值）
+        try {
+          var displayResp = await fetch('/v1/api/daily/cards/display', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (displayResp.ok) {
+            var displayData = await displayResp.json();
+            var cards = displayData.cards || {};
+            for (var cardId in cards) {
+              var cardEl = document.querySelector('[data-card-id="' + cardId + '"]');
+              var summaryEl = cardEl ? cardEl.querySelector('.card-summary') : null;
+              if (summaryEl && cards[cardId].summary) {
+                summaryEl.textContent = cards[cardId].summary;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('加载卡片 display 失败:', e);
+        }
+
+        // 加载所有卡片（统一使用 display.json sections 渲染）
+        var allCardIds = ['news','todo','data','recipe','wishes','notes','bookmarks','photos','shares','reminders','habits','summary'];
+        for (var ai = 0; ai < allCardIds.length; ai++) {
+          var cid = allCardIds[ai];
+          var cel = document.querySelector('[data-card-id="' + cid + '"]');
+          if (cel) loadGenericCard(cel, cid);
+        }
         dashboardLoaded = true;
       } catch (e) {
         console.error('加载 Dashboard 失败:', e);
@@ -7162,88 +7088,6 @@
       if (e.target.id === 'addCardModal') closeAddCardModal();
     });
 
-    /* ===== 底部指令输入 (DF7) ===== */
-
-    /** 发送指令到 /v1/api/daily/command */
-    async function sendCommand() {
-      const input = document.getElementById('cmdInput');
-      const sendBtn = document.getElementById('cmdSend');
-      const text = input.value.trim();
-      if (!text) return;
-
-      const token = document.getElementById('token').value;
-      if (!token) {
-        showCommandToast('⚠️ 请先连接 API Token', 'error');
-        return;
-      }
-
-      input.disabled = true;
-      sendBtn.disabled = true;
-      sendBtn.textContent = '⏳';
-
-      try {
-        const resp = await fetch('/v1/api/daily/command', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-          },
-          body: JSON.stringify({ text })
-        });
-        const data = await resp.json();
-
-        if (data.ok) {
-          if (data.prefix) {
-            // 指令匹配成功
-            const msg = data.message || ('指令 ' + data.prefix + ' 已处理');
-            showCommandToast('✅ ' + msg, 'success');
-            // 如果涉及 todo 变更，重新加载面板
-            if (data.prefix === '@todo' || data.prefix === '@done') {
-              loadDashboard();
-            }
-          } else if (data.type === 'chat') {
-            // 自然语言回退 - 创建 Daily 会话 → 切 Chat Tab → 流式发送
-            if (data.session_id) {
-              // 1. 切到聊天 Tab 并加载会话（卡片系统消息 + 用户消息已保存）
-              if (typeof selectConversation === 'function') {
-                await selectConversation(data.session_id);
-                // 刷新侧边栏会话列表
-                if (typeof loadConversations === 'function') {
-                  setTimeout(function() { loadConversations(); }, 500);
-                }
-                // 2. 流式发送：直接调用 _doSendMessage
-                setTimeout(function() {
-                  if (typeof _doSendMessage === 'function') {
-                    _doSendMessage(text, []).then(function() {
-                      // 回复完成后继续处理队列
-                      processQueue();
-                    }).catch(function(e) {
-                      console.error('Daily send error:', e);
-                      processQueue();
-                    });
-                  }
-                }, 300);
-              } else {
-                showCommandToast('✅ 已创建 Daily 对话', 'success');
-              }
-            } else {
-              showCommandToast(data.content || '无回复', 'info');
-            }
-          }
-        } else {
-          showCommandToast('⚠️ ' + (data.error || '请求失败'), 'error');
-        }
-      } catch (e) {
-        console.error('发送指令失败:', e);
-        showCommandToast('⚠️ 网络错误，请重试', 'error');
-      } finally {
-        input.disabled = false;
-        sendBtn.disabled = false;
-        sendBtn.textContent = '发送';
-        input.value = '';
-        input.focus();
-      }
-    }
 
     /** 显示 Toast 通知 */
     function showCommandToast(msg, type) {
@@ -7283,13 +7127,6 @@
         if (toast.parentNode) toast.remove();
       }, 200);
     }
-
-    /** 加载面板时更新命令提示 */
-    function updateCommandHint() {
-      const hint = document.getElementById('cmdHint');
-      // 从配置中读取前缀列表，默认显示已知前缀
-      const knownPrefixes = ['@todo', '@done', '@data', '@news', '@recipe', '@schedule', '@wish', '@sum'];
-      hint.textContent = knownPrefixes.join(' ');
     }
 
     /* ===== DF9: 拖拽上传区域 ===== */
@@ -7596,34 +7433,8 @@
     /* ===== DF12: NewsCard 缩略模式 ===== */
     let cachedNewsData = null;
 
-    async function loadNewsCard(cardEl) {
-      if (!cardEl) return;
-      const summary = cardEl.querySelector('.card-summary');
-      const body = cardEl.querySelector('.card-body');
-      if (!body) return;
-
-      const token = document.getElementById('token').value;
-      if (!token) {
-        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
-        body.innerHTML = '<div class="card-body-placeholder">⚠️ 请先连接 API Token</div>';
-        return;
-      }
-
-      try {
-        if (!cachedNewsData) {
-          const resp = await fetch('/v1/api/daily/news', {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          cachedNewsData = await resp.json();
-        }
-
-        renderNewsCardCollapsed(summary, body, cachedNewsData);
-      } catch (e) {
-        console.error('加载新闻失败:', e);
-        body.innerHTML = '<div class="card-body-placeholder">⚠️ 新闻加载失败</div>';
-      }
-    }
+    async function loadNewsCard(cardEl) {    // 改用 loadGenericCard 统一渲染
+    await loadGenericCard(cardEl, "news");}
 
     /** DF15: 手动刷新新闻 */
     async function refreshNewsCard() {
@@ -7642,7 +7453,7 @@
       }
 
       try {
-        const resp = await fetch('/v1/api/daily/news/refresh', {
+        const resp = await fetch('/v1/api/daily/cards/display/news/refresh', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token }
         });
@@ -7652,7 +7463,7 @@
           // 清除缓存并重新加载
           cachedNewsData = null;
           const newsCard = document.querySelector('[data-card-id="news"]');
-          if (newsCard) await loadNewsCard(newsCard);
+          var nc = document.querySelector('[data-card-id="news"]'); if (nc) await loadGenericCard(nc, 'news');
           showCommandToast('✅ 新闻已刷新 (' + (result.count || 0) + ' 条)', 'success');
         } else {
           showCommandToast('⚠️ ' + (result.error || '刷新失败'), 'error');
@@ -7669,71 +7480,6 @@
       }
     }
 
-
-    function renderNewsCardCollapsed(summaryEl, bodyEl, data) {
-      if (!data || !data.articles || !data.articles.length) {
-        if (summaryEl) summaryEl.textContent = '📰 暂无新闻数据';
-        bodyEl.innerHTML = '<div class="card-body-placeholder">📰 暂无新闻数据</div>';
-        return;
-      }
-
-      const articles = data.articles;
-      const latest = articles.slice(0, 3);
-      const dateStr = data.date || new Date().toISOString().slice(0, 10);
-
-      // 缩略模式：显示在 card-summary 中
-      let collapsedHtml = '<div class="news-collapsed">';
-      collapsedHtml += '<div class="news-toolbar">';
-      collapsedHtml += '<div class="news-date">📅 ' + dateStr + '</div>';
-      collapsedHtml += '<button class="news-refresh-btn" id="newsRefreshBtn" onclick="refreshNewsCard(); event.stopPropagation();" title="刷新新闻">🔄 刷新</button>';
-      collapsedHtml += '</div>';
-      collapsedHtml += '<div class="news-summary">共 ' + articles.length + ' 条新闻</div>';
-      collapsedHtml += '<ul class="news-title-list">';
-      for (const a of latest) {
-        const title = a.title || '(无标题)';
-        collapsedHtml += '<li class="news-title-item" title="' + escapeHtmlAttr(title) + '">· ' + escapeHtml(title) + '</li>';
-      }
-      collapsedHtml += '</ul>';
-      collapsedHtml += '</div>';
-
-      if (summaryEl) summaryEl.innerHTML = collapsedHtml;
-
-      // 展开模式：按分类分组显示
-      renderNewsCardExpanded(bodyEl, data);
-    }
-
-
-    function renderNewsCardExpanded(bodyEl, data) {
-      if (!data || !data.articles || !data.articles.length) {
-        bodyEl.innerHTML = '<div class="card-body-placeholder">📰 暂无新闻数据</div>';
-        return;
-      }
-
-      const articles = data.articles;
-      // 按 category 分组
-      const groups = {};
-      for (const a of articles) {
-        const cat = a.category || '未分类';
-        if (!groups[cat]) groups[cat] = [];
-        groups[cat].push(a);
-      }
-
-      const categories = Object.keys(groups).sort();
-      let html = '<div class="news-expanded">';
-      for (const cat of categories) {
-        html += '<div class="news-category-group">';
-        html += '<div class="news-category-title">📌 ' + escapeHtml(cat) + '（' + groups[cat].length + '）</div>';
-        for (const a of groups[cat]) {
-          const title = escapeHtml(a.title || '(无标题)');
-          const source = a.source ? '<span class="news-article-source">' + escapeHtml(a.source) + '</span>' : '';
-          const dataStr = JSON.stringify(a).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-          html += '<div class="news-article-item" onclick="showNewsDetail(JSON.parse(decodeURIComponent(\'' + encodeURIComponent(JSON.stringify(a)) + '\')))" title="点击查看详情">' + title + source + '</div>';
-        }
-        html += '</div>';
-      }
-      html += '</div>';
-      bodyEl.innerHTML = html;
-    }
 
     function showNewsDetail(article) {
       // 移除已有弹窗
@@ -7781,7 +7527,130 @@
     /* ===== DF16: TodoCard ===== */
     let cachedTodoData = null;
 
-    async function loadTodoCard(cardEl) {
+      /**
+   * 通用卡片加载：fetch display.json → 渲染 collapsed（summary）+ expanded（sections）
+   * 卡片喵只需改 display.json / generate-display.py，前端不用动。
+   */
+  async function loadGenericCard(cardEl, cardId) {
+    var tokenEl = document.getElementById('token');
+    if (!tokenEl) return;
+    var token = tokenEl.value;
+    var summaryEl = cardEl.querySelector('.card-summary');
+    var bodyEl = cardEl.querySelector('.card-body');
+
+    try {
+      var resp = await fetch('/v1/api/daily/cards/display/' + cardId, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var data = await resp.json();
+      var display = data.display || {};
+
+      // 折叠态：显示 summary
+      if (summaryEl && display.summary) {
+        summaryEl.textContent = display.summary;
+      }
+
+      // 展开态：显示 sections
+      if (bodyEl) {
+        renderCardBody(bodyEl, cardId, display);
+      }
+    } catch (e) {
+      console.error('加载卡片 ' + cardId + ' 失败:', e);
+      if (bodyEl) bodyEl.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>';
+    }
+  }
+
+  /**
+   * 通用卡片展开渲染器：遍历 display.sections 数组
+   * 支持类型：table / text / key-value / grid / list
+   * sections 在 display.json 中定义，卡片喵通过 generate-display.py 控制
+   */
+  function renderCardBody(bodyEl, cardId, display) {
+    var sections = display.sections;
+    var html = '<div class="card-expanded">';
+
+    // 无 sections → 显示纯文本 summary
+    if (!sections || !sections.length) {
+      html += '<div class="card-body-placeholder">' + escapeHtml(display.summary || '暂无数据') + '</div>';
+      html += '</div>';
+      bodyEl.innerHTML = html;
+      return;
+    }
+
+    for (var i = 0; i < sections.length; i++) {
+      var sec = sections[i];
+      html += '<div class="recipe-section">';
+      if (sec.title) html += '<b>' + escapeHtml(sec.title) + '</b>';
+
+      switch (sec.type) {
+        case 'table':
+          html += '<table class="recipe-detail-table">';
+          var rows = sec.rows || [];
+          for (var ri = 0; ri < rows.length; ri++) {
+            var row = rows[ri];
+            html += '<tr>';
+            var cells = row.cells || [];
+            for (var ci = 0; ci < cells.length; ci++) {
+              var cell = cells[ci];
+              html += '<td' + (cell.style ? ' style="' + cell.style + '"' : '') + '>' + escapeHtml(cell.text || '') + '</td>';
+            }
+            html += '</tr>';
+          }
+          html += '</table>';
+          if (sec.footer && sec.footer.text) {
+            html += '<div style="color:var(--text-secondary);font-size:12px;padding-top:4px">' + escapeHtml(sec.footer.text) + '</div>';
+          }
+          break;
+
+        case 'text':
+          html += '<div style="padding:4px 0">' + escapeHtml(sec.text || '') + '</div>';
+          break;
+
+        case 'kv':
+          // key-value 对
+          html += '<table class="recipe-detail-table">';
+          var kv = sec.pairs || [];
+          for (var ki = 0; ki < kv.length; ki++) {
+            html += '<tr><td style="color:var(--text-secondary);width:80px">' + escapeHtml(kv[ki].key || '') + '</td><td>' + escapeHtml(kv[ki].value || '') + '</td></tr>';
+          }
+          html += '</table>';
+          break;
+
+        case 'grid':
+          // 网格（照片、收藏夹等）
+          html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+          var items = sec.items || [];
+          for (var gi = 0; gi < items.length; gi++) {
+            var item = items[gi];
+            if (item.img) {
+              html += '<div style="flex:0 0 calc(33.33% - 6px);text-align:center">';
+              html += '<img src="' + escapeHtml(item.img) + '" style="width:100%;height:80px;object-fit:cover;border-radius:6px" loading="lazy">';
+              if (item.label) html += '<div style="font-size:11px;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(item.label) + '</div>';
+              html += '</div>';
+            }
+          }
+          html += '</div>';
+          break;
+
+        case 'list':
+          html += '<ul style="margin:4px 0;padding-left:18px">';
+          var li = sec.items || [];
+          for (var lii = 0; lii < li.length; lii++) {
+            html += '<li style="padding:2px 0">' + escapeHtml(li[lii].text || li[lii] || '') + '</li>';
+          }
+          html += '</ul>';
+          break;
+      }
+
+      html += '</div>';
+    }
+
+    html += '</div>';
+    bodyEl.innerHTML = html;
+  }
+
+async function loadTodoCard(cardEl) {
       if (!cardEl) return;
       const summary = cardEl.querySelector('.card-summary');
       const body = cardEl.querySelector('.card-body');
@@ -7795,11 +7664,21 @@
 
       try {
         if (!cachedTodoData) {
-          const resp = await fetch('/v1/api/daily/todos/summary', {
+          const resp = await fetch('/v1/api/daily/cards/display/todo', {
             headers: { 'Authorization': 'Bearer ' + token }
           });
           if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          cachedTodoData = await resp.json();
+          var display = (await resp.json()).display || {};
+        var items = display.active || [];
+        var persons = {"我": items};
+        cachedTodoData = {
+          persons: persons,
+          total_done: display.done_count || 0,
+          total_pending: items.length || 0,
+          week_total: display.total || 0,
+          week_done: display.done_count || 0
+        };
+        // cachedTodoData = await resp.json(); // old
         }
 
         renderTodoCardCollapsed(summary, body, cachedTodoData);
@@ -8095,68 +7974,8 @@
     const KNOWN_PERSONS_DATA = ["管理员", "伴侣"];
 
     async function loadDataCard(cardEl) {
-      if (!cardEl) return;
-      const summary = cardEl.querySelector('.card-summary');
-      const body = cardEl.querySelector('.card-body');
-      if (!body) return;
-
-      const token = document.getElementById('token').value;
-      if (!token) {
-        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
-        return;
-      }
-
-      try {
-        if (!cachedDataSummary) {
-          const today = new Date().toISOString().slice(0, 10);
-          const results = {};
-          for (const person of KNOWN_PERSONS_DATA) {
-            const resp = await fetch('/v1/api/daily/data/' + encodeURIComponent(person) + '?date=' + today, {
-              headers: { 'Authorization': 'Bearer ' + token }
-            });
-            if (resp.ok) {
-              const d = await resp.json();
-              results[person] = d;
-            }
-          }
-          cachedDataSummary = { date: today, persons: results };
-        }
-
-        renderDataCardCollapsed(summary, body, cachedDataSummary);
-      } catch (e) {
-        console.error('加载 Data 失败:', e);
-        body.innerHTML = '<div class="card-body-placeholder">⚠️ 数据加载失败</div>';
-      }
-    }
-
-    function renderDataCardCollapsed(summaryEl, bodyEl, data) {
-      if (!data || !data.persons || !Object.keys(data.persons).length) {
-        if (summaryEl) summaryEl.textContent = '📊 暂无数据';
-        bodyEl.innerHTML = '<div class="card-body-placeholder">📊 暂无数据</div>';
-        return;
-      }
-
-      // 统计每人今天的数据条目数
-      let html = '<div class="data-collapsed">';
-      for (const [name, d] of Object.entries(data.persons)) {
-        let updateCount = 0;
-        if (d && d.ok) {
-          for (const field of ['weight', 'water', 'sleep', 'exercise', 'journal', 'fitness', 'finance']) {
-            if (d[field] && Array.isArray(d[field]) && d[field].length) updateCount += d[field].length;
-          }
-        }
-        html += '<div class="data-person-row">';
-        html += '<span class="data-person-name">👤 ' + escapeHtml(name) + '</span>';
-        html += '<span class="data-person-info">今天更新 ' + updateCount + ' 项</span>';
-        html += '</div>';
-      }
-      html += '<div class="data-expand-hint" onclick="toggleCard(\'data\', event)">展开查看详情 ▼</div>';
-      html += '</div>';
-
-      if (summaryEl) summaryEl.innerHTML = html;
-      // 展开模式
-      renderDataCardExpanded(bodyEl, data);
-    }
+    await loadGenericCard(cardEl, "data");
+  }
 
 
     /** DF21: DataCard 展开模式 */
@@ -8172,56 +7991,13 @@
       { key: 'finance',    icon: '💰', label: '财务', unit: '¥' }
     ];
 
-    function renderDataCardExpanded(bodyEl, data) {
-      const persons = Object.keys(data.persons || {});
-      if (!persons.length) {
-        bodyEl.innerHTML = '<div class="card-body-placeholder">📊 暂无数据</div>';
-        return;
-      }
-      if (!persons.includes(dataActivePerson)) dataActivePerson = persons[0];
-
-      let html = '<div class="data-expanded">';
-
-      // Person tabs
-      html += '<div class="data-tabs">';
-      for (const p of persons) {
-        const active = p === dataActivePerson ? ' active' : '';
-        html += '<button class="data-tab' + active + '" onclick="switchDataPerson(\'' + escapeHtml(p) + '\')">👤 ' + escapeHtml(p) + '</button>';
-      }
-      html += '</div>';
-
-      // Field list
-      const personData = data.persons[dataActivePerson] || {};
-      for (const field of DATA_FIELDS_META) {
-        const fieldData = personData[field.key] || [];
-        let value = '—';
-        if (fieldData.length > 0) {
-          const entry = fieldData[fieldData.length - 1];
-          if (field.key === 'weight') value = (entry.value != null ? entry.value : '—');
-          else if (field.key === 'water') value = (entry.cups != null ? entry.cups : '—');
-          else if (field.key === 'sleep') value = (entry.hours != null ? entry.hours : '—');
-          else if (field.key === 'exercise') value = (entry.duration != null ? entry.duration + 'min ' + (entry.calories || '') : '—');
-          else if (field.key === 'fitness') value = (entry.duration || entry.calories || '—');
-          else value = (entry.value != null ? entry.value : (entry.text || '—'));
-        }
-        html += '<div class="data-field-item">';
-        html += '<span class="data-field-icon">' + field.icon + '</span>';
-        html += '<span class="data-field-label">' + field.label + '</span>';
-        html += '<span class="data-field-value" onclick="editDataField(\'' + field.key + '\', this)" data-key="' + field.key + '">' + escapeHtml(String(value)) + '</span>';
-        html += '<span class="data-field-unit">' + field.unit + '</span>';
-        html += '</div>';
-      }
-
-      html += '</div>';
-      bodyEl.innerHTML = html;
-    }
 
     function switchDataPerson(person) {
       dataActivePerson = person;
       const card = document.querySelector('[data-card-id="data"]');
       if (card && cachedDataSummary) {
         const body = card.querySelector('.card-body');
-        if (body) renderDataCardExpanded(body, cachedDataSummary);
+        if (card) loadGenericCard(card, 'data');
       }
     }
 
@@ -8292,11 +8068,7 @@
           cachedDataSummary = null;
           const card = document.querySelector('[data-card-id="data"]');
           if (card) {
-            await loadDataCard(card);
-            const bodyEl = card.querySelector('.card-body');
-            if (bodyEl && card.classList.contains('expanded')) {
-              renderDataCardExpanded(bodyEl, cachedDataSummary);
-            }
+            await loadGenericCard(card, 'data');
           }
           showCommandToast('✅ ' + (field ? field.label : fieldKey) + ' 已更新', 'success');
         } else {
@@ -8312,143 +8084,9 @@
     /* ===== DF23: RecipeCard ===== */
     let cachedRecipeData = null;
 
-    async function loadRecipeCard(cardEl) {
-      if (!cardEl) return;
-      const summary = cardEl.querySelector('.card-summary');
-      const body = cardEl.querySelector('.card-body');
-      if (!body) return;
+    async function loadRecipeCard(cardEl) {    await loadGenericCard(cardEl, "recipe");}
 
-      const token = document.getElementById('token').value;
-      if (!token) {
-        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
-        return;
-      }
-
-      try {
-        if (!cachedRecipeData) {
-          const resp = await fetch('/v1/api/daily/recipe/today', {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          cachedRecipeData = await resp.json();
-        }
-
-        renderRecipeCardCollapsed(summary, body, cachedRecipeData);
-      } catch (e) {
-        console.error('加载食谱失败:', e);
-        body.innerHTML = '<div class="card-body-placeholder">⚠️ 食谱加载失败</div>';
-      }
-    }
-
-    function renderRecipeCardCollapsed(summaryEl, bodyEl, data) {
-      if (!data || !data.hasRecipe) {
-        if (summaryEl) summaryEl.innerHTML = '<div class="recipe-collapsed"><div class="recipe-empty">📋 今日食谱未设置</div></div>';
-        bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
-        return;
-      }
-
-      const dayName = data.dayName || '';
-      const recipe = data.recipe || {};
-      const meals = [];
-      if (recipe.breakfast) meals.push({ icon: '🌅', label: '早餐', text: recipe.breakfast });
-      if (recipe.lunch) meals.push({ icon: '☀️', label: '午餐', text: recipe.lunch });
-      if (recipe.dinner) meals.push({ icon: '🌙', label: '晚餐', text: recipe.dinner });
-
-      let html = '<div class="recipe-collapsed">';
-      html += '<div class="recipe-day">📅 ' + escapeHtml(dayName) + '</div>';
-      if (!meals.length) {
-        html += '<div class="recipe-empty">📋 今日食谱未设置</div>';
-      } else {
-        for (const m of meals) {
-          html += '<div class="recipe-meal"><span class="recipe-meal-icon">' + m.icon + '</span><strong>' + m.label + ':</strong> ' + escapeHtml(m.text) + '</div>';
-        }
-      }
-      html += '<div class="recipe-expand-hint" onclick="toggleCard(\'recipe\', event)">展开查看整周食谱 ▼</div>';
-      html += '</div>';
-
-      if (summaryEl) summaryEl.innerHTML = html;
-      // DF24: 展开 -> 整周表格
-      renderRecipeCardExpanded(bodyEl, data);
-    }
-
-
-    /** DF24: RecipeCard 展开模式 */
-    async function renderRecipeCardExpanded(bodyEl, todayData) {
-      const token = document.getElementById('token').value;
-      if (!token) return;
-
-      try {
-        const resp = await fetch('/v1/api/daily/recipe/week', {
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const weekData = await resp.json();
-
-        let html = '<div class="recipe-expanded">';
-
-        // Upload button bar
-        html += '<div class="recipe-upload-bar">';
-        html += '<button class="recipe-upload-btn" onclick="showRecipeUpload()">📋 上传食谱</button>';
-        html += '</div>';
-
-        // Week table
-        html += '<table class="recipe-table">';
-        html += '<thead><tr><th></th><th>午餐</th><th>晚餐</th></tr></thead>';
-        html += '<tbody>';
-
-        const days = weekData.days || {};
-        for (let d = 1; d <= 7; d++) {
-          const day = days[String(d)] || {};
-          const dayName = day.dayName || '';
-          const lunch = day.lunch || '';
-          const dinner = day.dinner || '';
-          const today = todayData && todayData.day === d;
-
-          html += '<tr' + (today ? ' style="background:var(--bg-hover)"' : '') + '>';
-          html += '<td class="recipe-day-name">' + (today ? '🔸 ' : '') + escapeHtml(dayName) + '</td>';
-          html += '<td' + (lunch ? '' : ' class="recipe-empty-cell"') + '>' + (lunch ? escapeHtml(lunch) : '—') + '</td>';
-          html += '<td' + (dinner ? '' : ' class="recipe-empty-cell"') + '>' + (dinner ? escapeHtml(dinner) : '—') + '</td>';
-          html += '</tr>';
-        }
-
-        html += '</tbody></table>';
-        html += '</div>';
-        bodyEl.innerHTML = html;
-      } catch (e) {
-        console.error('加载整周食谱失败:', e);
-        bodyEl.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>';
-      }
-    }
-
-    /** DF24: 食谱上传弹窗 */
-    function showRecipeUpload() {
-      const existing = document.getElementById('recipeUploadOverlay');
-      if (existing) existing.remove();
-
-      const overlay = document.createElement('div');
-      overlay.className = 'recipe-upload-overlay';
-      overlay.id = 'recipeUploadOverlay';
-      overlay.onclick = function(e) { if (e.target === overlay) closeRecipeUpload(); };
-
-      overlay.innerHTML =
-        '<div class="recipe-upload-dialog">' +
-          '<h3>📋 上传食谱</h3>' +
-          '<textarea id="recipeUploadText" placeholder="粘贴食谱文本...&#10;格式：周一 午餐:沙拉 晚餐:鱼&#10;周二 午餐:炒面 晚餐:汤"></textarea>' +
-          '<div class="recipe-upload-hint">格式: 周一 午餐:xxx 晚餐:xxx（每行一天）</div>' +
-          '<div class="recipe-upload-actions">' +
-            '<button class="btn-cancel" onclick="closeRecipeUpload()">取消</button>' +
-            '<button class="btn-upload" onclick="uploadRecipe()">上传</button>' +
-          '</div>' +
-        '</div>';
-
-      document.body.appendChild(overlay);
-      const ta = document.getElementById('recipeUploadText');
-      if (ta) ta.focus();
-    }
-
-    function closeRecipeUpload() {
-      const overlay = document.getElementById('recipeUploadOverlay');
-      if (overlay) overlay.remove();
-    }
+    // 通用 display 渲染：遍历 display.sections，卡片喵加栏目不用动前端
 
     async function uploadRecipe() {
       const ta = document.getElementById('recipeUploadText');
@@ -8501,121 +8139,20 @@
     };
 
     async function loadWishesCard(cardEl) {
-      if (!cardEl) return;
-      const summary = cardEl.querySelector('.card-summary');
-      const body = cardEl.querySelector('.card-body');
-      if (!body) return;
-
-      const token = document.getElementById('token').value;
-      if (!token) {
-        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
-        return;
-      }
-
-      try {
-        if (!cachedWishesData) {
-          const resp = await fetch('/v1/api/daily/wishes', {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          cachedWishesData = await resp.json();
-        }
-
-        renderWishesCardCollapsed(summary, body, cachedWishesData);
-      } catch (e) {
-        console.error('加载心愿失败:', e);
-        body.innerHTML = '<div class="card-body-placeholder">⚠️ 心愿加载失败</div>';
-      }
-    }
-
-    function renderWishesCardCollapsed(summaryEl, bodyEl, data) {
-      const wishes = data && data.wishes ? data.wishes : [];
-      const total = data && data.total != null ? data.total : wishes.length;
-
-      if (!total) {
-        if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">💡 暂无心愿</div></div>';
-        bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
-        return;
-      }
-
-      // 统计各状态数量
-      const statusCounts = {};
-      for (const w of wishes) {
-        const s = w.status || 'idea';
-        statusCounts[s] = (statusCounts[s] || 0) + 1;
-      }
-
-      let html = '<div class="wishes-collapsed">';
-      html += '<div class="wishes-total">💡 共 <strong>' + total + '</strong> 个心愿</div>';
-      html += '<div class="wishes-status-list">';
-
-      const order = ['idea', 'discussing', 'designing', 'implementing', 'done', 'archived'];
-      for (const status of order) {
-        if (statusCounts[status]) {
-          const label = WISH_STATUS_LABELS[status] || status;
-          html += '<span class="wishes-status-tag">' + label + ' <span class="count">' + statusCounts[status] + '</span></span>';
-        }
-      }
-      html += '</div>';
-      html += '<div class="wishes-expand-hint" onclick="toggleCard(\'wishes\', event)">展开查看详情 ▼</div>';
-      html += '</div>';
-
-      if (summaryEl) summaryEl.innerHTML = html;
-      // DF26: 展开 → 列表 + 筛选
-      renderWishesCardExpanded(bodyEl, data);
-    }
+    await loadGenericCard(cardEl, "wishes");
+  }
 
 
     /** DF26: WishesCard 展开模式 */
     let wishesActiveFilter = 'all';
 
-    function renderWishesCardExpanded(bodyEl, data) {
-      const wishes = data && data.wishes ? data.wishes : [];
-      const total = data && data.total != null ? data.total : wishes.length;
-
-      let html = '<div class="wishes-expanded">';
-
-      // Filter tabs
-      html += '<div class="wishes-filter-tabs">';
-      html += '<button class="wishes-filter-tab' + (wishesActiveFilter === 'all' ? ' active' : '') + '" onclick="switchWishesFilter(\'all\')">全部 (' + total + ')</button>';
-      for (const status of ['idea', 'discussing', 'designing', 'implementing', 'done', 'archived']) {
-        const count = wishes.filter(function(w) { return w.status === status; }).length;
-        if (count > 0) {
-          const label = WISH_STATUS_LABELS[status] || status;
-          html += '<button class="wishes-filter-tab' + (wishesActiveFilter === status ? ' active' : '') + '" onclick="switchWishesFilter(\'' + status + '\')">' + label + ' (' + count + ')</button>';
-        }
-      }
-      html += '</div>';
-
-      // Wishes list
-      const filtered = wishesActiveFilter === 'all' ? wishes : wishes.filter(function(w) { return w.status === wishesActiveFilter; });
-      if (!filtered.length) {
-        html += '<div class="wishes-item-empty">' + (wishesActiveFilter === 'all' ? '💡 暂无心愿' : '该状态暂无') + '</div>';
-      } else {
-        for (const w of filtered) {
-          const statusLabel = (WISH_STATUS_LABELS[w.status] || w.status).replace(/^[^ ]+ /, '');
-          const tags = (w.tags || []).map(t => '<span style="color:var(--text-secondary);font-size:10px;">#' + escapeHtml(t) + '</span>').join(' ');
-          const dataEnc = encodeURIComponent(JSON.stringify(w));
-          html += '<div class="wishes-item" onclick="showWishDetail(decodeURIComponent(\'' + dataEnc + '\'))" title="查看详情">';
-          html += '<div class="wishes-item-title">' + escapeHtml(w.text) + '</div>';
-          html += '<div class="wishes-item-meta">';
-          html += '<span class="wishes-status-badge ' + w.status + '">' + statusLabel + '</span>';
-          html += tags;
-          html += '</div>';
-          html += '</div>';
-        }
-      }
-
-      html += '</div>';
-      bodyEl.innerHTML = html;
-    }
 
     function switchWishesFilter(status) {
       wishesActiveFilter = status;
       const card = document.querySelector('[data-card-id="wishes"]');
       if (card && cachedWishesData) {
         const body = card.querySelector('.card-body');
-        if (body) renderWishesCardExpanded(body, cachedWishesData);
+        if (card) loadGenericCard(card, 'wishes');
       }
     }
 
@@ -8667,67 +8204,8 @@
     /* ===== H1-H4: 习惯打卡 Habits Card ===== */
     let cachedHabitsData = null;
 
-    async function loadHabitsCard(cardEl) {
-      if (!cardEl) return;
-      const summary = cardEl.querySelector('.card-summary');
-      const body = cardEl.querySelector('.card-body');
-      if (!body) return;
-      const token = document.getElementById('token').value;
-      if (!token) { if (summary) summary.textContent = '⚠️ 请先连接 API Token'; return; }
-      try {
-        if (!cachedHabitsData) {
-          const resp = await fetch('/v1/api/daily/habits', { headers: { 'Authorization': 'Bearer ' + token }});
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          cachedHabitsData = await resp.json();
-        }
-        renderHabitsCardCollapsed(summary, body, cachedHabitsData);
-        renderHabitsCardExpanded(body, cachedHabitsData);
-      } catch(e) { body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>'; }
-    }
+    async function loadHabitsCard(cardEl) {    await loadGenericCard(cardEl, "habits");}
 
-    function renderHabitsCardCollapsed(summaryEl, bodyEl, data) {
-      const habits = data && data.habits ? data.habits : [];
-      const total = data && data.total != null ? data.total : habits.length;
-      const done = habits.filter(function(h){return h.doneToday;}).length;
-      if (!total) { if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">✅ 暂无习惯</div></div>'; return; }
-      let html = '<div class="wishes-collapsed">';
-      const pct = Math.round(done / total * 100);
-      html += '<div class="wishes-total">✅ <strong>' + done + '/' + total + '</strong> 已完成 · ' + pct + '%</div>';
-      html += '<div class="wishes-status-list" style="flex-direction:column;align-items:stretch;">';
-      for (const h of habits.slice(0, 3)) {
-        const icon = h.doneToday ? '✅' : '⬜';
-        const streak = h.streak > 0 ? ' 🔥' + h.streak : '';
-        html += '<div style="font-size:12px;color:' + (h.doneToday ? 'var(--text-tertiary)' : 'var(--text-primary)') + ';padding:2px 0;">' + icon + ' ' + escapeHtml(h.text||'') + streak + '</div>';
-      }
-      html += '</div><div class="wishes-expand-hint" onclick="toggleCard(\'habits\',event)">展开查看 ▼</div></div>';
-      if (summaryEl) summaryEl.innerHTML = html;
-    }
-
-    function renderHabitsCardExpanded(bodyEl, data) {
-      const habits = data && data.habits ? data.habits : [];
-      let html = '<div>';
-      // New habit input
-      html += '<div style="display:flex;gap:4px;margin-bottom:10px;">';
-      html += '<input type="text" id="habitTextInput" placeholder="新习惯..." style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);">';
-      html += '<button onclick="addHabit()" style="padding:6px 10px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">+</button>';
-      html += '</div>';
-
-      if (!habits.length) {
-        html += '<div style="text-align:center;color:var(--text-secondary);padding:12px;">添加习惯开始打卡吧！</div>';
-      } else {
-        for (const h of habits) {
-          const streak = h.streak || 0;
-          html += '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center;">';
-          html += '<span onclick="toggleHabit(' + h.id + ')" style="cursor:pointer;font-size:18px;flex-shrink:0;">' + (h.doneToday ? '✅' : '⬜') + '</span>';
-          html += '<div style="flex:1;min-width:0;font-size:13px;color:' + (h.doneToday ? 'var(--text-tertiary)' : 'var(--text-primary)') + ';">' + escapeHtml(h.text||'') + '</div>';
-          html += '<span style="font-size:11px;color:var(--accent);flex-shrink:0;">' + (streak > 0 ? '🔥' + streak + '天' : '') + '</span>';
-          html += '<span onclick="deleteHabit(' + h.id + ')" style="font-size:11px;color:var(--text-tertiary);cursor:pointer;">✕</span>';
-          html += '</div>';
-        }
-      }
-      html += '</div>';
-      bodyEl.innerHTML = html;
-    }
 
     async function toggleHabit(id) {
       const token = document.getElementById('token').value;
@@ -8767,74 +8245,8 @@
     const REPEAT_TYPES = { 'once': '单次', 'daily': '每天', 'weekly': '每周', 'monthly': '每月' };
     const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
-    async function loadRemindersCard(cardEl) {
-      if (!cardEl) return;
-      const summary = cardEl.querySelector('.card-summary');
-      const body = cardEl.querySelector('.card-body');
-      if (!body) return;
-      const token = document.getElementById('token').value;
-      if (!token) { if (summary) summary.textContent = '⚠️ 请先连接 API Token'; return; }
-      try {
-        if (!cachedRemindersData) {
-          const resp = await fetch('/v1/api/daily/reminders', { headers: { 'Authorization': 'Bearer ' + token }});
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          cachedRemindersData = await resp.json();
-        }
-        renderRemindersCardCollapsed(summary, body, cachedRemindersData);
-        renderRemindersCardExpanded(body, cachedRemindersData);
-      } catch(e) { body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>'; }
-    }
+    async function loadRemindersCard(cardEl) {    await loadGenericCard(cardEl, "reminders");}
 
-    function renderRemindersCardCollapsed(summaryEl, bodyEl, data) {
-      const reminders = data && data.reminders ? data.reminders : [];
-      const total = data && data.total != null ? data.total : reminders.length;
-      const enabled = reminders.filter(function(r){return r.enabled;});
-      if (!total) {
-        if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">⏰ 暂无提醒</div></div>';
-        return;
-      }
-      let html = '<div class="wishes-collapsed">';
-      html += '<div class="wishes-total">⏰ <strong>' + enabled.length + '</strong> / ' + total + ' 条提醒</div>';
-      html += '<div class="wishes-status-list" style="flex-direction:column;align-items:stretch;">';
-      for (const r of enabled.slice(0, 3)) {
-        const typeLabel = REPEAT_TYPES[r.type] || '单次';
-        html += '<div style="font-size:11px;color:var(--text-secondary);padding:2px 0;display:flex;justify-content:space-between;">';
-        html += '<span>' + escapeHtml(r.text||'') + '</span><span style="color:var(--text-tertiary);">' + r.time + ' ' + typeLabel + '</span></div>';
-      }
-      html += '</div><div class="wishes-expand-hint" onclick="toggleCard(\'reminders\',event)">展开查看 ▼</div></div>';
-      if (summaryEl) summaryEl.innerHTML = html;
-    }
-
-    function renderRemindersCardExpanded(bodyEl, data) {
-      const reminders = data && data.reminders ? data.reminders : [];
-      let html = '<div>';
-      // New reminder form
-      html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">';
-      html += '<input type="text" id="reminderTextInput" placeholder="提醒内容..." style="flex:1;min-width:100px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);">';
-      html += '<input type="time" id="reminderTimeInput" value="09:00" style="padding:6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);width:70px;">';
-      html += '<select id="reminderTypeSelect" style="padding:6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;background:var(--bg-card);width:55px;">';
-      for (const k in REPEAT_TYPES) html += '<option value="' + k + '">' + REPEAT_TYPES[k] + '</option>';
-      html += '</select>';
-      html += '<button onclick="addReminder()" style="padding:6px 10px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">+</button>';
-      html += '</div>';
-
-      if (!reminders.length) {
-        html += '<div style="text-align:center;color:var(--text-secondary);padding:12px;">暂无提醒</div>';
-      } else {
-        for (const r of reminders) {
-          const cls = r.enabled ? '' : 'opacity:0.4;';
-          const typeLabel = REPEAT_TYPES[r.type] || '单次';
-          html += '<div style="display:flex;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center;' + cls + '">';
-          html += '<span onclick="toggleReminder(' + r.id + ')" style="cursor:pointer;font-size:14px;">' + (r.enabled ? '🔔' : '🔕') + '</span>';
-          html += '<div style="flex:1;min-width:0;">';
-          html += '<div style="font-size:13px;color:var(--text-primary);">' + escapeHtml(r.text||'') + '</div>';
-          html += '<div style="font-size:10px;color:var(--text-tertiary);">' + r.time + ' · ' + typeLabel + (r.day?' · '+r.day:'') + (r.date?' · '+r.date+'号':'') + '</div></div>';
-          html += '<span onclick="deleteReminder(' + r.id + ')" style="font-size:11px;color:var(--text-tertiary);cursor:pointer;">✕</span></div>';
-        }
-      }
-      html += '</div>';
-      bodyEl.innerHTML = html;
-    }
 
     async function addReminder() {
       const text = document.getElementById('reminderTextInput').value.trim();
@@ -8878,79 +8290,15 @@
     let cachedSharesData = null;
     const MOOD_LIST = ['😊', '🥰', '😄', '😢', '😤', '😎', '🤔', '🎉'];
 
-    async function loadSharesCard(cardEl) {
-      if (!cardEl) return;
-      const summary = cardEl.querySelector('.card-summary');
-      const body = cardEl.querySelector('.card-body');
-      if (!body) return;
-      const token = document.getElementById('token').value;
-      if (!token) { if (summary) summary.textContent = '⚠️ 请先连接 API Token'; return; }
-      try {
-        if (!cachedSharesData) {
-          const resp = await fetch('/v1/api/daily/shares', { headers: { 'Authorization': 'Bearer ' + token }});
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          cachedSharesData = await resp.json();
-        }
-        renderSharesCardCollapsed(summary, body, cachedSharesData);
-        renderSharesCardExpanded(body, cachedSharesData);
-      } catch(e) { body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>'; }
-    }
+    async function loadSharesCard(cardEl) {    await loadGenericCard(cardEl, "shares");}
 
-    function renderSharesCardCollapsed(summaryEl, bodyEl, data) {
-      const shares = data && data.shares ? data.shares : [];
-      const total = data && data.total != null ? data.total : shares.length;
-      if (!total) { if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">💬 暂无分享</div></div>'; return; }
-      let html = '<div class="wishes-collapsed">';
-      html += '<div class="wishes-total">💬 <strong>' + total + '</strong> 条心情</div>';
-      const latest = shares.slice(0, 2);
-      html += '<div class="wishes-status-list" style="flex-direction:column;align-items:stretch;">';
-      for (const s of latest) {
-        const mood = s.mood || '😊';
-        const text = (s.text || '').length > 40 ? s.text.slice(0,40)+'...' : (s.text||'');
-        html += '<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;">' + mood + ' ' + escapeHtml(text) + '</div>';
-      }
-      html += '</div><div class="wishes-expand-hint" onclick="toggleCard(\'shares\',event)">展开查看 ▼</div></div>';
-      if (summaryEl) summaryEl.innerHTML = html;
-    }
-
-    function renderSharesCardExpanded(bodyEl, data) {
-      const shares = data && data.shares ? data.shares : [];
-      const total = shares.length;
-      let html = '<div>';
-      // Mood picker + new input
-      html += '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">';
-      html += '<input type="text" id="sharesTextInput" placeholder="今天想说什么？" style="flex:1;min-width:120px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);">';
-      html += '<select id="sharesMoodSelect" style="padding:6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);">';
-      for (const m of MOOD_LIST) html += '<option>' + m + '</option>';
-      html += '</select>';
-      html += '<button onclick="addShare()" style="padding:6px 12px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">分享</button>';
-      html += '</div>';
-      // List
-      if (!shares.length) {
-        html += '<div style="text-align:center;color:var(--text-secondary);padding:12px;">暂无分享，快来说点什么吧！</div>';
-      } else {
-        for (const s of shares) {
-          const tags = (s.tags||[]).map(function(t){return '<span style="font-size:10px;color:var(--text-tertiary);">#'+escapeHtml(t)+'</span>';}).join(' ');
-          html += '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start;">';
-          html += '<span style="font-size:20px;flex-shrink:0;">' + (s.mood||'😊') + '</span>';
-          html += '<div style="flex:1;min-width:0;">';
-          html += '<div style="font-size:13px;color:var(--text-primary);word-break:break-word;">' + escapeHtml(s.text||'') + '</div>';
-          html += '<div style="display:flex;gap:6px;margin-top:2px;justify-content:space-between;align-items:center;">';
-          html += '<div>' + tags + '</div>';
-          html += '<div style="display:flex;gap:8px;align-items:center;"><span style="font-size:10px;color:var(--text-tertiary);">' + (s.created||'').slice(0,16) + '</span><span onclick="deleteShare(' + s.id + ')" style="font-size:11px;color:var(--text-tertiary);cursor:pointer;">✕</span></div>';
-          html += '</div></div></div>';
-        }
-      }
-      html += '</div>';
-      bodyEl.innerHTML = html;
-    }
 
     async function addShare() {
       const text = document.getElementById('sharesTextInput').value.trim();
       if (!text) return;
       const mood = document.getElementById('sharesMoodSelect').value;
       const token = document.getElementById('token').value;
-      const resp = await fetch('/v1/api/daily/shares', {
+      const resp = await fetch('/v1/api/daily/cards/display/shares', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text, mood: mood })
@@ -8976,79 +8324,8 @@
     let photosTab = 'all';
     let photosNestedCardId = null;
 
-    async function loadPhotosCard(cardEl) {
-      if (!cardEl) return;
-      const summary = cardEl.querySelector('.card-summary');
-      const body = cardEl.querySelector('.card-body');
-      if (!body) return;
-      const token = document.getElementById('token').value;
-      if (!token) { if (summary) summary.textContent = '⚠️ 请先连接 API Token'; return; }
-      try {
-        if (!cachedPhotosData) {
-          const resp = await fetch('/v1/api/daily/photos', { headers: { 'Authorization': 'Bearer ' + token }});
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          cachedPhotosData = await resp.json();
-        }
-        renderPhotosCardCollapsed(summary, body, cachedPhotosData);
-        renderPhotosCardExpanded(body, cachedPhotosData);
-      } catch (e) { body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>'; }
-    }
+    async function loadPhotosCard(cardEl) {    await loadGenericCard(cardEl, "photos");}
 
-    function renderPhotosCardCollapsed(summaryEl, bodyEl, data) {
-      const photos = data && data.photos ? data.photos : [];
-      const total = data && data.total != null ? data.total : photos.length;
-      if (!total) {
-        if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">📸 暂无照片</div></div>';
-        return;
-      }
-      let html = '<div class="wishes-collapsed">';
-      html += '<div class="wishes-total">📸 <strong>' + total + '</strong> 张照片</div>';
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px;">';
-      const latest = photos.slice(0, 4);
-      for (const p of latest) {
-        const src = p.thumbnail || p.image || '';
-        if (src) html += '<img src="' + src + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;cursor:pointer;" onerror="this.style.display=\'none\'" onclick="event.stopPropagation();toggleCard(\'photos\',event)">';
-      }
-      html += '</div>';
-      html += '<div class="wishes-expand-hint" onclick="toggleCard(\'photos\', event)">展开查看 ▼</div></div>';
-      if (summaryEl) summaryEl.innerHTML = html;
-    }
-
-    function renderPhotosCardExpanded(bodyEl, data) {
-      const photos = data && data.photos ? data.photos : [];
-      const total = photos.length;
-      let html = '<div>';
-      // Tab bar
-      html += '<div style="display:flex;gap:4px;margin-bottom:12px;">';
-      html += '<span onclick="switchPhotosTab(\'all\')" style="font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;' + (photosTab==='all'?'background:var(--accent);color:#fff;':'border:1px solid var(--border);color:var(--text-secondary);') + '">全部 ' + total + '</span>';
-      html += '<span onclick="switchPhotosTab(\'管理员\')" style="font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;' + (photosTab==='管理员'?'background:var(--accent);color:#fff;':'border:1px solid var(--border);color:var(--text-secondary);') + '">管理员</span>';
-      html += '<span onclick="switchPhotosTab(\'伴侣\')" style="font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;' + (photosTab==='伴侣'?'background:var(--accent);color:#fff;':'border:1px solid var(--border);color:var(--text-secondary);') + '">伴侣</span>';
-      html += '</div>';
-      // Upload button
-      html += '<div style="margin-bottom:8px;"><input type="file" id="photosFileInput" accept="image/*" onchange="uploadPhoto()" style="font-size:11px;"></div>';
-      // Masonry grid
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;">';
-      const filtered = photosTab === 'all' ? photos : [];
-      // Re-fetch filtered
-      let displayPhotos = photos;
-      for (const p of displayPhotos) {
-        const src = p.thumbnail || p.image || '';
-        if (!src) continue;
-        html += '<div style="position:relative;cursor:pointer;" onclick="viewPhotoDetail(' + p.id + ')">';
-        html += '<img src="' + src + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border);" onerror="this.style.display=\'none\'">';
-        const likes = p.likes || [];
-        const comments = p.comments || [];
-        if (likes.length || comments.length) {
-          html += '<div style="position:absolute;bottom:4px;right:4px;font-size:10px;background:rgba(0,0,0,0.5);color:#fff;padding:1px 6px;border-radius:8px;">❤️' + likes.length + ' 💬' + comments.length + '</div>';
-        }
-        html += '</div>';
-      }
-      html += '</div>';
-      // Like/comment section
-      html += '<div id="photoDetailPanel" style="margin-top:12px;display:none;padding:12px;background:var(--bg-hover);border-radius:var(--radius-sm);"></div>';
-      html += '</div>';
-      bodyEl.innerHTML = html;
-    }
 
     async function switchPhotosTab(tab) {
       photosTab = tab;
@@ -9058,11 +8335,13 @@
         const url = tab === 'all' ? '/v1/api/daily/photos' : '/v1/api/daily/photos?tab=' + encodeURIComponent(tab);
         const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token }});
         if (resp.ok) {
-          cachedPhotosData = await resp.json();
+          var display = (await resp.json()).display || {};
+        cachedPhotosData = display;
+        // cachedPhotosData = await resp.json(); // old
           const card = document.querySelector('[data-card-id="photos"]');
           if (card) {
             const body = card.querySelector('.card-body');
-            if (body) renderPhotosCardExpanded(body, cachedPhotosData);
+            if (card) loadGenericCard(card, 'photos');
           }
         }
       } catch(e) {}
@@ -9074,7 +8353,7 @@
       const token = document.getElementById('token').value;
       const form = new FormData();
       form.append('file', input.files[0]);
-      const resp = await fetch('/v1/api/daily/photos', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: form });
+      const resp = await fetch('/v1/api/daily/cards/display/photos', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: form });
       if (resp.ok) {
         cachedPhotosData = null;
         switchPhotosTab(photosTab);
@@ -9110,7 +8389,7 @@
     async function togglePhotoLike(id) {
       const token = document.getElementById('token').value;
       if (!token) return;
-      const resp = await fetch('/v1/api/daily/photos/' + id + '/like', {
+      const resp = await fetch('/v1/api/daily/cards/display/photos/' + id + '/like', {
         method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ person: '管理员' })
       });
@@ -9125,7 +8404,7 @@
       const input = document.getElementById('photoCommentInput');
       if (!input || !input.value.trim()) return;
       const token = document.getElementById('token').value;
-      const resp = await fetch('/v1/api/daily/photos/' + id + '/comment', {
+      const resp = await fetch('/v1/api/daily/cards/display/photos/' + id + '/comment', {
         method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ author: '管理员', text: input.value.trim() })
       });
@@ -9141,147 +8420,25 @@
     let bookmarksTagFilter = '';
 
     async function loadBookmarksCard(cardEl) {
-      if (!cardEl) return;
-      const summary = cardEl.querySelector('.card-summary');
-      const body = cardEl.querySelector('.card-body');
-      if (!body) return;
+    await loadGenericCard(cardEl, "bookmarks");
+  }
 
-      const token = document.getElementById('token').value;
-      if (!token) {
-        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
-        return;
-      }
-
-      try {
-        if (!cachedBookmarksData) {
-          const resp = await fetch('/v1/api/daily/bookmarks', {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          cachedBookmarksData = await resp.json();
-        }
-
-        renderBookmarksCardCollapsed(summary, body, cachedBookmarksData);
-        renderBookmarksCardExpanded(body, cachedBookmarksData);
-      } catch (e) {
-        console.error('加载收藏夹失败:', e);
-        body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>';
-      }
-    }
-
-    function renderBookmarksCardCollapsed(summaryEl, bodyEl, data) {
-      const bookmarks = data && data.bookmarks ? data.bookmarks : [];
-      const total = data && data.total != null ? data.total : bookmarks.length;
-
-      if (!total) {
-        if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">🔗 暂无收藏</div></div>';
-        bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
-        return;
-      }
-
-      const unread = bookmarks.filter(function(b) { return !b.read; }).length;
-      let html = '<div class="wishes-collapsed">';
-      html += '<div class="wishes-total">🔗 <strong>' + total + '</strong> 个收藏' + (unread ? ' · <span style="color:var(--text-primary);">' + unread + ' 未读</span>' : '') + '</div>';
-      html += '<div class="wishes-status-list" style="flex-direction:column;align-items:stretch;">';
-
-      const latest = bookmarks.slice(0, 3);
-      for (const bm of latest) {
-        const fav = bm.favicon ? '<img src="' + escapeHtml(bm.favicon) + '" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;" onerror="this.style.display=\'none\'">' : '';
-        const title = bm.title || bm.url || '';
-        const preview = title.length > 40 ? title.slice(0, 40) + '...' : title;
-        html += '<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
-        html += fav + escapeHtml(preview);
-        html += '</div>';
-      }
-
-      html += '</div>';
-      html += '<div class="wishes-expand-hint" onclick="toggleCard(\'bookmarks\', event)">展开查看 ▼</div>';
-      html += '</div>';
-
-      if (summaryEl) summaryEl.innerHTML = html;
-    }
-
-    function renderBookmarksCardExpanded(bodyEl, data) {
-      const bookmarks = data && data.bookmarks ? data.bookmarks : [];
-      const total = data && data.total != null ? data.total : bookmarks.length;
-
-      // Tag filter
-      const allTags = [];
-      const seenTags = {};
-      for (const bm of bookmarks) {
-        for (const t of bm.tags || []) {
-          if (!seenTags[t]) { seenTags[t] = true; allTags.push(t); }
-        }
-      }
-
-      let html = '<div>';
-      // New bookmark button
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
-      html += '<strong style="font-size:12px;color:var(--text-secondary);">🔗 收藏夹</strong>';
-      html += '<button onclick="showAddBookmarkModal()" style="padding:4px 10px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:11px;cursor:pointer;">+ 新增</button>';
-      html += '</div>';
-      // Tag filter bar
-      html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">';
-      html += '<span onclick="filterBookmarks(\'\')" style="font-size:11px;padding:2px 8px;border-radius:10px;cursor:pointer;' + (!bookmarksTagFilter ? 'background:var(--accent);color:#fff;' : 'border:1px solid var(--border);color:var(--text-secondary);') + '">全部</span>';
-      for (const tag of allTags) {
-        const active = bookmarksTagFilter === tag;
-        html += '<span onclick="filterBookmarks(\'' + escapeHtml(tag) + '\')" style="font-size:11px;padding:2px 8px;border-radius:10px;cursor:pointer;' + (active ? 'background:var(--accent);color:#fff;' : 'border:1px solid var(--border);color:var(--text-secondary);') + '">#' + escapeHtml(tag) + '</span>';
-      }
-      html += '</div>';
-
-      // Search
-      html += '<input type="text" id="bookmarksSearchInput" placeholder="搜索收藏..." oninput="filterBookmarks(null)" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);margin-bottom:8px;box-sizing:border-box;">';
-
-      // Filtered list
-      let filtered = bookmarks;
-      const searchTerm = (document.getElementById('bookmarksSearchInput') || {}).value || '';
-      if (searchTerm) {
-        const q = searchTerm.toLowerCase();
-        filtered = filtered.filter(function(b) { return (b.title || '').toLowerCase().includes(q) || (b.url || '').toLowerCase().includes(q); });
-      }
-      if (bookmarksTagFilter) {
-        filtered = filtered.filter(function(b) { return (b.tags || []).includes(bookmarksTagFilter); });
-      }
-
-      html += '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;">' + filtered.length + ' / ' + total + ' 条</div>';
-
-      if (!filtered.length) {
-        html += '<div style="text-align:center;color:var(--text-secondary);padding:16px;">暂无匹配的收藏</div>';
-      } else {
-        for (const bm of filtered) {
-          const fav = bm.favicon ? '<img src="' + escapeHtml(bm.favicon) + '" style="width:16px;height:16px;border-radius:2px;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '<span style="width:16px;height:16px;border-radius:2px;background:var(--bg-hover);flex-shrink:0;font-size:10px;text-align:center;">🔗</span>';
-          const tags = (bm.tags || []).map(function(t) { return '<span style="font-size:10px;color:var(--text-tertiary);">#' + escapeHtml(t) + '</span>'; }).join(' ');
-          const readCls = bm.read ? 'color:var(--text-tertiary);' : 'font-weight:500;';
-
-          html += '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start;">';
-          html += fav;
-          html += '<div style="flex:1;min-width:0;">';
-          html += '<a href="' + escapeHtml(bm.url) + '" target="_blank" style="font-size:13px;' + readCls + 'text-decoration:none;color:var(--text-primary);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(bm.title || bm.url) + '">' + escapeHtml(bm.title || bm.url) + '</a>';
-          if (bm.description) {
-            html += '<div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;line-height:1.4;">' + escapeHtml(bm.description.slice(0, 100)) + '</div>';
-          }
-          html += '<div style="display:flex;gap:6px;margin-top:2px;">' + tags + '<span onclick="toggleBookmarkRead(' + bm.id + ')" style="font-size:10px;color:var(--text-tertiary);cursor:pointer;">' + (bm.read ? '✓已读' : '○未读') + '</span>' +
-            '<span onclick="deleteBookmark(' + bm.id + ')" style="font-size:10px;color:var(--text-tertiary);cursor:pointer;">✕删除</span></div>';
-          html += '</div></div>';
-        }
-      }
-      html += '</div>';
-      bodyEl.innerHTML = html;
-    }
 
     async function filterBookmarks(tag) {
       if (tag !== null && tag !== undefined) bookmarksTagFilter = tag;
       const token = document.getElementById('token').value;
       if (!token) return;
-      const resp = await fetch('/v1/api/daily/bookmarks', {
+      const resp = await fetch('/v1/api/daily/cards/display/bookmarks', {
         headers: { 'Authorization': 'Bearer ' + token }
       });
       if (resp.ok) {
-        cachedBookmarksData = await resp.json();
+        var display = (await resp.json()).display || {};
+        cachedBookmarksData = display;
+        // cachedBookmarksData = await resp.json(); // old
         const card = document.querySelector('[data-card-id="bookmarks"]');
         if (card) {
           const body = card.querySelector('.card-body');
-          if (body) renderBookmarksCardExpanded(body, cachedBookmarksData);
+          if (card) loadGenericCard(card, 'bookmarks');
         }
       }
     }
@@ -9340,7 +8497,7 @@
       const token = document.getElementById('token').value;
       if (!token) return;
       try {
-        const resp = await fetch('/v1/api/daily/bookmarks/fetch', {
+        const resp = await fetch('/v1/api/daily/cards/display/bookmarks/fetch', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ url: url })
@@ -9357,7 +8514,7 @@
       if (!url) return;
       const token = document.getElementById('token').value;
       if (!token) return;
-      const resp = await fetch('/v1/api/daily/bookmarks', {
+      const resp = await fetch('/v1/api/daily/cards/display/bookmarks', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url })
@@ -9372,144 +8529,13 @@
     }
 
     async function loadNotesCard(cardEl) {
-      if (!cardEl) return;
-      const summary = cardEl.querySelector('.card-summary');
-      const body = cardEl.querySelector('.card-body');
-      if (!body) return;
+    await loadGenericCard(cardEl, "notes");
+  }
 
-      const token = document.getElementById('token').value;
-      if (!token) {
-        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
-        return;
-      }
-
-      try {
-        if (!cachedNotesData) {
-          const resp = await fetch('/v1/api/daily/notes', {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          cachedNotesData = await resp.json();
-        }
-
-        renderNotesCardCollapsed(summary, body, cachedNotesData);
-        // N3: 展开视图预渲染
-        renderNotesCardExpanded(body, cachedNotesData);
-      } catch (e) {
-        console.error('加载随手记失败:', e);
-        body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>';
-      }
-    }
-
-    function renderNotesCardCollapsed(summaryEl, bodyEl, data) {
-      const notes = data && data.notes ? data.notes : [];
-      const total = data && data.total != null ? data.total : notes.length;
-
-      if (!total) {
-        if (summaryEl) summaryEl.innerHTML = '<div class="wishes-collapsed"><div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">📝 暂无随手记</div></div>';
-        bodyEl.innerHTML = '<div class="card-body-placeholder">展开中...</div>';
-        return;
-      }
-
-      let html = '<div class="wishes-collapsed">';
-      html += '<div class="wishes-total">📝 共 <strong>' + total + '</strong> 条随手记</div>';
-      html += '<div class="wishes-status-list" style="flex-direction:column;align-items:stretch;">';
-
-      const latest = notes.slice(0, 3);
-      for (const note of latest) {
-        const mood = note.mood || '';
-        const text = note.text || '';
-        const preview = text.length > 50 ? text.slice(0, 50) + '...' : text;
-        const time = (note.created || '').slice(0, 16).replace('T', ' ');
-        const imgCount = (note.images && note.images.length) ? ' 📸' + note.images.length : '';
-        html += '<div style="font-size:12px;color:var(--text-secondary);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
-        html += mood + ' ' + escapeHtml(preview) + imgCount + ' <span style="font-size:10px;color:var(--text-tertiary);">' + time + '</span>';
-        html += '</div>';
-      }
-
-      html += '</div>';
-      html += '<div class="wishes-expand-hint" onclick="toggleCard(\'notes\', event)">展开查看 ▼</div>';
-      html += '</div>';
-
-      if (summaryEl) summaryEl.innerHTML = html;
-    }
 
     let notesSearchTerm = '';
     let notesActivePerson = '管理员';
 
-    function renderNotesCardExpanded(bodyEl, data) {
-      const notes = data && data.notes ? data.notes : [];
-      const total = data && data.total != null ? data.total : notes.length;
-
-      let html = '<div>';
-
-      // Search box
-      html += '<div style="margin-bottom:10px;display:flex;gap:8px;">';
-      html += '<input type="text" id="notesSearchInput" placeholder="搜索随手记..." value="' + escapeHtml(notesSearchTerm) + '" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);" oninput="filterNotes()">';
-      html += '<select id="notesPersonSelect" onchange="switchNotesPerson()" style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);">';
-      html += '<option value="管理员"' + (notesActivePerson === '管理员' ? ' selected' : '') + '>管理员</option>';
-      html += '<option value="伴侣"' + (notesActivePerson === '伴侣' ? ' selected' : '') + '>伴侣</option>';
-      html += '</select>';
-      html += '</div>';
-
-      const filtered = filterNotesBySearch(notes);
-      const displayTotal = filtered.length;
-
-      html += '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;">' +
-        (notesSearchTerm ? '🔍 结果 ' + displayTotal + ' 条' : '共 ' + total + ' 条') +
-        '</div>';
-
-      if (!filtered.length) {
-        html += '<div style="text-align:center;color:var(--text-secondary);padding:16px;">' +
-          (notesSearchTerm ? '未找到包含 "' + escapeHtml(notesSearchTerm) + '" 的记录' : '📝 暂无随手记') +
-          '</div>';
-      } else {
-        for (const note of filtered) {
-          const mood = note.mood || '';
-          const tags = (note.tags || []).map(t => '<span style="color:var(--text-secondary);font-size:10px;background:var(--bg-hover);padding:1px 6px;border-radius:3px;">#' + escapeHtml(t) + '</span>').join(' ');
-          const time = (note.created || '').slice(0, 16).replace('T', ' ');
-          const text = note.text || '';
-          const noteId = note.id;
-          // 高亮搜索关键词
-          let displayText = escapeHtml(text);
-          if (notesSearchTerm) {
-            const re = new RegExp('(' + notesSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-            displayText = displayText.replace(re, '<mark style="background:#fff9c4;padding:0 1px;">$1</mark>');
-          }
-
-          html += '<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);">';
-          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">';
-          html += '<span style="font-size:18px;">' + mood + '</span>';
-          html += '<div style="display:flex;gap:8px;align-items:center;">';
-          html += '<span style="font-size:11px;color:var(--text-tertiary);">' + time + '</span>';
-          html += '<button onclick="deleteNotesItem(\'' + noteId + '\')" style="font-size:11px;color:var(--text-tertiary);background:none;border:none;cursor:pointer;padding:0;" title="删除">✕</button>';
-          html += '</div>';
-          html += '</div>';
-          html += '<div style="font-size:13px;color:var(--text-primary);line-height:1.6;">' + displayText + '</div>';
-          // 图片缩略
-          if (note.images && note.images.length) {
-            html += '<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">';
-            for (const img of note.images) {
-              html += '<img src="' + img + '" alt="图片" style="max-height:80px;max-width:120px;border-radius:var(--radius-sm);border:1px solid var(--border);object-fit:cover;cursor:pointer;" onclick="viewNotesImage(\'' + img + '\')">';
-            }
-            html += '</div>';
-          }
-          if (tags) {
-            html += '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;">' + tags + '</div>';
-          }
-          html += '</div>';
-        }
-      }
-
-      // Quick input box
-      html += '<div style="margin-top:12px;display:flex;gap:6px;border-top:1px solid var(--border);padding-top:10px;">';
-      html += '<input type="text" id="notesQuickInput" placeholder="快速记录... Enter 保存" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);color:var(--text-primary);" onkeydown="if(event.key===\'Enter\')saveNotesQuick()">';
-      html += '<button onclick="saveNotesQuick()" style="padding:6px 12px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">保存</button>';
-      html += '</div>';
-
-      html += '</div>';
-      bodyEl.innerHTML = html;
-    }
 
     function filterNotesBySearch(notes) {
       if (!notesSearchTerm) return notes;
@@ -9530,7 +8556,7 @@
       if (!token) return;
 
       try {
-        const resp = await fetch('/v1/api/daily/notes?person=' + encodeURIComponent(notesActivePerson), {
+        const resp = await fetch('/v1/api/daily/cards/display/notes?person=' + encodeURIComponent(notesActivePerson), {
           headers: { 'Authorization': 'Bearer ' + token }
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -9538,7 +8564,7 @@
         const card = document.querySelector('[data-card-id="notes"]');
         if (card) {
           const body = card.querySelector('.card-body');
-          if (body) renderNotesCardExpanded(body, data);
+          if (card) loadGenericCard(card, 'notes');
         }
       } catch (e) {
         console.error('搜索随手记失败:', e);
@@ -9555,7 +8581,7 @@
       if (!token) return;
 
       try {
-        const resp = await fetch('/v1/api/daily/notes?person=' + encodeURIComponent(notesActivePerson), {
+        const resp = await fetch('/v1/api/daily/cards/display/notes?person=' + encodeURIComponent(notesActivePerson), {
           headers: { 'Authorization': 'Bearer ' + token }
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -9563,7 +8589,7 @@
         const card = document.querySelector('[data-card-id="notes"]');
         if (card) {
           const body = card.querySelector('.card-body');
-          if (body) renderNotesCardExpanded(body, data);
+          if (card) loadGenericCard(card, 'notes');
         }
       } catch (e) {
         console.error('切换人员失败:', e);
@@ -9579,7 +8605,7 @@
       if (!token) return;
 
       try {
-        const resp = await fetch('/v1/api/daily/notes', {
+        const resp = await fetch('/v1/api/daily/cards/display/notes', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ person: notesActivePerson, text: text })
@@ -9599,8 +8625,8 @@
           if (card) {
             const summary = card.querySelector('.card-summary');
             const body = card.querySelector('.card-body');
-            renderNotesCardCollapsed(summary, body, data);
-            renderNotesCardExpanded(body, data);
+            await loadGenericCard(card, 'notes'); return;
+            await loadGenericCard(card, 'notes');
           }
         }
       } catch (e) {
@@ -9615,7 +8641,7 @@
       if (!token) return;
 
       try {
-        const resp = await fetch('/v1/api/daily/notes/' + noteId + '?person=' + encodeURIComponent(notesActivePerson), {
+        const resp = await fetch('/v1/api/daily/cards/display/notes/' + noteId + '?person=' + encodeURIComponent(notesActivePerson), {
           method: 'DELETE',
           headers: { 'Authorization': 'Bearer ' + token }
         });
@@ -9632,8 +8658,8 @@
           if (card) {
             const summary = card.querySelector('.card-summary');
             const body = card.querySelector('.card-body');
-            renderNotesCardCollapsed(summary, body, data);
-            renderNotesCardExpanded(body, data);
+            await loadGenericCard(card, 'notes'); return;
+            await loadGenericCard(card, 'notes');
           }
         }
       } catch (e) {
@@ -9660,154 +8686,9 @@
     let chartInstances = {};
 
     async function loadSummaryCard(cardEl) {
-      if (!cardEl) return;
-      const summary = cardEl.querySelector('.card-summary');
-      const body = cardEl.querySelector('.card-body');
-      if (!body) return;
+    await loadGenericCard(cardEl, "summary");
+  }
 
-      const token = document.getElementById('token').value;
-      if (!token) {
-        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
-        return;
-      }
-
-      try {
-        if (!cachedSummaryData) {
-          const resp = await fetch('/v1/api/daily/summary/week', {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          cachedSummaryData = await resp.json();
-        }
-
-        renderSummaryCardCollapsed(summary, cachedSummaryData);
-        // 展开视图在 body 中渲染图表
-      } catch (e) {
-        console.error('加载总结失败:', e);
-        body.innerHTML = '<div class="card-body-placeholder">⚠️ 加载失败</div>';
-      }
-    }
-
-    function renderSummaryCardCollapsed(summaryEl, data) {
-      if (!data || !data.ok) {
-        if (summaryEl) summaryEl.textContent = '📊 暂无数据';
-        return;
-      }
-      const ex = data.exercise || {};
-      const todo = data.todo || {};
-      const week = data.week || '';
-      const weekLabel = week ? ' (W' + (week.split('-W')[1] || '') + ')' : '';
-
-      let html = '<div class="wishes-collapsed">';
-      html += '<div style="font-size:13px;margin-bottom:6px;">📊 本周' + weekLabel + '</div>';
-      html += '<div style="font-size:12px;color:var(--text-secondary);">';
-      html += '🏃 运动 ' + (ex.days || 0) + ' 天 · 📋 Todo ' + (todo.completion_rate || 0) + '%';
-      html += '</div>';
-      html += '<div class="wishes-expand-hint" onclick="toggleCard(\'summary\', event)">展开查看图表 ▼</div>';
-      html += '</div>';
-
-      if (summaryEl) summaryEl.innerHTML = html;
-    }
-
-    function renderSummaryCharts(bodyEl, data) {
-      if (!data || !data.ok) {
-        bodyEl.innerHTML = '<div class="card-body-placeholder">📊 暂无数据</div>';
-        return;
-      }
-
-      // 销毁旧图表
-      for (const key in chartInstances) {
-        if (chartInstances[key]) { chartInstances[key].destroy(); chartInstances[key] = null; }
-      }
-      chartInstances = {};
-
-      const ex = data.exercise || {};
-      const todo = data.todo || {};
-      const trends = data.data_trends || {};
-
-      let html = '<div class="summary-charts">';
-
-      // 统计概览
-      html += '<div class="chart-section-title">📊 本周概览</div>';
-      html += '<div class="summary-stats-grid">';
-      html += '<div class="summary-stat-item"><div class="summary-stat-value">' + (ex.days || 0) + '</div><div class="summary-stat-label">运动天数</div></div>';
-      html += '<div class="summary-stat-item"><div class="summary-stat-value">' + (ex.total_min || 0) + 'min</div><div class="summary-stat-label">运动时长</div></div>';
-      html += '<div class="summary-stat-item"><div class="summary-stat-value">' + (todo.completion_rate || 0) + '%</div><div class="summary-stat-label">Todo 完成率</div></div>';
-      html += '<div class="summary-stat-item"><div class="summary-stat-value">' + (todo.done || 0) + '/' + (todo.total || 0) + '</div><div class="summary-stat-label">已完成/总数</div></div>';
-      html += '</div>';
-
-      // Chart.js 画布
-      html += '<div class="chart-section-title">📋 Todo 完成率</div>';
-      html += '<canvas id="chartTodoRate"></canvas>';
-
-      // 数据趋势 -- 体重
-      for (const person of ['管理员', '伴侣']) {
-        if (trends[person] && trends[person].weight) {
-          html += '<div class="chart-section-title">⚖️ ' + person + ' 体重趋势</div>';
-          html += '<canvas id="chartWeight_' + person + '"></canvas>';
-        }
-      }
-
-      html += '</div>';
-      bodyEl.innerHTML = html;
-
-      // 渲染图表
-      setTimeout(function() {
-        // Todo 完成率 doughnut
-        const ctx1 = document.getElementById('chartTodoRate');
-        if (ctx1) {
-          const done = todo.done || 0;
-          const pending = (todo.total || 0) - done;
-          chartInstances['todoRate'] = new Chart(ctx1, {
-            type: 'doughnut',
-            data: {
-              labels: ['已完成', '未完成'],
-              datasets: [{
-                data: [done, pending > 0 ? pending : 0],
-                backgroundColor: ['#4caf50', '#e0e0e0'],
-                borderWidth: 0
-              }]
-            },
-            options: {
-              responsive: true, maintainAspectRatio: false,
-              plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
-            }
-          });
-          ctx1.parentElement.style.height = '150px';
-        }
-
-        // 体重趋势线图
-        for (const person of ['管理员', '伴侣']) {
-          const ctxW = document.getElementById('chartWeight_' + person);
-          if (ctxW && trends[person] && trends[person].weight) {
-            const entries = trends[person].weight;
-            const labels = entries.map(function(e) { return (e.date || '').slice(5); });
-            const values = entries.map(function(e) { return e.value; });
-            chartInstances['weight_' + person] = new Chart(ctxW, {
-              type: 'line',
-              data: {
-                labels: labels,
-                datasets: [{
-                  label: person + ' 体重',
-                  data: values,
-                  borderColor: '#42a5f5',
-                  backgroundColor: 'rgba(66,165,245,0.1)',
-                  fill: true,
-                  tension: 0.3,
-                  pointRadius: 3
-                }]
-              },
-              options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: { y: { beginAtZero: false } },
-                plugins: { legend: { labels: { font: { size: 10 } } } }
-              }
-            });
-            ctxW.parentElement.style.height = '160px';
-          }
-        }
-      }, 100);
-    }
 
     // Hook into toggleCard to render charts when summary expands
     const _origToggleCard2 = toggleCard;
@@ -9817,7 +8698,7 @@
         const card = document.querySelector('[data-card-id="summary"]');
         if (card && card.classList.contains('expanded') && cachedSummaryData) {
           const body = card.querySelector('.card-body');
-          if (body) renderSummaryCharts(body, cachedSummaryData);
+          if (card) loadGenericCard(card, 'summary');
         }
       }
     };
@@ -10121,23 +9002,51 @@
         showToast('📊 ' + (by ? by + ' ' : '') + '更新了数据: ' + (event.field || ''), 'info', 3000);
         break;
       case 'card_changed':
-        // 刷新对应卡片
+        // 刷新对应卡片：清除缓存 → loadDashboard（统一从 display.json 刷新）
         var card = event.card || '';
-        var cardRefreshMap = {
-          'notes': 'loadNotesCard',
-          'bookmarks': 'loadBookmarksCard',
-          'photos': 'loadPhotosCard',
-          'reminders': 'loadRemindersCard',
-          'habits': 'loadHabitsCard',
-          'wishes': 'loadWishesCard'
+        // 清除对应卡片缓存
+        var cacheMap = {
+          news: 'cachedNewsData', todo: 'cachedTodoData', data: 'cachedDataSummary',
+          recipe: 'cachedRecipeData', notes: 'cachedNotesData', wishes: 'cachedWishesData',
+          habits: 'cachedHabitsData', reminders: 'cachedRemindersData', shares: 'cachedSharesData',
+          photos: 'cachedPhotosData', bookmarks: 'cachedBookmarksData', summary: 'cachedSummaryData'
         };
-        var fnName = cardRefreshMap[card];
-        if (fnName && typeof window[fnName] === 'function') {
-          var cardEl = document.querySelector('[data-card-type="' + card + '"], [data-card="' + card + '"]');
-          if (cardEl) window[fnName](cardEl);
+        var cacheKey = cacheMap[card];
+        if (cacheKey) { window[cacheKey] = null; }
+        // card_refresh map 用于单卡刷新（避免全量 loadDashboard）
+        var specialCards = { todo: true };  // todo 有交互 UI，走专用 loader
+        var cardEl = document.querySelector('[data-card-type="' + card + '"], [data-card="' + card + '"], [data-card-id="' + card + '"]');
+        if (specialCards[card]) {
+          var oldMap = { todo: 'loadTodoCard' };
+          var fnName = oldMap[card];
+          if (fnName && typeof window[fnName] === 'function' && cardEl) window[fnName](cardEl);
+        } else if (cardEl && typeof window.loadGenericCard === 'function') {
+          window.loadGenericCard(cardEl, card);
         }
-        var cardNames = { notes: '随手记', bookmarks: '收藏夹', photos: '照片', reminders: '提醒', habits: '习惯', wishes: '心愿' };
-        showToast('🔄 ' + (by || '') + ' 更新了' + (cardNames[card] || card), 'info', 3000);
+        // 也更新卡头摘要
+        if (typeof loadDashboard === 'function') {
+          var grid = document.getElementById('dashboardGrid');
+          if (grid) {
+            try {
+              var token = document.getElementById('token').value;
+              fetch('/v1/api/daily/cards/display/' + card, { headers: { 'Authorization': 'Bearer ' + token } })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                  if (d && d.display && d.display.summary) {
+                    var cel = document.querySelector('[data-card-id="' + card + '"]');
+                    var sel = cel ? cel.querySelector('.card-summary') : null;
+                    if (sel) sel.textContent = d.display.summary;
+                  }
+                }).catch(function(){});
+            } catch(e) {}
+          }
+        }
+        var cardNames = { news:'新闻', todo:'待办', data:'数据', recipe:'食谱', notes:'随手记',
+          wishes:'心愿', habits:'习惯', reminders:'提醒', shares:'分享', photos:'照片',
+          bookmarks:'收藏夹', summary:'总结' };
+        if (by && by !== 'system') {
+          showToast('🔄 ' + by + ' 更新了' + (cardNames[card] || card), 'info', 3000);
+        }
         break;
       case 'photo_changed':
         if (typeof loadPhotosCard === 'function') {
@@ -10701,7 +9610,7 @@ function hideAppContent() {
   var children = document.body.children;
   for (var i = children.length - 1; i >= 0; i--) {
     var el = children[i];
-    if (el.id !== 'loginOverlay' && el.id !== 'registerOverlay' && el.id !== 'loginHider' && el.tagName !== 'SCRIPT') {
+    if (el.id !== 'loginOverlay' && el.id !== 'loginHider' && el.tagName !== 'SCRIPT') {
       el.style.display = 'none';
     }
   }
@@ -10712,7 +9621,7 @@ function showAppContent() {
   var children = document.body.children;
   for (var i = 0; i < children.length; i++) {
     var el = children[i];
-    if (el.id !== 'loginOverlay' && el.id !== 'registerOverlay' && el.id !== 'loginHider') {
+    if (el.id !== 'loginOverlay' && el.id !== 'loginHider') {
       el.style.display = '';
     }
   }

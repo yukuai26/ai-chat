@@ -1,0 +1,14 @@
+{
+  "admin": {
+    "password_hash": "$2b$12$l4YylxYgAcQp8bFUTXX11umRSorPF8l4D7HIkR1YpIBWGM5/HjKK2",
+    "display_name": "admin",
+    "partner": "partner",
+    "created": "2026-05-27T18:24:10.026840+08:00"
+  },
+  "partner": {
+    "password_hash": "$2b$12$l4YylxYgAcQp8bFUTXX11uqwwxztXxlD5vyqVzhPq7I7nPUHCdjF6",
+    "display_name": "伴侣",
+    "partner": "admin",
+    "created": "2026-05-27T18:24:10.222302+08:00"
+  }
+}

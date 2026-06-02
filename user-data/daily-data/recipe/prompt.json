@@ -1,34 +1,70 @@
 {
   "card_name": "食谱",
-  "domain_knowledge": "管理食谱计划和实际摄入记录。weekly_plan 存周一~周五的食谱图片/计划（用户每周发送），intake_log 按日期记录实际三餐摄入（早breakfast/午lunch/晚dinner），每餐记录 name、calories、macros（蛋白质/碳水/脂肪 可选）。user_profile 存身高体重等用于个性化推荐。",
+  "domain_knowledge": "管理每周食谱和每日摄入记录。weekly_plan 存完整一周食谱（周一~周日），由用户 yukuai26 每周提供。intake_log 是永久数据库，按日期存储两个用户的所有餐食记录，绝不删除。display 只展示当天。",
   "best_practices": [
-    "用户每周发一次食谱图片，解析后存入 weekly_plan 对应的周一~周五",
-    "用户发餐食照片时，识别食物并估算热量和宏量营养素，存入 intake_log/{date}/{meal}",
-    "热量估算：快餐 600-800kcal，家常菜 300-500kcal，轻食 200-350kcal",
-    "宏量营养素格式：{protein: 'Xg', carbs: 'Xg', fat: 'Xg'}",
-    "intake_log 的 key 为日期 YYYY-MM-DD",
-    "心跳触发时根据 weekly_plan 当天食谱生成食材配比推荐，写入 display",
-    "周六日心跳检查 weekly_plan 下周是否有数据，无则在 display 提示用户发食谱"
+    "用户 yukuai26 每周发食谱图片时，解析完整一周（周一~周日）写入 weekly_plan，覆盖上周",
+    "weekly_plan 存完整七天，每天根据星期几展示对应那天的完整菜单",
+    "display 必须展示当天食谱的所有分类和所有菜品，不可省略",
+    "两个用户（yukuai26、gugugu）都可能随时上传餐食照片",
+    "收到餐食照片时：识别食物 → 估算热量和宏量营养素 → 存入 intake_log/{date}/{user}/{meal}",
+    "intake_log 是永久数据库，按 YYYY-MM-DD 为 key，历史数据绝不删除",
+    "每条摄入记录包含：name, calories, macros(protein/carbs/fat), time, image(可选)",
+    "热量估算参考：快餐 600-800kcal，家常菜 300-500kcal，轻食 200-350kcal，零食 100-300kcal",
+    "心跳 11:00 触发时：展示当天完整食谱 + 生成午餐推荐（每道菜标注 Xg 和热量）",
+    "display.json 展示当天食谱全貌 + 当天两个用户的摄入汇总",
+    "新一周食谱到来时覆盖 weekly_plan，但 intake_log 永远累加不删"
   ],
   "user_preferences": [
     "午餐偏好轻食（沙拉、三明治、便当）",
     "晚餐可以丰盛些",
     "周末可能不下厨（外卖/外食）",
     "关注整体热量和营养均衡",
+    "中辣及以上的菜少推荐，微辣可接受，重辣避免",
+    "品种多样化，同一餐尽量不重复食材和烹饪方式",
+    "偏爱绿叶蔬菜（空心菜、小白菜、菠菜、油麦菜、生菜、西兰花等）",
+    "目前处于减肥减脂期，优先高蛋白低脂低碳搭配",
+    "午餐推荐热量目标下调至 500-600kcal",
     "身高体重等以后提供，届时更新 user_profile"
   ],
   "data_schema": {
     "weekly_plan": {
-      "周X": {
-        "lunch": {"name": "菜名", "calories": 0, "image": "/user-files/...", "ingredients": ["食材1", "食材2"]},
-        "dinner": {"name": "菜名", "calories": 0}
+      "description": "完整一周食谱，用户 yukuai26 每周提供",
+      "structure": {
+        "周一~周日": {
+          "lunch": {
+            "menu": {
+              "主荤菜": [],
+              "素菜": [],
+              "主食": [],
+              "汤粥": [],
+              "五谷杂粮": [],
+              "小吃": [],
+              "小菜": []
+            }
+          }
+        }
       }
     },
     "intake_log": {
-      "YYYY-MM-DD": {
-        "breakfast": {"name": "...", "calories": 0, "macros": {"protein": "Xg", "carbs": "Xg", "fat": "Xg"}},
-        "lunch": {"name": "...", "calories": 0, "macros": {}},
-        "dinner": {"name": "...", "calories": 0, "macros": {}}
+      "description": "永久摄入数据库，按日期存储，绝不删除",
+      "structure": {
+        "YYYY-MM-DD": {
+          "yukuai26": [
+            {
+              "meal": "breakfast/lunch/dinner/snack",
+              "name": "食物名",
+              "calories": 0,
+              "macros": {
+                "protein": "Xg",
+                "carbs": "Xg",
+                "fat": "Xg"
+              },
+              "time": "HH:MM",
+              "image": "/user-files/xxx.jpg"
+            }
+          ],
+          "gugugu": []
+        }
       }
     },
     "user_profile": {
@@ -36,27 +72,17 @@
       "weight": "kg",
       "age": "years",
       "gender": "male/female",
-      "activity_level": "sedentary/light/moderate/active",
-      "preferences": ["偏好列表"],
-      "allergies": ["过敏源"]
+      "activity_level": "sedentary/light/moderate/active"
     }
   },
   "heartbeat_behavior": {
-    "weekday_11am": "读取 weekly_plan 当天午餐，生成推荐食材配比（考虑 user_profile），更新 display.json",
-    "weekend_11am": "检查 weekly_plan 是否有下周食谱，无则在 display 提示「请发送下周食谱图片」"
+    "weekday_11am": "展示当天完整食谱（不省略任何分类/菜品）+ 生成午餐推荐配比（每道菜 Xg + 热量）+ 汇总当天已有摄入 → 覆盖写入 display.json",
+    "weekend_11am": "检查是否有食谱；无则提示发送；有则展示 + 汇总本周摄入数据"
   },
-  "examples": [
-    {
-      "in": "（发送一张食谱图片）这是下周食谱",
-      "out": "解析图片中周一~周五的菜品，写入 weekly_plan 各天的 lunch"
-    },
-    {
-      "in": "（发送晚餐照片）今天晚饭",
-      "out": "识别食物，估算热量和营养素，写入 intake_log/今天日期/dinner"
-    },
-    {
-      "in": "今天早餐吃了两个鸡蛋一杯牛奶",
-      "out": "写入 intake_log/今天日期/breakfast: {name:'两个鸡蛋+牛奶', calories:280, macros:{protein:'22g', carbs:'12g', fat:'15g'}}"
-    }
-  ]
+  "display_notes": "display.json 只展示当天的食谱和摄入。食谱必须完整展示所有分类所有菜品。摄入按用户分开显示。",
+  "apply_rules_behavior": {
+    "summary_generation": "代码硬编码生成摘要，不读取 rules.json 的 summary_tpl",
+    "summary_control": "修改 display.json 中的 recommendation 和 today_intake 字段，apply_rules 会保留并合入新摘要",
+    "format_control": "摘要格式（克数/热量）由 fileserver 写死，不可通过规则模板修改"
+  }
 }

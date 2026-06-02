@@ -1,0 +1,55 @@
+{
+  "card_name": "习惯",
+  "domain_knowledge": "每日打卡习惯。habits 定义习惯列表，logs 记录每日完成情况。",
+  "best_practices": [
+    "id 格式 h + 数字，自增",
+    "icon 用单个 emoji",
+    "target 通常为 'daily'",
+    "logs 格式 {\"h1\": {\"2026-05-28\": true}}"
+  ],
+  "user_preferences": [],
+  "examples": [
+    {
+      "in": "加一个习惯：每天运动",
+      "out": "在 habits 数组加 {\"id\":\"hX\",\"name\":\"运动\",\"icon\":\"🏃\",\"target\":\"daily\"}"
+    },
+    {
+      "in": "今天运动了，打卡",
+      "out": "在 logs 里设 logs['hX']['2026-05-28'] = true"
+    }
+  ],
+  "data_schema": {
+    "description": "每个用户一个 key，包含 habits 定义和 logs 记录",
+    "structure": {
+      "yukuai26": {
+        "habits": [
+          {
+            "id": "string",
+            "name": "string"
+          }
+        ],
+        "logs": {
+          "YYYY-MM-DD": {
+            "habit_id": "boolean|number"
+          }
+        }
+      },
+      "gugugu": {
+        "habits": [
+          {
+            "id": "string",
+            "name": "string"
+          }
+        ],
+        "logs": {
+          "YYYY-MM-DD": {
+            "habit_id": "boolean|number"
+          }
+        }
+      }
+    }
+  },
+  "apply_rules_behavior": {
+    "summary_generation": "代码从 habits 定义和 logs 记录计算完成数"
+  }
+}

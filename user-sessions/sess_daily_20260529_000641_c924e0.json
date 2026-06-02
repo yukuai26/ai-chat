@@ -1,0 +1,19 @@
+{
+  "id": "sess_daily_20260529_000641_c924e0",
+  "title": "Daily 05月29日",
+  "created": "2026-05-29T00:06:41.408424",
+  "updated": "2026-05-29T00:06:41.435124",
+  "messages": [
+    {
+      "role": "user",
+      "content": "今天天气不错"
+    },
+    {
+      "role": "user",
+      "content": "帮我看看食谱"
+    }
+  ],
+  "tags": [
+    "daily"
+  ]
+}

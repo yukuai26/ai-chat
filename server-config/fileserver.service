@@ -37,6 +37,7 @@ ReadWritePaths=/home/ubuntu/.openclaw/workspace-assistant
 ReadWritePaths=/home/ubuntu/.openclaw/workspace-build-cat
 ReadWritePaths=/home/ubuntu/.openclaw/user-sessions
 ReadWritePaths=/home/ubuntu/.openclaw/user-files
+ReadWritePaths=/home/ubuntu/.openclaw/user-data
 
 [Install]
 WantedBy=multi-user.target

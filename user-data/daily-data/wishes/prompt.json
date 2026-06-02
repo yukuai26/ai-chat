@@ -1,0 +1,20 @@
+{
+  "card_name": "wishes",
+  "data_schema": {
+    "description": "扁平数组，每条愿望一个对象",
+    "structure": [
+      {
+        "id": "string",
+        "title": "string",
+        "status": "idea|planning|doing|done",
+        "tags": "string[]",
+        "createdBy": "yukuai26|gugugu"
+      }
+    ]
+  },
+  "best_practices": [],
+  "user_preferences": [],
+  "apply_rules_behavior": {
+    "summary_generation": "从 rules.json 的 summary_tpl 模板渲染"
+  }
+}

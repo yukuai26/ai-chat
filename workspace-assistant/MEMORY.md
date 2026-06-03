@@ -39,8 +39,11 @@
 - Gateway 端口：127.0.0.1:18789
 - API Token：`e0fb40cef753818c92577e3c8fe2af53`
 - nginx 端口：8080，配置 `/etc/nginx/sites-available/chat`
-- 网页位置：`/var/www/chat/index.html`
-- 源文件：`~/workspace-assistant/canvas/index.html`
+- 网页位置（线上真身/权威源）：`/var/www/chat/index.html` + `/var/www/chat/fileserver.py`
+- 代码 git 仓库：`~/.openclaw/workspace-build-cat/repo`（远程 `github.com/yukuai26/ai-chat`，分支 `main`）
+- ⚠️ 改完代码后流程：改 `/var/www/chat/` → 同步到 `repo/` → commit + push origin main（走代理重试）
+- ⚠️ `~/workspace-assistant/canvas/index.html` 是 310 行废弃旧骨架，已弃用，勿当源文件
+- 数据备份仓库（≠代码）：`~/.openclaw/backup-repo`，backup.sh 每天 23:59 推 `backup-data` 分支
 - 模型：DeepSeek V4 Pro，推理模式 high
 - Agent：assistant
 

@@ -103,3 +103,11 @@ created: "2026-05-26"
 | 2026-05-27T01:58:16.085090+08:00 | 新建 | ac-realtime-sync-design-V1.0-ACTIVE.md | Phase 13 实时同步设计文档 |
 | 2026-05-27T02:01:40.537268+08:00 | 新建 | ac-calendar-design-V1.0-ACTIVE.md | Phase 14 日历设计文档 |
 | 2026-05-28 | 新建 | ac-nutrition-system-design-V1.0-DRAFT.md | Phase 17 营养追踪与食谱系统设计文档（周食谱/午餐推荐/热量记录/Dashboard卡片） |
+
+## 2026-06-03
+- **新增** `lessons/.../lesson-2026-06-03-assert-no-git-repo.md` — 教训:没查全就断言无git仓库(medium/process)
+- **新增** `lessons/.../lesson-2026-06-03-stale-tunnel-domain.md` — 教训:日志旧域名当当前域名(low/process)
+- **更新** `lessons/_index.md` — 登记上述2条,审查日期→2026-06-03
+- **更新** `MEMORY.md` — 修正网页源文件路径:权威源=/var/www/chat/,代码仓库=workspace-build-cat/repo,废弃canvas/index.html
+- **修复** Web Chat 登录页JS崩溃:删除index.html主script 2处多余`}`(线上+repo+force push对齐)
+- **代码仓库** workspace-build-cat/repo main 以线上为准,commit 15691ec,force push origin main(剔除issue-439营养)

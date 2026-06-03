@@ -216,40 +216,40 @@
     "allergies": []
   },
   "today_recommendation": {
-    "dish": "沙姜盐焗鸡 + 清炒红薯叶 + 韭菜豆芽 + 五常大米 + 红豆丸子汤",
+    "dish": "泉水牛肉 + 清炒上海青 + 家烧花菜 + 五常大米 + 冬瓜排骨汤",
     "items": [
       {
-        "name": "沙姜盐焗鸡",
-        "portion": "180g(去皮)",
-        "calories": 240
+        "name": "泉水牛肉",
+        "portion": "160g",
+        "calories": 230
       },
       {
-        "name": "清炒红薯叶",
+        "name": "清炒上海青",
         "portion": "120g",
         "calories": 40
       },
       {
-        "name": "韭菜豆芽",
-        "portion": "100g",
-        "calories": 45
+        "name": "家烧花菜",
+        "portion": "120g",
+        "calories": 60
       },
       {
         "name": "五常大米",
-        "portion": "120g(熟)",
-        "calories": 155
+        "portion": "110g(熟)",
+        "calories": 145
       },
       {
-        "name": "红豆丸子汤(甜)",
-        "portion": "半碗(控糖)",
-        "calories": 70
+        "name": "冬瓜排骨汤",
+        "portion": "一碗(撇油)",
+        "calories": 75
       }
     ],
     "total": {
       "calories": 550,
-      "protein": "40g",
-      "carbs": "46g",
+      "protein": "42g",
+      "carbs": "44g",
       "fat": "16g"
     },
-    "tip": "盐焗鸡去皮高蛋白低脂 + 双绿叶菜补纤维 + 控量主食，汤偏甜建议只喝半碗，符合减脂目标"
+    "tip": "泉水牛肉清水煮高蛋白低脂 + 上海青花菜补纤维补钾 + 控量主食，冬瓜排骨汤撇油更清爽，符合减脂目标"
   }
 }

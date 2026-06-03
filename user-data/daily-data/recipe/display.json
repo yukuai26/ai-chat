@@ -1,8 +1,8 @@
 {
-  "summary": "🥗 周二 推荐: 沙姜盐焗鸡180g(去皮)(240kcal) + 清炒红薯叶120g(40kcal) + 韭菜豆芽100g(45kcal) + 五常大米120g(熟)(155kcal) + 红豆丸子汤(甜)半碗(控糖)(70kcal) = 550kcal | 已摄入 yukuai26 暂无 gugugu 暂无",
+  "summary": "🥗 周三 推荐: 泉水牛肉160g(230kcal) + 清炒上海青120g(40kcal) + 家烧花菜120g(60kcal) + 五常大米110g(熟)(145kcal) + 冬瓜排骨汤一碗(撇油)(75kcal) = 550kcal | 已摄入 yukuai26 暂无 gugugu 暂无",
   "sections": [
     {
-      "title": "🍽️ 今日食谱 (周二)",
+      "title": "🍽️ 今日食谱 (周三)",
       "type": "table",
       "rows": [
         {
@@ -12,7 +12,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "手撕羊排、爆炒鱿鱼(微辣)、沙姜盐焗鸡、板栗红烧肉"
+              "text": "泉水牛肉、千张肉卷、香辣烤鱼(微辣)、浇汁大排"
             }
           ]
         },
@@ -23,7 +23,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "碎辣椒炒鸡蛋(中辣)、莴笋炒肉片、韭菜豆芽、清炒红薯叶"
+              "text": "家烧花菜、口蘑炒肉片、常肉末煎豆腐(微辣)、椒盐小土豆、清炒上海青"
             }
           ]
         },
@@ -34,7 +34,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "五常大米"
+              "text": "五常大米、土豆肉末丁打卤面"
             }
           ]
         },
@@ -45,7 +45,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "灌汤小笼包"
+              "text": "火山石烤肉肠"
             }
           ]
         },
@@ -56,7 +56,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "糯玉米、临安小香薯"
+              "text": "糯玉米、芋艿"
             }
           ]
         },
@@ -67,7 +67,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "红豆丸子汤(甜)"
+              "text": "冬瓜排骨汤"
             }
           ]
         },
@@ -78,7 +78,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "五香榨菜、秘制辣椒酱"
+              "text": "红油萝卜丁、秘制辣椒酱"
             }
           ]
         }
@@ -91,20 +91,20 @@
         {
           "cells": [
             {
-              "text": "沙姜盐焗鸡"
+              "text": "泉水牛肉"
             },
             {
-              "text": "180g(去皮)"
+              "text": "160g"
             },
             {
-              "text": "240kcal"
+              "text": "230kcal"
             }
           ]
         },
         {
           "cells": [
             {
-              "text": "清炒红薯叶"
+              "text": "清炒上海青"
             },
             {
               "text": "120g"
@@ -117,13 +117,13 @@
         {
           "cells": [
             {
-              "text": "韭菜豆芽"
+              "text": "家烧花菜"
             },
             {
-              "text": "100g"
+              "text": "120g"
             },
             {
-              "text": "45kcal"
+              "text": "60kcal"
             }
           ]
         },
@@ -133,23 +133,23 @@
               "text": "五常大米"
             },
             {
-              "text": "120g(熟)"
+              "text": "110g(熟)"
             },
             {
-              "text": "155kcal"
+              "text": "145kcal"
             }
           ]
         },
         {
           "cells": [
             {
-              "text": "红豆丸子汤(甜)"
+              "text": "冬瓜排骨汤"
             },
             {
-              "text": "半碗(控糖)"
+              "text": "一碗(撇油)"
             },
             {
-              "text": "70kcal"
+              "text": "75kcal"
             }
           ]
         },
@@ -163,14 +163,14 @@
               "text": ""
             },
             {
-              "text": "550kcal (P:40g C:46g F:16g)",
+              "text": "550kcal (P:42g C:44g F:16g)",
               "style": "font-weight:bold"
             }
           ]
         }
       ],
       "footer": {
-        "text": "💡 盐焗鸡去皮高蛋白低脂 + 双绿叶菜补纤维 + 控量主食，汤偏甜建议只喝半碗，符合减脂目标"
+        "text": "💡 泉水牛肉清水煮高蛋白低脂 + 上海青花菜补纤维补钾 + 控量主食，冬瓜排骨汤撇油更清爽，符合减脂目标"
       }
     },
     {
@@ -194,84 +194,5 @@
       "text": "暂无摄入记录，记录饮食后可获得营养建议 📝"
     }
   ],
-  "updated": "2026-06-02T11:00:43.010280+08:00",
-  "today": {
-    "lunch": {
-      "menu": {
-        "主荤菜": [
-          "手撕羊排",
-          "爆炒鱿鱼(微辣)",
-          "沙姜盐焗鸡",
-          "板栗红烧肉"
-        ],
-        "素菜": [
-          "碎辣椒炒鸡蛋(中辣)",
-          "莴笋炒肉片",
-          "韭菜豆芽",
-          "清炒红薯叶"
-        ],
-        "主食": [
-          "五常大米"
-        ],
-        "小吃": [
-          "灌汤小笼包"
-        ],
-        "五谷杂粮": [
-          "糯玉米",
-          "临安小香薯"
-        ],
-        "汤粥": [
-          "红豆丸子汤(甜)"
-        ],
-        "小菜": [
-          "五香榨菜",
-          "秘制辣椒酱"
-        ]
-      }
-    }
-  },
-  "today_label": "周二",
-  "recommendation": {
-    "dish": "沙姜盐焗鸡 + 清炒红薯叶 + 韭菜豆芽 + 五常大米 + 红豆丸子汤",
-    "items": [
-      {
-        "name": "沙姜盐焗鸡",
-        "portion": "180g(去皮)",
-        "calories": 240
-      },
-      {
-        "name": "清炒红薯叶",
-        "portion": "120g",
-        "calories": 40
-      },
-      {
-        "name": "韭菜豆芽",
-        "portion": "100g",
-        "calories": 45
-      },
-      {
-        "name": "五常大米",
-        "portion": "120g(熟)",
-        "calories": 155
-      },
-      {
-        "name": "红豆丸子汤(甜)",
-        "portion": "半碗(控糖)",
-        "calories": 70
-      }
-    ],
-    "protein": "40g",
-    "carbs": "46g",
-    "fat": "16g",
-    "veggies": "220g",
-    "total_calories": 550,
-    "tip": "盐焗鸡去皮高蛋白低脂 + 双绿叶菜补纤维 + 控量主食，汤偏甜建议只喝半碗，符合减脂目标"
-  },
-  "today_intake": {
-    "breakfast": 0,
-    "lunch": 0,
-    "dinner": 0,
-    "total": 0
-  },
-  "week_total": 0
+  "updated": "2026-06-03T11:00:52.640958+08:00"
 }

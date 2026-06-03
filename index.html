@@ -5126,6 +5126,24 @@
     /** WS 对话请求追踪表 { request_id: { contentDiv, msgDiv, fullContent, resolve, reject, replyTime, text, filePaths } } */
     let wsChatRequests = {};
 
+    /** 从当前会话文件读取最近 N 轮历史，转为 Gateway messages 格式（不含 system，避免重复注入）。
+     *  目的：以磁盘 session 为准重建上下文，模型不再依赖 Gateway 30 分钟内存会话，避免“隔天失忆”。 */
+    async function loadRecentHistory(sessionId, limit, currentText) {
+      if (!sessionId) return [];
+      try {
+        var r = await authFetch('/v1/sessions/' + encodeURIComponent(sessionId));
+        if (!r.ok) return [];
+        var d = await r.json();
+        var all = (d.messages || []).filter(function(m){ return m.role === 'user' || m.role === 'assistant'; });
+        // 去重: enqueueMessage 会先把当前用户消息存入文件, 这里剔除末尾与当前消息相同的 user 条, 避免重复发送
+        while (all.length > 0 && all[all.length-1].role === 'user' && currentText != null && all[all.length-1].content === currentText) {
+          all.pop();
+        }
+        var recent = all.slice(-(limit || 20));
+        return recent.map(function(m){ return { role: m.role, content: m.content }; });
+      } catch(e) { console.warn('loadRecentHistory failed:', e); return []; }
+    }
+
     /** 实际发送一条消息 —— 通过 WebSocket 绕开 Cloudflare Tunnel 超时 */
     async function _doSendMessage(text, filesToSend) {
       const now = new Date().toISOString();
@@ -5231,6 +5249,8 @@
       if (fileSummaries.length > 0) {
         messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
       }
+      var _hist = await loadRecentHistory(activeConversationId, 20, text);
+      for (var _hi = 0; _hi < _hist.length; _hi++) { messages.push(_hist[_hi]); }
       messages.push({ role: 'user', content: text });
 
       const { container: msgDiv, content: contentDiv } = createAssistantMessageElement();
@@ -5285,6 +5305,8 @@
       if (fileSummaries.length > 0) {
         messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
       }
+      var _hist = await loadRecentHistory(activeConversationId, 20, text);
+      for (var _hi = 0; _hi < _hist.length; _hi++) { messages.push(_hist[_hi]); }
       messages.push({ role: 'user', content: text });
 
       const { container: msgDiv, content: contentDiv } = createAssistantMessageElement();

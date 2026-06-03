@@ -150,7 +150,8 @@ API_TOKEN = _load_token()
 # ---- Gateway 配置 ----
 GATEWAY_URL = "http://127.0.0.1:18789/v1/chat/completions"
 GATEWAY_TOKEN = API_TOKEN  # 复用同一 Token
-DEFAULT_MODEL = "deepseek/deepseek-v4-pro"
+DEFAULT_MODEL = "openclaw:webchat-v4"  # DeepSeek V4 Pro，默认 Web Chat agent
+CARD_AGENT_MODEL = "openclaw:card-assistant"  # Daily 会话路由到卡片喵（DeepSeek V4 Pro）
 CHAT_TIMEOUT = 120  # Gateway 调用超时（秒）
 
 # ---- Session 存储配置 ----
@@ -243,87 +244,6 @@ def auth_required(f):
     return decorated
 
 
-# ---- 认证 API ----
-
-@app.route("/v1/api/auth/register", methods=["POST"])
-def auth_register():
-    """POST /v1/api/auth/register - 注册（需邀请码）"""
-    data = request.get_json(silent=True)
-    if not data or "username" not in data or "password" not in data:
-        return jsonify({"ok": False, "error": "缺少用户名或密码"}), 400
-
-    username = data["username"].strip().lower()
-    password = data["password"].strip()
-
-    if not username or not password:
-        return jsonify({"ok": False, "error": "用户名和密码不能为空"}), 400
-    if len(password) < 4:
-        return jsonify({"ok": False, "error": "密码至少 4 位"}), 400
-    if not username.isalnum():
-        return jsonify({"ok": False, "error": "用户名只能包含字母和数字"}), 400
-
-    users = _load_users()
-    if username in users:
-        return jsonify({"ok": False, "error": "用户已存在"}), 409
-
-    # 邀请码校验
-    invite_code = data.get("invite_code", "").strip()
-    invites = _load_invites()
-    if username != "admin":  # admin first user needs no invite
-        valid = False
-        for inv in invites.get("unused", []):
-            if inv.get("code") == invite_code:
-                valid = True
-                invites["unused"].remove(inv)
-                invites.setdefault("used", []).append(inv)
-                _save_invites(invites)
-                break
-        if not valid:
-            return jsonify({"ok": False, "error": "邀请码无效或已使用"}), 400
-
-    salt = bcrypt.gensalt()
-    pw_hash = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
-
-    display_name = data.get("display_name", username).strip() or username
-    # First user is admin
-    if not users:
-        partner = data.get("partner", "").strip()
-        if not partner:
-            partner = "partner"
-        users[username] = {
-            "password_hash": pw_hash,
-            "display_name": display_name,
-            "partner": partner,
-            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
-        }
-        # Auto-create partner account
-        partner_pw = os.urandom(8).hex()
-        partner_hash = bcrypt.hashpw(partner_pw.encode("utf-8"), salt).decode("utf-8")
-        users[partner] = {
-            "password_hash": partner_hash,
-            "display_name": "伴侣",
-            "partner": username,
-            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
-        }
-        _save_users(users)
-        user_obj = {"username": username, "display_name": display_name, "partner": partner}
-        token = make_token(user_obj)
-        return jsonify({
-            "ok": True, "token": token, "user": user_obj,
-            "message": f"账号创建成功！伴侣账号: {partner}，密码: {partner_pw}（请告知伴侣尽快修改密码）",
-            "partner_initial_password": partner_pw
-        })
-    else:
-        users[username] = {
-            "password_hash": pw_hash,
-            "display_name": display_name,
-            "partner": "",
-            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
-        }
-        _save_users(users)
-        user_obj = {"username": username, "display_name": display_name, "partner": ""}
-        token = make_token(user_obj)
-        return jsonify({"ok": True, "token": token, "user": user_obj, "message": "注册成功"})
 
 
 @app.route("/v1/api/auth/login", methods=["POST"])
@@ -382,48 +302,6 @@ def auth_logout():
     """POST /v1/api/auth/logout - 退出登录"""
     return jsonify({"ok": True, "message": "已退出"})
 
-
-# ---- 邀请码机制 ----
-
-INVITES_FILE = os.path.join(USER_DATA_DIR, "invites.json")
-
-def _load_invites() -> dict:
-    try:
-        if os.path.isfile(INVITES_FILE) and os.path.getsize(INVITES_FILE) > 0:
-            with open(INVITES_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return {"unused": [], "used": []}
-
-def _save_invites(data: dict):
-    os.makedirs(os.path.dirname(INVITES_FILE), exist_ok=True)
-    with open(INVITES_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-
-@app.route("/v1/api/auth/invites", methods=["GET", "POST"])
-@auth_required
-def auth_invites():
-    """GET/POST /v1/api/auth/invites - 管理邀请码（管理员）"""
-    if request.user.get("username") != "admin":
-        return jsonify({"ok": False, "error": "仅管理员可操作"}), 403
-
-    if request.method == "GET":
-        invites = _load_invites()
-        return jsonify({"ok": True, "unused": invites.get("unused", []), "used": invites.get("used", [])})
-
-    if request.method == "POST":
-        import secrets
-        code = secrets.token_hex(4)
-        invites = _load_invites()
-        invites.setdefault("unused", []).append({
-            "code": code,
-            "generated_by": request.user.get("display_name", ""),
-            "created": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
-        })
-        _save_invites(invites)
-        return jsonify({"ok": True, "invite_code": code, "message": "邀请码已生成"})
 
 logger.info(f"fileserver 启动，白名单目录: {WHITELIST}")
 
@@ -958,7 +836,24 @@ def delete_session(session_id):
 
 # ---- Gateway 调用 ----
 
-def _call_gateway(messages: list[dict]) -> dict:
+def _is_daily_session(session_id: str = None) -> bool:
+    """判断是否为 Daily 会话（应路由到卡片喵 agent）。"""
+    if not session_id:
+        return False
+    if session_id.startswith("sess_daily_"):
+        return True
+    # 也检查 tags
+    try:
+        sf = os.path.join(SESSION_DIR, f"{session_id}.json")
+        if os.path.isfile(sf):
+            with open(sf, "r", encoding="utf-8") as f:
+                sess = json.load(f)
+            return "daily" in sess.get("tags", [])
+    except Exception:
+        pass
+    return False
+
+def _call_gateway(messages: list[dict], model: str = None) -> dict:
     """调用 Gateway API，发送消息并获取回复。
 
     Args:
@@ -974,13 +869,14 @@ def _call_gateway(messages: list[dict]) -> dict:
         "Content-Type": "application/json",
         "Authorization": f"Bearer {GATEWAY_TOKEN}",
     }
+    used_model = model or DEFAULT_MODEL
     payload = {
-        "model": DEFAULT_MODEL,
+        "model": used_model,
         "messages": messages,
     }
 
     try:
-        logger.info(f"调用 Gateway: {len(messages)} 条消息, model={DEFAULT_MODEL}")
+        logger.info(f"调用 Gateway: {len(messages)} 条消息, model={used_model}")
         resp = requests.post(GATEWAY_URL, json=payload, headers=headers, timeout=CHAT_TIMEOUT)
         resp.raise_for_status()
         result = resp.json()
@@ -1210,178 +1106,27 @@ def _build_gateway_messages(
 
 
 
-# ---- Daily 卡片: 规则引擎 (apply_rules) ----
-
-def _default_rules(card_id):
-    """返回卡片的默认显示规则。"""
-    defaults = {
-        "todo": {"summary_template": "☑ {done}/{total} ({percent}%)", "limit": 5, "group_by": "date", "order": "desc"},
-        "data": {"summary_template": "{fields_count} 项数据", "fields": ["weight", "water", "exercise"]},
-        "recipe": {"summary_template": "今日: {today_meals}", "mode": "today"},
-        "wishes": {"summary_template": "{total} 个心愿（{in_progress} 进行中）", "limit": 5, "order": "created", "filters": {}},
-        "notes": {"summary_template": "{count} 条随手记", "limit": 3, "order": "created_desc"},
-        "bookmarks": {"summary_template": "{count} 个收藏", "limit": 3, "order": "created_desc"},
-        "photos": {"summary_template": "{count} 张照片", "limit": 4, "layout": "grid"},
-        "shares": {"summary_template": "未读 {unread} 条", "limit": 5, "order": "created_desc"},
-        "reminders": {"summary_template": "{pending} 项待提醒", "limit": 5, "order": "time_asc"},
-        "habits": {"summary_template": "{today_done}/{today_total} 已完成", "layout": "calendar"},
-    }
-    return defaults.get(card_id, {"summary_template": "{count} 条", "limit": 5})
-
-
-def _compute_display(card_id, data, rules):
-    """根据数据和规则计算 display 内容。"""
-    summary_tpl = rules.get("summary_template", "{count} 条")
-    admin_data = data.get("管理员", [])
-
-    if card_id == "todo":
-        tasks = data.get("管理员", []) + data.get("伴侣", [])
-        done = sum(1 for t in tasks if t.get("done"))
-        total = len(tasks)
-        percent = f"{int(done/total*100)}%" if total > 0 else "0%"
-        summary = summary_tpl.format(done=done, total=total, percent=percent)
-        limit = rules.get("limit", 5)
-        sorted_tasks = sorted(tasks, key=lambda t: t.get("date", ""), reverse=True)[:limit]
-        badge = {"text": f"{total-done} 条待办", "color": "orange"} if total > done else None
-        return {"summary": summary, "badge": badge, "items": sorted_tasks, "total": total, "done": done}
-
-    elif card_id == "data":
-        total_fields = 0
-        display_fields = rules.get("fields", [])
-        field_data = {}
-        for person, person_data in data.items():
-            for f in display_fields:
-                if f in person_data and person_data[f]:
-                    items = sorted(person_data[f].items())
-                    latest = items[-1]
-                    field_data[person + "_" + f] = {"latest": latest[1], "date": latest[0], "person": person}
-                    total_fields += 1
-        summary = summary_tpl.format(fields_count=total_fields)
-        return {"summary": summary, "fields": field_data}
-
-    elif card_id == "recipe":
-        if isinstance(data, dict):
-            weekday_map = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
-            today = weekday_map[datetime.now().weekday()]
-            today_data = data.get(today, {})
-            meals = []
-            if today_data.get("lunch"): meals.append(today_data["lunch"].get("name", "?"))
-            if today_data.get("dinner"): meals.append(today_data["dinner"].get("name", "?"))
-            today_meals = " / ".join(meals) if meals else "待定"
-            summary = summary_tpl.format(today_meals=today_meals)
-            return {"summary": summary, "today": today_data, "today_label": today}
-        return {"summary": "无数据"}
-
-    elif card_id == "wishes":
-        wishes = data if isinstance(data, list) else []
-        total = len(wishes)
-        in_progress = sum(1 for w in wishes if w.get("status") not in ("done", "idea"))
-        limit = rules.get("limit", 5)
-        summary = summary_tpl.format(total=total, in_progress=in_progress)
-        return {"summary": summary, "items": wishes[:limit], "total": total, "in_progress": in_progress}
-
-    elif card_id == "notes":
-        notes = admin_data if isinstance(admin_data, list) else []
-        count = len(notes)
-        limit = rules.get("limit", 3)
-        summary = summary_tpl.format(count=count)
-        sorted_notes = sorted(notes, key=lambda n: n.get("created", ""), reverse=True)[:limit]
-        return {"summary": summary, "items": sorted_notes, "total": count}
-
-    elif card_id == "bookmarks":
-        bookmarks = admin_data if isinstance(admin_data, list) else []
-        count = len(bookmarks)
-        limit = rules.get("limit", 3)
-        summary = summary_tpl.format(count=count)
-        sorted_bm = sorted(bookmarks, key=lambda b: b.get("created", ""), reverse=True)[:limit]
-        return {"summary": summary, "items": sorted_bm, "total": count}
-
-    elif card_id == "photos":
-        photos = admin_data if isinstance(admin_data, list) else []
-        count = len(photos)
-        limit = rules.get("limit", 4)
-        summary = summary_tpl.format(count=count)
-        latest = sorted(photos, key=lambda p: p.get("created", ""), reverse=True)[:limit]
-        return {"summary": summary, "items": latest, "total": count, "layout": rules.get("layout", "grid")}
-
-    elif card_id == "shares":
-        sent = data.get("sent", [])
-        received = data.get("received", [])
-        unread = sum(1 for s in received if not s.get("read"))
-        summary = summary_tpl.format(unread=unread)
-        return {"summary": summary, "unread": unread, "sent_count": len(sent), "received_count": len(received)}
-
-    elif card_id == "reminders":
-        reminders = admin_data if isinstance(admin_data, list) else []
-        pending = sum(1 for r in reminders if not r.get("done"))
-        limit = rules.get("limit", 5)
-        summary = summary_tpl.format(pending=pending)
-        sorted_r = sorted(reminders, key=lambda r: (r.get("done", False), r.get("time", "23:59")))[:limit]
-        return {"summary": summary, "items": sorted_r, "total": len(reminders), "pending": pending}
-
-    elif card_id == "habits":
-        habits_data = data.get("管理员", {}) if isinstance(data.get("管理员"), dict) else {}
-        habits = habits_data.get("habits", [])
-        logs = habits_data.get("logs", {})
-        today_str = datetime.today().strftime("%Y-%m-%d")
-        day_short = today_str[-5:]
-        done = sum(1 for h in habits if logs.get(h.get("id"), {}).get(today_str))
-        total = len(habits)
-        summary = summary_tpl.format(today_done=done, today_total=total)
-        return {"summary": summary, "habits": habits, "today_done": done, "today_total": total, "day": day_short}
-
-    else:
-        count = len(admin_data) if isinstance(admin_data, list) else len(data)
-        return {"summary": summary_tpl.format(count=count), "items": admin_data[:rules.get("limit", 5)]}
-
+# ---- Daily 卡片: display.json 读取（display.json 由卡片喵生成，fileserver 只负责读）----
 
 def apply_rules(card_id):
-    """通用规则引擎：读取 data.json + rules.json → 计算 → 写入 display.json。"""
-    card_dir = os.path.join(DAILY_DATA_DIR, card_id)
-    data_path = os.path.join(card_dir, "data.json")
-    rules_path = os.path.join(card_dir, "rules.json")
-    display_path = os.path.join(card_dir, "display.json")
-
-    data = {}
-    # 数据追踪卡片特殊处理：从 PROFILES_DIR 合并多人文件
-    if card_id == "data":
-        if os.path.isdir(PROFILES_DIR):
-            for fn in sorted(os.listdir(PROFILES_DIR)):
-                if fn.endswith(".json"):
-                    person = fn[:-5]
-                    pp = os.path.join(PROFILES_DIR, fn)
-                    if os.path.isfile(pp) and os.path.getsize(pp) > 0:
-                        with open(pp, "r", encoding="utf-8") as f:
-                            try:
-                                data[person] = json.load(f)
-                            except json.JSONDecodeError:
-                                pass
-    elif os.path.isfile(data_path) and os.path.getsize(data_path) > 0:
-        with open(data_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-    rules = {}
-    if os.path.isfile(rules_path) and os.path.getsize(rules_path) > 0:
-        with open(rules_path, "r", encoding="utf-8") as f:
-            rules = json.load(f)
-    else:
-        rules = _default_rules(card_id)
-
-    display = _compute_display(card_id, data, rules)
-    display["updated"] = datetime.now().isoformat()
-
-    os.makedirs(card_dir, exist_ok=True)
-    with open(display_path, "w", encoding="utf-8") as f:
-        json.dump(display, f, ensure_ascii=False, indent=2)
-
-    logger.info(f"apply_rules({card_id}): display.json 已更新")
-    return display
+    """读取 display.json（卡片喵已自行生成）。若不存在则返回空 dict。"""
+    display_path = os.path.join(DAILY_DATA_DIR, card_id, "display.json")
+    if os.path.isfile(display_path) and os.path.getsize(display_path) > 0:
+        with open(display_path, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except (json.JSONDecodeError, IOError):
+                pass
+    return {"summary": "无数据"}
 
 
 @app.route("/v1/api/daily/apply-rules", methods=["POST"])
 @require_token
 def api_apply_rules():
-    """POST /v1/api/daily/apply-rules — 对单张或多张卡片应用显示规则。"""
+    """POST /v1/api/daily/apply-rules — 读取单张或多张卡片的 display.json。
+    
+    卡片喵已自行生成 display.json，此接口只负责读取并返回。
+    """
     req_data = request.get_json(silent=True)
     if not req_data:
         return error_response("缺少请求体", 400)
@@ -1394,7 +1139,7 @@ def api_apply_rules():
     else:
         for d in sorted(os.listdir(DAILY_DATA_DIR)):
             dpath = os.path.join(DAILY_DATA_DIR, d)
-            if os.path.isdir(dpath) and os.path.isfile(os.path.join(dpath, "data.json")):
+            if os.path.isdir(dpath) and os.path.isfile(os.path.join(dpath, "display.json")):
                 card_ids.append(d)
 
     results = {}
@@ -1410,102 +1155,6 @@ def api_apply_rules():
 
 
 # ---- Daily 卡片: 操作 Prompt（升级版）----
-
-def _build_card_prompt():
-    """构建 Daily 卡片操作 prompt，注入到从命令行创建的特殊会话中。
-
-    使用 replace 而非 format 避免 JSON 花括号冲突。
-    """
-    template = """你是 Daily 卡片助手。每张卡片有四层结构：数据 → 规则 → 显示 → 经验。
-
-## 每张卡片的目录结构
-
-user-data/{card_id}/
-  data.json       ← 原始记录（你负责读写）
-  rules.json      ← 显示准则（声明式 JSON，控制怎么展示）
-  display.json    ← 实际显示内容（前端直接读，由 apply_rules 自动生成）
-  prompt.json     ← 卡片专属经验（领域知识、最佳实践、用户偏好、示例）
-  heartbeat.json  ← 心跳配置（cron 定时刷新，可选）
-
-设计原则：
-- 改数据内容 → 改 data.json → 然后调 apply_rules 刷新 display
-- 改展示方式 → 改 rules.json → 然后调 apply_rules
-- 改卡片行为经验 → 改 prompt.json（用户说「记住...」「以后别...」「经验是...」时修改）
-- 改心跳频率 → 改 heartbeat.json
-- 系统会自动注入涉及卡片的专属 prompt 消息，包含该卡片的领域知识和最佳实践
-
-## 调 apply_rules 刷新 display
-
-改完 data.json 或 rules.json 后，用 exec 执行（替换 card_id）：
-  curl -s -X POST http://127.0.0.1:5050/v1/api/daily/apply-rules -H "Content-Type: application/json" -H "Authorization: Bearer e0fb40cef753818c92577e3c8fe2af53" -d '{"card_id": "替换为卡片id"}'
-
-## 十二张卡片
-
-📋 Todo: __TODO_DIR__/
-  data.json: {"管理员": [{"id": 1, "text": "xxx", "done": false, "type": "daily", "date": "YYYY-MM-DD"}], "伴侣": []}
-  新增时 id 自增（最大 id + 1），type 默认 "daily"
-  rules.json 字段: limit(条数), group_by(date/person), order(desc/priority)
-
-📊 数据追踪: __DATA_DIR__/管理员.json 和 __DATA_DIR__/伴侣.json
-  格式: {"weight": {"2026-05-28": 72}, "water": {...}, "exercise": {...}}
-  字段自由定义。rules.json 字段: fields(["weight","water","exercise"])
-
-🍽️ 食谱: __RECIPE_DIR__/data.json
-  格式: {"周一": {"lunch": {"name": "沙拉", "calories": 200}}}
-  rules.json 字段: mode(today/week)
-
-💡 心愿: __WISHES_DIR__/data.json
-  格式: [{"id": "w1", "title": "拍饭分析", "status": "idea", "tags": [], "createdBy": "管理员"}]
-  状态: idea → discussing → designing → implementing → done
-  rules.json 字段: limit, filters({"status":"designing"})
-
-📝 随手记: __NOTES_DIR__/data.json
-  格式: {"管理员": [{"id": "n1", "text": "...", "mood": "💡", "tags": [], "images": [], "created": "ISO8601"}]}
-  rules.json 字段: limit(最新N条)
-
-🔗 收藏: __BOOKMARKS_DIR__/data.json
-  格式: {"管理员": [{"id": "b1", "url": "https://...", "title": "...", "tags": [], "created": "ISO8601"}]}
-  rules.json 字段: limit, filter_tag
-
-📸 照片: __PHOTOS_DIR__/data.json
-  格式: {"管理员": [{"id": "p1", "image": "/user-files/...", "caption": "...", "likes": [], "comments": []}]}
-  rules.json 字段: limit, layout(grid/masonry)
-
-📤 分享: __SHARES_DIR__/data.json
-  格式: {"sent": [{"id": "s1", "from": "管理员", "to": "伴侣", ...}], "received": []}
-
-⏰ 提醒: __REMINDERS_DIR__/data.json
-  格式: {"管理员": [{"id": "r1", "text": "下午3点开会", "time": "15:00", "date": "2026-05-28", "repeat": null, "done": false}]}
-
-✅ 习惯: __HABITS_DIR__/data.json
-  格式: {"管理员": {"habits": [{"id": "h1", "name": "运动", "icon": "🏃"}], "logs": {"h1": {"2026-05-28": true}}}}}
-
-📰 新闻: __NEWS_DIR__/YYYY-MM-DD.json（每天 08:00 cron 自动爬取）
-
-## 操作规则
-
-1. 先读后写：改 data.json 或 rules.json 前先 read 读取当前文件内容
-2. 改了必刷新：写完 data/rules 后立即 exec curl 调 apply_rules 刷新 display.json
-3. 展示改 rules：用户说「多展示几条」「按优先级排序」「改成只显示进行中的」→ 改 rules.json
-4. 数据改 data：用户说「记一下体重 72」「添加一个提醒」→ 改 data.json
-5. 添加 TODO 时用 @todo 前缀更快（不走这个流程）
-6. 简洁确认：只回复操作结果，如「已更新体重 72kg」「Todo 卡片现在展示 10 条」
-7. 新增条目时不要覆盖已有数据，合并到现有列表
-8. 经验改 prompt：用户说「以后记体重用kg」「记住我不吃辣」→ 读对应卡片的 prompt.json → 更新 domain_knowledge/best_practices/user_preferences → 写回
-"""
-    return (template
-        .replace("__TODO_DIR__", TODO_DIR)
-        .replace("__DATA_DIR__", PROFILES_DIR)
-        .replace("__RECIPE_DIR__", RECIPE_DIR)
-        .replace("__WISHES_DIR__", WISHES_DIR)
-        .replace("__NOTES_DIR__", NOTES_DIR)
-        .replace("__BOOKMARKS_DIR__", BOOKMARKS_DIR)
-        .replace("__PHOTOS_DIR__", PHOTOS_DIR)
-        .replace("__SHARES_DIR__", SHARES_DIR)
-        .replace("__REMINDERS_DIR__", REMINDERS_DIR)
-        .replace("__HABITS_DIR__", HABITS_DIR)
-        .replace("__NEWS_DIR__", NEWS_DIR))
-
 
 @app.route("/v1/sessions/<session_id>/messages", methods=["POST"])
 @require_token
@@ -1628,7 +1277,8 @@ def session_chat(session_id):
     )
 
     try:
-        assistant_msg = _call_gateway(gateway_messages)
+        used_model = CARD_AGENT_MODEL if _is_daily_session(session_id) else None
+        assistant_msg = _call_gateway(gateway_messages, used_model)
     except RuntimeError as e:
         logger.error(f"Session chat Gateway 调用失败: {session_id}, 错误: {e}")
         return error_response(f"消息发送失败: {e}", 502)
@@ -1850,7 +1500,7 @@ DEFAULT_CARD_REGISTRY = {
             "width": "medium",
             "enabled": True,
             "api": "/v1/api/daily/todos",
-            "persons": ["管理员", "伴侣"],
+            "persons": ["yukuai26", "gugugu"],
             "expandable": True
         },
         {
@@ -1859,7 +1509,7 @@ DEFAULT_CARD_REGISTRY = {
             "width": "medium",
             "enabled": True,
             "api": "/v1/api/daily/data",
-            "persons": ["管理员", "伴侣"],
+            "persons": ["yukuai26", "gugugu"],
             "expandable": True
         },
         {
@@ -1884,7 +1534,7 @@ DEFAULT_CARD_REGISTRY = {
             "width": "medium",
             "enabled": True,
             "api": "/v1/api/daily/notes",
-            "persons": ["管理员", "伴侣"],
+            "persons": ["yukuai26", "gugugu"],
             "expandable": True
         },
         {
@@ -1893,7 +1543,7 @@ DEFAULT_CARD_REGISTRY = {
             "width": "medium",
             "enabled": True,
             "api": "/v1/api/daily/bookmarks",
-            "persons": ["管理员", "伴侣"],
+            "persons": ["yukuai26", "gugugu"],
             "expandable": True
         },
         {
@@ -1902,7 +1552,7 @@ DEFAULT_CARD_REGISTRY = {
             "width": "wide",
             "enabled": True,
             "api": "/v1/api/daily/photos",
-            "persons": ["管理员", "伴侣"],
+            "persons": ["yukuai26", "gugugu"],
             "expandable": True
         },
         {
@@ -1911,7 +1561,7 @@ DEFAULT_CARD_REGISTRY = {
             "width": "medium",
             "enabled": True,
             "api": "/v1/api/daily/shares",
-            "persons": ["管理员", "伴侣"],
+            "persons": ["yukuai26", "gugugu"],
             "expandable": True
         },
         {
@@ -1920,7 +1570,7 @@ DEFAULT_CARD_REGISTRY = {
             "width": "medium",
             "enabled": True,
             "api": "/v1/api/daily/reminders",
-            "persons": ["管理员", "伴侣"],
+            "persons": ["yukuai26", "gugugu"],
             "expandable": True
         },
         {
@@ -1929,7 +1579,7 @@ DEFAULT_CARD_REGISTRY = {
             "width": "medium",
             "enabled": True,
             "api": "/v1/api/daily/habits",
-            "persons": ["管理员", "伴侣"],
+            "persons": ["yukuai26", "gugugu"],
             "expandable": True
         }
     ],
@@ -2036,7 +1686,8 @@ def put_card_by_id(card_id):
 
 # ---- 每日 Dashboard: 统一指令中枢 (DB3) ----
 
-KNOWN_PERSONS = ["管理员", "伴侣"]
+KNOWN_PERSONS = ["管理员", "yukuai26", "gugugu"]
+CARD_PERSONS = ["yukuai26", "gugugu"]  # 卡片只展示这两个用户的数据
 TODO_DIR = os.path.join(DAILY_DATA_DIR, "todo")
 TODOS_PATH = os.path.join(TODO_DIR, "data.json")
 RECIPE_DIR = os.path.join(DAILY_DATA_DIR, "recipe")
@@ -2099,109 +1750,6 @@ def _save_todos(data: dict):
     with open(TODOS_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-
-def _dispatch_add_todo(person: str, text: str):
-    """@todo 指令处理器：添加一条 Todo。"""
-    if not person or not text:
-        return {"ok": False, "message": "用法: @todo <管理员|伴侣> <内容>"}
-    if person not in KNOWN_PERSONS:
-        return {"ok": False, "message": f"未知用户: {person}，可用: {KNOWN_PERSONS}"}
-
-    todos = _load_todos()
-    if person not in todos:
-        todos[person] = {}
-    if "daily" not in todos[person]:
-        todos[person]["daily"] = []
-
-    tz = ZoneInfo("Asia/Shanghai")
-    today = datetime.now(tz).strftime("%Y-%m-%d")
-    new_id = 1
-    for item in todos[person].get("daily", []):
-        if item.get("id", 0) >= new_id:
-            new_id = item["id"] + 1
-
-    todo_item = {
-        "id": new_id,
-        "text": text,
-        "done": False,
-        "type": "daily",
-        "date": today,
-    }
-    todos[person]["daily"].append(todo_item)
-    _save_todos(todos)
-
-    return {"ok": True, "message": f"已添加 {person} Todo: {text}", "todo": todo_item}
-
-
-def _dispatch_done(person: str, todo_id_str: str):
-    """@done 指令处理器：勾选一条 Todo。"""
-    if not person or not todo_id_str:
-        return {"ok": False, "message": "用法: @done <管理员|伴侣> <id>"}
-    try:
-        todo_id = int(todo_id_str)
-    except ValueError:
-        return {"ok": False, "message": "Todo ID 必须是数字"}
-
-    todos = _load_todos()
-    if person not in todos:
-        return {"ok": False, "message": f"用户 {person} 无 Todo"}
-
-    for category in ["daily", "weekly"]:
-        for item in todos[person].get(category, []):
-            if item["id"] == todo_id:
-                item["done"] = True
-                _save_todos(todos)
-                return {"ok": True, "message": f"已完成 {person} Todo #{todo_id}: {item['text']}"}
-
-    return {"ok": False, "message": f"未找到 {person} Todo #{todo_id}"}
-
-
-def _parse_command(text: str) -> dict:
-    """解析指令文本，提取前缀、用户、内容。
-
-    Returns:
-        {
-            "prefix": "@todo" | None,
-            "person": "管理员" | "伴侣" | None,
-            "text": "买牛奶",
-            "matched": True | False,
-            "action": "add_todo" | None,
-            "api": "/v1/api/daily/todos" | None
-        }
-    """
-    text = text.strip()
-    if not text or not text.startswith("@"):
-        return {"prefix": None, "person": None, "text": text, "matched": False, "action": None, "api": None}
-
-    # 从注册表加载指令前缀
-    registry = _load_card_registry()
-    prefixes = registry.get("commandPrefixes", [])
-
-    # 找到第一个匹配的 @前缀
-    for pf in sorted(prefixes, key=lambda x: -len(x["prefix"])):  # 长前缀优先
-        prefix = pf["prefix"]
-        if text.startswith(prefix + " ") or text == prefix:
-            remaining = text[len(prefix):].strip()
-
-            # 检查是否包含已知用户名
-            person = None
-            for p in KNOWN_PERSONS:
-                if remaining.startswith(p + " ") or remaining == p:
-                    person = p
-                    remaining = remaining[len(p):].strip()
-                    break
-
-            return {
-                "prefix": prefix,
-                "person": person,
-                "text": remaining,
-                "matched": True,
-                "action": pf.get("action", ""),
-                "api": pf.get("api", ""),
-            }
-
-    # @ 开头但未匹配任何前缀 → 不改写，由 caller 决定回退
-    return {"prefix": None, "person": None, "text": text, "matched": False, "action": None, "api": None}
 
 
 # ---- 每日卡片: 卡片级 prompt 系统 ----
@@ -2312,8 +1860,8 @@ _CARD_PROMPT_DEFAULTS = {
             "连续 3 天饮水不足需提醒"
         ],
         "examples": [
-            {"in": "今天体重 72", "out": "读 管理员.json → 在 weight 字段加 {\"2026-05-28\": 72} → 写回 → curl apply_rules data"},
-            {"in": "今天喝了 6 杯水", "out": "读 管理员.json → 在 water 字段加 {\"2026-05-28\": 6} → 写回 → curl apply_rules data"}
+            {"in": "今天体重 72", "out": "读 管理员.json → 在 weight 字段加 {\"2026-05-28\": 72} → 写回 → 更新 display.json"},
+            {"in": "今天喝了 6 杯水", "out": "读 管理员.json → 在 water 字段加 {\"2026-05-28\": 6} → 写回 → 更新 display.json"}
         ]
     },
     "recipe": {
@@ -2476,23 +2024,9 @@ def _ensure_default_prompt(card_id):
 
 
 def _build_card_specific_messages(text):
-    """检测文本涉及的卡片，返回额外的 system 消息（卡片专属 prompt）。"""
-    detected = _detect_card_from_text(text)
+    """【已弃用】关键词匹配分发，改为 _build_card_manifest 注入全部卡片清单。"""
+    return []
 
-    extra_messages = []
-    added = set()
-    for card_id, score in detected:
-        if card_id in added:
-            continue
-        if score < 3:  # 太短的关键词忽略（如单字"吃"）
-            continue
-        card_prompt = _load_card_prompt(card_id)
-        if card_prompt:
-            extra_messages.append({"role": "system", "content": card_prompt})
-            added.add(card_id)
-            logger.info(f"注入卡片专属 prompt: {card_id} (score={score})")
-
-    return extra_messages
 
 
 # ---- API: 卡片 display.json 读取（前端统一入口）----
@@ -2503,7 +2037,7 @@ def get_all_card_displays():
     """GET /v1/api/daily/cards/display — 返回所有卡片的 display.json 内容。
 
     前端 `loadDashboard()` 调这一个接口即可获取全部卡片数据。
-    如果 display.json 不存在，会先调 apply_rules 生成。
+    display.json 由卡片喵自行生成，fileserver 只负责读取并返回。
     """
     results = {}
     for d in sorted(os.listdir(DAILY_DATA_DIR)):
@@ -2517,14 +2051,6 @@ def get_all_card_displays():
                     results[d] = json.load(f)
             except (json.JSONDecodeError, IOError):
                 pass
-        else:
-            data_path = os.path.join(dpath, "data.json")
-            if os.path.isfile(data_path) and os.path.getsize(data_path) > 0:
-                try:
-                    display = apply_rules(d)
-                    results[d] = display
-                except Exception as e:
-                    logger.warning(f"apply_rules({d}) 失败: {e}")
 
     return jsonify({"ok": True, "cards": results})
 
@@ -2536,21 +2062,42 @@ def get_card_display(card_id):
     card_dir = os.path.join(DAILY_DATA_DIR, card_id)
     display_path = os.path.join(card_dir, "display.json")
 
-    display = {}
+    display = {"summary": "无数据"}
     if os.path.isfile(display_path) and os.path.getsize(display_path) > 0:
         with open(display_path, "r", encoding="utf-8") as f:
-            display = json.load(f)
-    else:
-        try:
-            display = apply_rules(card_id)
-        except Exception as e:
-            return jsonify({"ok": True, "card_id": card_id, "display": {"summary": "无数据"}})
+            try:
+                display = json.load(f)
+            except (json.JSONDecodeError, IOError):
+                pass
 
     return jsonify({"ok": True, "card_id": card_id, "display": display})
 
 
 
+
+# ---- API: display.json 更新通知 ----
+
+@app.route("/v1/api/daily/notify-display-update", methods=["POST"])
+@require_token
+def notify_display_update():
+    """POST /v1/api/daily/notify-display-update - 卡片喵更新 display.json 后调用。
+    请求体: {"card": "recipe"} 或 {"cards": ["recipe", "todo"]}
+    广播 card_changed 事件给所有在线前端。
+    """
+    data = request.get_json(silent=True) or {}
+    user = request.user.get("username", "system") if hasattr(request, "user") else "system"
+    cards = data.get("cards") or [data.get("card")]
+    if isinstance(cards, str):
+        cards = [cards]
+
+    for card_id in cards:
+        _broadcast({"event": "card_changed", "by": user, "card": card_id})
+
+    return jsonify({"ok": True, "notified": cards})
+
+
 # ---- API: 管理卡片 prompt ----
+
 
 @app.route("/v1/api/daily/prompt/<card_id>", methods=["GET"])
 @require_token
@@ -2597,126 +2144,6 @@ def update_card_prompt(card_id):
 
     logger.info(f"卡片 prompt 已更新: {card_id}")
     return jsonify({"ok": True, "card_id": card_id, "prompt": old})
-
-@app.route("/v1/api/daily/command", methods=["POST"])
-@require_token
-def daily_command():
-    """POST /v1/api/daily/command - 统一指令中枢。
-
-    请求体: {"text": "@todo 管理员 买牛奶"} 或 {"text": "今天天气怎么样"}
-
-    流程:
-      1. 解析 @前缀，匹配卡片注册表中的 commandPrefixes
-      2. 匹配成功 → 分发到对应处理器
-      3. 无匹配 → 回退为自然语言，调用 Gateway 处理
-
-    返回:
-      - 指令匹配: {"ok": true, "prefix": "@todo", "action": "add_todo", ...}
-      - 自然语言: {"ok": true, "type": "chat", "content": "AI 回复..."}
-    """
-    data = request.get_json(silent=True)
-    if not data or "text" not in data:
-        return error_response("缺少必填参数", 400, "请求体需包含 text 字段")
-
-    text = data["text"]
-    if not isinstance(text, str) or not text.strip():
-        return error_response("指令内容不能为空", 400)
-
-    # 解析指令
-    parsed = _parse_command(text)
-
-    # 匹配到前缀 → 分发
-    if parsed["matched"]:
-        prefix = parsed["prefix"]
-        person = parsed["person"]
-        content = parsed["text"]
-
-        logger.info(f"指令解析: prefix={prefix}, person={person}, text={content}")
-
-        # @todo - 添加 Todo
-        if prefix == "@todo":
-            result = _dispatch_add_todo(person, content)
-            result["prefix"] = prefix
-            result["action"] = parsed["action"]
-            return jsonify(result)
-
-        # @done - 勾选 Todo
-        if prefix == "@done":
-            result = _dispatch_done(person, content)
-            result["prefix"] = prefix
-            result["action"] = parsed["action"]
-            return jsonify(result)
-
-        # 其他指令 - 返回解析结果（处理器在后续 Phase 实现）
-        return jsonify({
-            "ok": True,
-            "prefix": prefix,
-            "action": parsed["action"],
-            "parsed": {"person": person, "text": content},
-            "message": f"指令 {prefix} 已解析，处理器将在后续 Phase 实现",
-        })
-
-    # 未匹配前缀 → 回退自然语言：创建带卡片 prompt 的特殊会话
-    logger.info(f"指令中枢 → 自然语言回退，创建 Daily 会话: {text[:80]}")
-    try:
-        import uuid, datetime
-
-        # 创建新会话
-        now = datetime.datetime.now()
-        session_id = f"sess_daily_{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
-        session_file = os.path.join(SESSION_DIR, f"{session_id}.json")
-
-        # 构建会话：基础卡片 prompt + 卡片专属经验
-        base_prompt = _build_card_prompt()
-        card_messages = _build_card_specific_messages(text)
-
-        session_data = {
-            "id": session_id,
-            "title": f"Daily 指令 {now.strftime('%m月%d日 %H:%M')}",
-            "created": now.isoformat(),
-            "updated": now.isoformat(),
-            "messages": [
-                {"role": "system", "content": base_prompt},
-                *card_messages,
-                {"role": "user", "content": text}
-            ],
-            "tags": ["daily"]
-        }
-
-        # 保存会话文件
-        os.makedirs(SESSION_DIR, exist_ok=True)
-        with open(session_file, "w", encoding="utf-8") as f:
-            json.dump(session_data, f, ensure_ascii=False, indent=2)
-
-        logger.info(f"Daily 会话已创建: {session_id}")
-
-        # 调用 Gateway 获取 AI 回复（基础 prompt + 卡片专属经验）
-        messages = _build_gateway_messages(
-            [{"role": "system", "content": base_prompt}] + card_messages,
-            text,
-            None,
-        )
-        assistant_msg = _call_gateway(messages)
-
-        # 将 AI 回复追加到会话
-        session_data["messages"].append({
-            "role": "assistant",
-            "content": assistant_msg.get("content", "")
-        })
-        session_data["updated"] = datetime.datetime.now().isoformat()
-        with open(session_file, "w", encoding="utf-8") as f:
-            json.dump(session_data, f, ensure_ascii=False, indent=2)
-
-        return jsonify({
-            "ok": True,
-            "type": "chat",
-            "prefix": None,
-            "session_id": session_id,
-            "content": assistant_msg.get("content", ""),
-            "time": assistant_msg.get("time", ""),
-        })
-    except RuntimeError as e:
-        return error_response(f"指令处理失败: {e}", 502)
 
 
 # ---- 每日 Dashboard: 面板配置 API (DB4) ----
@@ -3687,6 +3114,13 @@ def _load_recipe() -> dict:
 
     DAY_TO_NUM = {"周一": "1", "周二": "2", "周三": "3", "周四": "4",
                    "周五": "5", "周六": "6", "周日": "7"}
+
+    # 新嵌套格式: {"weekly_plan": {"周一": {...}}, "intake_log": {...}, ...}
+    if "weekly_plan" in data:
+        data = data["weekly_plan"]
+        if not data:
+            return {}
+
     first_key = next(iter(data.keys()))
 
     # 已经是旧格式（数字 key）
@@ -3702,12 +3136,21 @@ def _load_recipe() -> dict:
             for meal_type in ("lunch", "dinner", "breakfast"):
                 meal = meals.get(meal_type)
                 if isinstance(meal, dict):
-                    name = meal.get("name", "")
-                    cal = meal.get("calories")
-                    if cal:
-                        result[day_num][meal_type] = f"{name} ({cal}kcal)"
+                    # menu 格式: {"menu": {"主荤菜": [...], "素菜": [...]}}
+                    if "menu" in meal:
+                        menu = meal["menu"]
+                        all_dishes = []
+                        for cat, dishes in menu.items():
+                            if isinstance(dishes, list):
+                                all_dishes.extend(dishes[:2])
+                        result[day_num][meal_type] = " / ".join(all_dishes[:5]) + ("…" if len(all_dishes) > 5 else "")
                     else:
-                        result[day_num][meal_type] = name
+                        name = meal.get("name", "")
+                        cal = meal.get("calories")
+                        if cal:
+                            result[day_num][meal_type] = f"{name} ({cal}kcal)"
+                        else:
+                            result[day_num][meal_type] = name
                 elif isinstance(meal, str):
                     result[day_num][meal_type] = meal
     return result
@@ -3899,7 +3342,216 @@ def get_week_recipe():
     })
 
 
+@app.route("/v1/api/daily/recipe/week-snacks", methods=["GET"])
+@require_token
+def get_week_snacks():
+    """GET /v1/api/daily/recipe/week-snacks - 本周非正餐摄入统计。"""
+    tz = ZoneInfo("Asia/Shanghai")
+    now = datetime.now(tz)
+    today = now.date()
+    monday = today - timedelta(days=today.weekday())
 
+    iso = today.isocalendar()
+    week_label = f"{iso[0]}-W{iso[1]:02d}"
+
+    try:
+        with open(RECIPE_PATH, "r", encoding="utf-8") as f:
+            all_data = json.load(f)
+    except (json.JSONDecodeError, IOError, FileNotFoundError):
+        all_data = {}
+
+    intake_log = all_data.get("intake_log", {})
+
+    fruit_keywords = ["苹果", "香蕉", "橙子", "葡萄", "草莓", "蓝莓", "芒果",
+                      "西瓜", "哈密瓜", "桃", "梨", "樱桃", "柚子", "猕猴桃",
+                      "火龙果", "荔枝", "榴莲", "菠萝", "柠檬", "牛油果",
+                      "水果", "果", "橘", "柑"]
+
+    def classify_snack(item):
+        name = item.get("name", "")
+        time_str = item.get("time", "12:00")
+        for kw in fruit_keywords:
+            if kw in name:
+                return "水果"
+        try:
+            hour = int(time_str.split(":")[0])
+            if hour >= 22 or hour < 5:
+                return "夜宵"
+        except (ValueError, IndexError):
+            pass
+        return "零食"
+
+    users_result = {}
+    for user in ["yukuai26", "gugugu"]:
+        categories = {"夜宵": {"items": [], "total_cal": 0},
+                      "零食": {"items": [], "total_cal": 0},
+                      "水果": {"items": [], "total_cal": 0}}
+        total_cal = 0
+
+        for i in range(7):
+            d = monday + timedelta(days=i)
+            d_str = d.isoformat()
+            day_data = intake_log.get(d_str, {})
+            user_items = day_data.get(user, [])
+
+            for item in user_items:
+                meal_type = item.get("meal", "")
+                if meal_type not in ("breakfast", "lunch", "dinner"):
+                    cat = classify_snack(item)
+                    cal = item.get("calories", 0) or 0
+                    categories[cat]["items"].append({
+                        "date": d_str,
+                        "name": item.get("name", "未知"),
+                        "calories": cal,
+                        "time": item.get("time", ""),
+                    })
+                    categories[cat]["total_cal"] += cal
+                    total_cal += cal
+
+        users_result[user] = {
+            "categories": categories,
+            "total_cal": total_cal,
+        }
+
+    return jsonify({
+        "ok": True,
+        "week_label": week_label,
+        "users": users_result,
+    })
+
+
+@app.route("/v1/api/daily/recipe/nutrition-tips", methods=["GET"])
+@require_token
+def get_nutrition_tips():
+    """GET /v1/api/daily/recipe/nutrition-tips - 根据最近摄入的营养健康推荐。"""
+    tz = ZoneInfo("Asia/Shanghai")
+    now = datetime.now(tz)
+    today = now.date()
+
+    try:
+        with open(RECIPE_PATH, "r", encoding="utf-8") as f:
+            all_data = json.load(f)
+    except (json.JSONDecodeError, IOError, FileNotFoundError):
+        all_data = {}
+
+    intake_log = all_data.get("intake_log", {})
+    user_profile = all_data.get("user_profile", {})
+
+    total_cal = 0
+    total_protein = 0
+    total_carbs = 0
+    total_fat = 0
+    logged_days = 0
+    snack_cal = 0
+
+    for i in range(7):
+        d = today - timedelta(days=i)
+        d_str = d.isoformat()
+        day_data = intake_log.get(d_str, {})
+        user_items = day_data.get("yukuai26", [])
+
+        if user_items:
+            logged_days += 1
+            for item in user_items:
+                cal = item.get("calories", 0) or 0
+                total_cal += cal
+                macros = item.get("macros", {})
+                total_protein += _parse_grams_nutrition(macros.get("protein", "0g"))
+                total_carbs += _parse_grams_nutrition(macros.get("carbs", "0g"))
+                total_fat += _parse_grams_nutrition(macros.get("fat", "0g"))
+                if item.get("meal") not in ("breakfast", "lunch", "dinner"):
+                    snack_cal += cal
+
+    if logged_days > 0:
+        avg_cal = round(total_cal / logged_days)
+        avg_protein = round(total_protein / logged_days)
+        avg_carbs = round(total_carbs / logged_days)
+        avg_fat = round(total_fat / logged_days)
+    else:
+        avg_cal = avg_protein = avg_carbs = avg_fat = 0
+
+    tips = []
+    dietary_goal = user_profile.get("dietary_goal", "减脂")
+
+    if logged_days == 0:
+        tips.append({
+            "icon": "📝",
+            "title": "开始记录饮食",
+            "desc": "本周暂无摄入记录，建议拍照记录每餐，帮助了解实际热量摄入。"
+        })
+    else:
+        target_cal = 2000 if dietary_goal == "减脂" else 2400
+        if avg_cal > target_cal * 1.1:
+            tips.append({
+                "icon": "🔥",
+                "title": "热量偏高",
+                "desc": f"日均 {avg_cal}kcal，建议控制在 {target_cal}kcal 以内。可减少主食或零食摄入。"
+            })
+        elif avg_cal < target_cal * 0.7:
+            tips.append({
+                "icon": "⚠️",
+                "title": "热量不足",
+                "desc": f"日均 {avg_cal}kcal 偏低，长期可能影响代谢。建议至少摄入 {int(target_cal*0.8)}kcal。"
+            })
+        else:
+            tips.append({
+                "icon": "✅",
+                "title": "热量适中",
+                "desc": f"日均 {avg_cal}kcal，处于合理范围 ({int(target_cal*0.8)}-{target_cal}kcal)。"
+            })
+
+        if avg_protein < 60:
+            tips.append({
+                "icon": "🥩",
+                "title": "蛋白质摄入不足",
+                "desc": f"日均蛋白质 {avg_protein}g，减脂期建议 90-120g/天。可增加鸡胸肉、鱼虾、蛋白。"
+            })
+        elif avg_protein >= 90:
+            tips.append({
+                "icon": "💪",
+                "title": "蛋白质充足",
+                "desc": f"日均蛋白质 {avg_protein}g，有助于维持肌肉量。"
+            })
+
+        if total_cal > 0 and snack_cal / total_cal > 0.15:
+            pct = round(snack_cal / total_cal * 100)
+            tips.append({
+                "icon": "🍪",
+                "title": "非正餐热量偏高",
+                "desc": f"本周非正餐占总热量 {pct}%（建议 <10%）。尝试用水果或坚果替代高糖零食。"
+            })
+
+        tips.append({
+            "icon": "🥬",
+            "title": "多吃蔬菜",
+            "desc": "减脂期建议每餐搭配 150-200g 绿叶蔬菜，增加饱腹感且热量极低。"
+        })
+
+    return jsonify({
+        "ok": True,
+        "logged_days": logged_days,
+        "analysis": {
+            "avg_calories": avg_cal,
+            "avg_protein_g": avg_protein,
+            "avg_carbs_g": avg_carbs,
+            "avg_fat_g": avg_fat,
+            "total_snack_cal": snack_cal,
+            "dietary_goal": dietary_goal,
+        },
+        "tips": tips,
+    })
+
+
+def _parse_grams_nutrition(value) -> float:
+    """将 '35g' 或 35 转为数字。"""
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        try:
+            return float(value.replace("g", "").replace("G", "").strip())
+        except ValueError:
+            return 0
+    return 0
 
 
 # ============================================================
@@ -5526,7 +5178,7 @@ def ws_handler(ws):
     if token:
         try:
             payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
-            username = payload.get('sub', '')
+            username = payload.get('user', '')
         except Exception:
             pass
 

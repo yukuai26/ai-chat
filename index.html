@@ -4000,14 +4000,12 @@
     function clearAuth() {
       authJwt = '';
       authUser = null;
-      token = '';
       localStorage.removeItem('aichat_jwt');
     }
 
     function saveAuth(jwt, user) {
       authJwt = jwt;
       authUser = user;
-      token = jwt;
       localStorage.setItem('aichat_jwt', jwt);
     }
 
@@ -4133,7 +4131,7 @@
       // 自动连接 Gateway：登录后无需用户手动填写 Token
       const saved = JSON.parse(localStorage.getItem('aichat_config') || '{}');
       apiUrl = saved.apiUrl || '';
-      token = authJwt || saved.token || '';
+      token = saved.token || 'e0fb40cef753818c92577e3c8fe2af53';
       agentId = saved.agentId || 'webchat-v4';
       // 同步到设置面板（如果存在）
       var apiUrlEl = document.getElementById('apiUrl');
@@ -5342,8 +5340,8 @@
       // 保存助手消息（用户消息已在 enqueueMessage 时保存）
       if (activeConversationId && fullContent) {
         var saveBody = { messages: [{ role: 'assistant', content: fullContent, time: replyTime }] };
-        fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        authFetch('/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(saveBody),
         }).catch(function(e) { console.error('Save error:', e); });
       }
@@ -9094,9 +9092,9 @@ async function loadTodoCard(cardEl) {
                 { role: 'assistant', content: req.fullContent, time: req.replyTime }
               ]
             };
-            fetch(apiUrl + '/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
+            authFetch('/v1/sessions/' + encodeURIComponent(activeConversationId) + '/messages', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(saveBody),
             }).catch(function(e) { console.error('Save error:', e); });
           }

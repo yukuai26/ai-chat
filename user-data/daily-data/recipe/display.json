@@ -1,8 +1,8 @@
 {
-  "summary": "🥗 周三 推荐: 泉水牛肉160g(230kcal) + 清炒上海青120g(40kcal) + 家烧花菜120g(60kcal) + 五常大米110g(熟)(145kcal) + 冬瓜排骨汤一碗(撇油)(75kcal) = 550kcal | 已摄入 yukuai26 暂无 gugugu 暂无",
+  "summary": "🥗 周四 推荐: 泰式咖喱虾150g(少咖喱酱)(210kcal) + 腐皮毛毛菜120g(70kcal) + 醋溜大白菜120g(45kcal) + 五谷糙米饭100g(熟)(130kcal) + 菌菇老母鸡汤一碗(撇油)(80kcal) = 535kcal | 已摄入 yukuai26 暂无 gugugu 暂无",
   "sections": [
     {
-      "title": "🍽️ 今日食谱 (周三)",
+      "title": "🍽️ 今日食谱 (周四)",
       "type": "table",
       "rows": [
         {
@@ -12,7 +12,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "泉水牛肉、千张肉卷、香辣烤鱼(微辣)、浇汁大排"
+              "text": "泰式咖喱虾、川香辣子鸡(中辣)、香菇酿肉、黄豆焖猪蹄"
             }
           ]
         },
@@ -23,7 +23,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "家烧花菜、口蘑炒肉片、常肉末煎豆腐(微辣)、椒盐小土豆、清炒上海青"
+              "text": "外婆菜炒鸡蛋(微辣)、豆角炒肉末、腐皮毛毛菜、醋溜大白菜"
             }
           ]
         },
@@ -34,7 +34,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "五常大米、土豆肉末丁打卤面"
+              "text": "五常大米、五谷糙米饭"
             }
           ]
         },
@@ -45,7 +45,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "火山石烤肉肠"
+              "text": "卡兹脆鸡排"
             }
           ]
         },
@@ -56,7 +56,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "糯玉米、芋艿"
+              "text": "糯玉米、临安小香薯"
             }
           ]
         },
@@ -67,7 +67,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "冬瓜排骨汤"
+              "text": "菌菇老母鸡汤"
             }
           ]
         },
@@ -78,7 +78,7 @@
               "style": "color:var(--text-secondary);width:60px"
             },
             {
-              "text": "红油萝卜丁、秘制辣椒酱"
+              "text": "五香榨菜、秘制辣椒酱"
             }
           ]
         }
@@ -91,65 +91,65 @@
         {
           "cells": [
             {
-              "text": "泉水牛肉"
+              "text": "泰式咖喱虾"
             },
             {
-              "text": "160g"
+              "text": "150g(少咖喱酱)"
             },
             {
-              "text": "230kcal"
+              "text": "210kcal"
             }
           ]
         },
         {
           "cells": [
             {
-              "text": "清炒上海青"
+              "text": "腐皮毛毛菜"
             },
             {
               "text": "120g"
             },
             {
-              "text": "40kcal"
+              "text": "70kcal"
             }
           ]
         },
         {
           "cells": [
             {
-              "text": "家烧花菜"
+              "text": "醋溜大白菜"
             },
             {
               "text": "120g"
             },
             {
-              "text": "60kcal"
+              "text": "45kcal"
             }
           ]
         },
         {
           "cells": [
             {
-              "text": "五常大米"
+              "text": "五谷糙米饭"
             },
             {
-              "text": "110g(熟)"
+              "text": "100g(熟)"
             },
             {
-              "text": "145kcal"
+              "text": "130kcal"
             }
           ]
         },
         {
           "cells": [
             {
-              "text": "冬瓜排骨汤"
+              "text": "菌菇老母鸡汤"
             },
             {
               "text": "一碗(撇油)"
             },
             {
-              "text": "75kcal"
+              "text": "80kcal"
             }
           ]
         },
@@ -163,14 +163,14 @@
               "text": ""
             },
             {
-              "text": "550kcal (P:42g C:44g F:16g)",
+              "text": "535kcal (P:40g C:46g F:15g)",
               "style": "font-weight:bold"
             }
           ]
         }
       ],
       "footer": {
-        "text": "💡 泉水牛肉清水煮高蛋白低脂 + 上海青花菜补纤维补钾 + 控量主食，冬瓜排骨汤撇油更清爽，符合减脂目标"
+        "text": "💡 泰式咖喱虾高蛋白低脂(嘱少酱减热量) + 腐皮毛毛菜与醋溜白菜补纤维 + 糙米替代精米控糖，菌菇鸡汤撇油更清爽，避开中辣辣子鸡，契合减脂高蛋白目标"
       }
     },
     {
@@ -194,5 +194,5 @@
       "text": "暂无摄入记录，记录饮食后可获得营养建议 📝"
     }
   ],
-  "updated": "2026-06-03T11:00:52.640958+08:00"
+  "updated": "2026-06-04T11:00:50.360575+08:00"
 }

@@ -216,40 +216,40 @@
     "allergies": []
   },
   "today_recommendation": {
-    "dish": "泉水牛肉 + 清炒上海青 + 家烧花菜 + 五常大米 + 冬瓜排骨汤",
+    "dish": "泰式咖喱虾 + 腐皮毛毛菜 + 醋溜大白菜 + 五谷糙米饭 + 菌菇老母鸡汤",
     "items": [
       {
-        "name": "泉水牛肉",
-        "portion": "160g",
-        "calories": 230
+        "name": "泰式咖喱虾",
+        "portion": "150g(少咖喱酱)",
+        "calories": 210
       },
       {
-        "name": "清炒上海青",
+        "name": "腐皮毛毛菜",
         "portion": "120g",
-        "calories": 40
+        "calories": 70
       },
       {
-        "name": "家烧花菜",
+        "name": "醋溜大白菜",
         "portion": "120g",
-        "calories": 60
+        "calories": 45
       },
       {
-        "name": "五常大米",
-        "portion": "110g(熟)",
-        "calories": 145
+        "name": "五谷糙米饭",
+        "portion": "100g(熟)",
+        "calories": 130
       },
       {
-        "name": "冬瓜排骨汤",
+        "name": "菌菇老母鸡汤",
         "portion": "一碗(撇油)",
-        "calories": 75
+        "calories": 80
       }
     ],
     "total": {
-      "calories": 550,
-      "protein": "42g",
-      "carbs": "44g",
-      "fat": "16g"
+      "calories": 535,
+      "protein": "40g",
+      "carbs": "46g",
+      "fat": "15g"
     },
-    "tip": "泉水牛肉清水煮高蛋白低脂 + 上海青花菜补纤维补钾 + 控量主食，冬瓜排骨汤撇油更清爽，符合减脂目标"
+    "tip": "泰式咖喱虾高蛋白低脂(嘱少酱减热量) + 腐皮毛毛菜与醋溜白菜补纤维 + 糙米替代精米控糖，菌菇鸡汤撇油更清爽，避开中辣辣子鸡，契合减脂高蛋白目标"
   }
 }

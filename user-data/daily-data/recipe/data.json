@@ -216,40 +216,40 @@
     "allergies": []
   },
   "today_recommendation": {
-    "dish": "泰式咖喱虾 + 腐皮毛毛菜 + 醋溜大白菜 + 五谷糙米饭 + 菌菇老母鸡汤",
+    "dish": "潮汕牛肉丸 + 清炒菠菜 + 清炒红苋菜 + 五常大米 + 红糖凉粉(少量)",
     "items": [
       {
-        "name": "泰式咖喱虾",
-        "portion": "150g(少咖喱酱)",
-        "calories": 210
+        "name": "潮汕牛肉丸(配煲条少量)",
+        "portion": "150g(汤煮)",
+        "calories": 200
       },
       {
-        "name": "腐皮毛毛菜",
+        "name": "清炒菠菜",
+        "portion": "150g",
+        "calories": 55
+      },
+      {
+        "name": "清炒红苋菜",
         "portion": "120g",
-        "calories": 70
+        "calories": 50
       },
       {
-        "name": "醋溜大白菜",
-        "portion": "120g",
-        "calories": 45
-      },
-      {
-        "name": "五谷糙米饭",
+        "name": "五常大米",
         "portion": "100g(熟)",
-        "calories": 130
+        "calories": 115
       },
       {
-        "name": "菌菇老母鸡汤",
-        "portion": "一碗(撇油)",
-        "calories": 80
+        "name": "红糖凉粉",
+        "portion": "小份(少糖)",
+        "calories": 90
       }
     ],
     "total": {
-      "calories": 535,
-      "protein": "40g",
-      "carbs": "46g",
-      "fat": "15g"
+      "calories": 510,
+      "protein": "38g",
+      "carbs": "52g",
+      "fat": "11g"
     },
-    "tip": "泰式咖喱虾高蛋白低脂(嘱少酱减热量) + 腐皮毛毛菜与醋溜白菜补纤维 + 糙米替代精米控糖，菌菇鸡汤撇油更清爽，避开中辣辣子鸡，契合减脂高蛋白目标"
+    "tip": "潮汕牛肉丸高蛋白低脂(汤煮不油炸) + 双绿叶菜(菠菜+红苋菜)补铁补纤维 + 米饭控量100g，避开中辣青椒油豆腐与油大的鸡翅年糕，红糖凉粉小份解馋，契合减脂高蛋白目标"
   }
 }

@@ -1,198 +1,30 @@
 {
-  "summary": "🥗 周五 推荐: 潮汕牛肉丸(配煲条少量)150g(汤煮)(200kcal) + 清炒菠菜150g(55kcal) + 清炒红苋菜120g(50kcal) + 五常大米100g(熟)(115kcal) + 红糖凉粉小份(少糖)(90kcal) = 510kcal | 已摄入 yukuai26 暂无 gugugu 暂无",
+  "summary": "✅ 下周食谱已就绪",
+  "week_plan_preview": [
+    "周一:招牌酸菜鱼片/糖醋排骨",
+    "周二:手撕羊排/板栗红烧肉",
+    "周三:泉水牛肉/香辣烤鱼",
+    "周四:泰式咖喱虾/川香辣子鸡",
+    "周五:潮汕牛肉丸/龙井茶香排骨"
+  ],
+  "week_total": 0,
+  "updated": "2026-06-06T11:00:00+08:00",
   "sections": [
     {
-      "title": "🍽️ 今日食谱 (周五)",
+      "title": "📋 下周午餐主荤预览",
       "type": "table",
       "rows": [
-        {
-          "cells": [
-            {
-              "text": "主荤菜",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "潮汕牛肉/手打牛肉丸(配煲条)、龙井茶香排骨、鸡翅年糕、红烧带鱼(微辣)"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "素菜",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "青椒油豆腐炒肉(中辣)、茭白炒三丝、清炒红苋菜、清炒菠菜"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "主食",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "五常大米、青椒肉片粉"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "小吃",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "手工蒸饺"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "五谷杂粮",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "临安小香薯、贝贝南瓜"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "汤粥",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "红糖凉粉"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "小菜",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "红油萝卜丁、秘制辣椒酱"
-            }
-          ]
-        }
+        {"cells": [{"text": "周一", "style": "color:var(--text-secondary);width:48px"}, {"text": "招牌酸菜鱼片、糖醋排骨、椒盐鸭腿、土鸡蛋杂牛肉"}]},
+        {"cells": [{"text": "周二", "style": "color:var(--text-secondary);width:48px"}, {"text": "手撕羊排、爆炒鱿鱼、沙姜盐焗鸡、板栗红烧肉"}]},
+        {"cells": [{"text": "周三", "style": "color:var(--text-secondary);width:48px"}, {"text": "泉水牛肉、千张肉卷、香辣烤鱼、浇汁大排"}]},
+        {"cells": [{"text": "周四", "style": "color:var(--text-secondary);width:48px"}, {"text": "泰式咖喱虾、川香辣子鸡、香菇酿肉、黄豆焖猪蹄"}]},
+        {"cells": [{"text": "周五", "style": "color:var(--text-secondary);width:48px"}, {"text": "潮汕牛肉丸、龙井茶香排骨、鸡翅年糕、红烧带鱼"}]}
       ]
     },
     {
-      "title": "🥗 午餐推荐配比",
-      "type": "table",
-      "rows": [
-        {
-          "cells": [
-            {
-              "text": "潮汕牛肉丸(配煲条少量)"
-            },
-            {
-              "text": "150g(汤煮)"
-            },
-            {
-              "text": "200kcal"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "清炒菠菜"
-            },
-            {
-              "text": "150g"
-            },
-            {
-              "text": "55kcal"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "清炒红苋菜"
-            },
-            {
-              "text": "120g"
-            },
-            {
-              "text": "50kcal"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "五常大米"
-            },
-            {
-              "text": "100g(熟)"
-            },
-            {
-              "text": "115kcal"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "红糖凉粉"
-            },
-            {
-              "text": "小份(少糖)"
-            },
-            {
-              "text": "90kcal"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "合计",
-              "style": "font-weight:bold"
-            },
-            {
-              "text": ""
-            },
-            {
-              "text": "510kcal (P:38g C:52g F:11g)",
-              "style": "font-weight:bold"
-            }
-          ]
-        }
-      ],
-      "footer": {
-        "text": "💡 潮汕牛肉丸高蛋白低脂(汤煮不油炸) + 双绿叶菜(菠菜+红苋菜)补铁补纤维 + 米饭控量100g，避开中辣青椒油豆腐与油大的鸡翅年糕，红糖凉粉小份解馋，契合减脂高蛋白目标"
-      }
-    },
-    {
-      "title": "🍿 本周非正餐摄入 · yukuai26",
+      "title": "🔢 本周累计摄入",
       "type": "text",
-      "text": "暂无记录"
-    },
-    {
-      "title": "🍿 本周非正餐摄入 · gugugu",
-      "type": "text",
-      "text": "暂无记录"
-    },
-    {
-      "title": "💊 营养健康推荐 · yukuai26",
-      "type": "text",
-      "text": "暂无摄入记录，记录饮食后可获得营养建议 📝"
-    },
-    {
-      "title": "💊 营养健康推荐 · gugugu",
-      "type": "text",
-      "text": "暂无摄入记录，记录饮食后可获得营养建议 📝"
+      "text": "本周累计摄入 0 kcal（暂无饮食记录）"
     }
-  ],
-  "updated": "2026-06-05T11:01:05.426917+08:00"
+  ]
 }

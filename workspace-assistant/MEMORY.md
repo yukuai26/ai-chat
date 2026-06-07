@@ -50,6 +50,26 @@
 ### 当前状态
 Phase 1-16 全部完成（文件浏览器、Dashboard、搜索、WebSocket、日历等），流水线空闲
 
+### 🆕 2026-06-07 上下文架构（对齐 DeepSeek 无状态）
+- **核心**：模型无状态，上下文每次由前端从 session 文件重建（对齐 DeepSeek/OpenAI）
+- 发消息用**随机 user**（`_randomUser()`）→ Gateway 会话层每次空白，消除"塞两遍"
+- `loadRecentHistory` **全量带历史 + 150K token 兜底**（非"最近N条"）
+- 切模型不丢上下文（历史跟 session 文件走，不跟模型走）
+- DeepSeek V4 上下文 = **1M token**（不是 64K！64K 是 V3 旧值）
+- 网页对话用两个专用 agent：`webchat-v4`(DeepSeek V4 Pro) / `webchat-opus`(Opus)，共享 workspace `workspace-webchat`
+- **持久记忆铁律**：webchat 写 MEMORY.md 前必须先告知用户（跨对话共享），写在 workspace-webchat/SOUL.md
+- **文件注入格式**：`<file name mime>内容</file>` XML + 追加 user 消息 + 防注入转义（B3-1）
+- Gateway 三层记忆：会话层(按user隔离✅) / workspace记忆层(MEMORY.md共享，曾是串台源) / session-memory hook(只在/new归档)
+- commits: `7b9f5b0`(架构) `00a762d`(文件注入)
+
+### 设计文档体系（双向同步铁律）
+- `projects/ac/ac-design-baseline-V1.0-ACTIVE.md` — 设计基线（权威，A~K+O 模块）
+- `projects/ac/ac-design-code-audit-V2.0-ACTIVE.md` — 设计↔代码审查（2026-06-07，零未完成TODO）
+- **铁律**：改代码必须改设计，改设计必须改代码（写在 baseline + SOUL.md + AGENTS.md）
+
+### fileserver 注意
+- 由 systemd 管（PID 会变），端口 5050。曾有游离进程占端口的坑，2026-06-07 已清，确保 systemd 接管
+
 ### 重要文档
 | 文件 | 内容 |
 |------|------|

@@ -1,43 +1,74 @@
 {
-  "card_name": "数据追踪",
-  "domain_knowledge": "管理员关注体重、饮水量、运动时长和睡眠质量",
-  "best_practices": [
-    "体重精确到 0.1kg（如 72.5），每天固定时间（早晨空腹）记录最准",
-    "饮水量按杯计（1 杯 ≈ 250ml），日目标 8 杯",
-    "运动时长用中文描述（如'跑步30min'、'游泳45min'），方便展示",
-    "新增字段先在 data.json 的各人物文件中加顶层 key，再写当日值"
-  ],
-  "user_preferences": [
-    "目标体重：68kg",
-    "日饮水目标：8 杯（约 2L）",
-    "日运动目标：30 分钟",
-    "连续 3 天饮水不足需提醒"
-  ],
-  "examples": [
-    {
-      "in": "今天体重 72",
-      "out": "读 管理员.json → 在 weight 字段加 {\"2026-05-28\": 72} → 写回 → curl apply_rules data"
-    },
-    {
-      "in": "今天喝了 6 杯水",
-      "out": "读 管理员.json → 在 water 字段加 {\"2026-05-28\": 6} → 写回 → curl apply_rules data"
-    }
-  ],
+  "card_name": "健康数据",
+  "domain_knowledge": "记录身体成分(体脂秤)、每日摄入(餐食)、运动数据。目标减脂，关注体重/体脂/内脏脂肪趋势与热量缺口。目前仅 yukuai26 一人。",
   "data_schema": {
-    "description": "每人一个独立 json 文件",
+    "description": "单人(yukuai26)。三大类按日期稀疏存(不是每天都有)。同字段一天多传则后者覆盖；摄入按餐累加。",
     "structure": {
-      "weight": {
-        "YYYY-MM-DD": "kg"
-      },
-      "water": {
-        "YYYY-MM-DD": "cups"
-      },
-      "exercise": {
-        "YYYY-MM-DD": "description"
+      "yukuai26": {
+        "body": {
+          "YYYY-MM-DD": {
+            "weight": "kg",
+            "bmi": "num",
+            "body_fat": "体脂率%",
+            "water_rate": "体水分率%",
+            "muscle_rate": "肌肉率%",
+            "protein_rate": "蛋白质率%",
+            "skeletal_muscle": "骨骼肌率%",
+            "bmr": "基础代谢kcal",
+            "visceral_fat": "内脏脂肪num",
+            "fat_mass": "脂肪重量kg",
+            "muscle_mass": "肌肉量kg",
+            "ratings": "可选,各项评级如{body_fat:'肥胖'}"
+          }
+        },
+        "intake": {
+          "YYYY-MM-DD": {
+            "breakfast": "kcal",
+            "lunch": "kcal",
+            "dinner": "kcal",
+            "snack": "kcal",
+            "water": "杯",
+            "total": "当日合计kcal",
+            "items": "可选,各餐明细"
+          }
+        },
+        "exercise": {
+          "YYYY-MM-DD": [
+            {
+              "type": "室内跑步",
+              "distance_km": "num",
+              "duration": "时长",
+              "active_kcal": "活动卡路里",
+              "total_kcal": "总卡路里",
+              "avg_pace": "配速",
+              "avg_hr": "平均心率",
+              "max_hr": "最大心率",
+              "steps": "步数"
+            }
+          ]
+        }
       }
     }
   },
-  "apply_rules_behavior": {
-    "summary_generation": "代码取各指标最新日期的值"
-  }
+  "best_practices": [
+    "数据来自截图，卡片喵(Opus)识图提取。体脂秤截图→body；餐食照片→intake(同时也更新recipe卡当天intake_log)；运动截图→exercise。",
+    "数据稀疏：用户不一定每天传，缺的日期就空着，不补零。",
+    "同一项同一天多次传：body 取最新覆盖；intake 按餐次写入(早/中/晚/加餐分别记)，total 自动求和。",
+    "运动一天可多次，exercise 当天是数组，追加。",
+    "体重精确 0.1kg；评级(肥胖/不足/优/标准/偏低/危险)如截图有就一并记入 ratings。",
+    "日期以截图显示为准，没有则当天。",
+    "改完 data.json 跑 generate-display.py。",
+    "【文件路径】data.json 在 /home/ubuntu/.openclaw/user-data/daily-data/data/data.json，结构 {\"yukuai26\":{\"body\":{},\"intake\":{},\"exercise\":{}}}。",
+    "【体脂秤字段映射】体重→weight,BMI→bmi,体脂率→body_fat,体水分率→water_rate,肌肉率→muscle_rate,蛋白质率→protein_rate,骨骼肌率→skeletal_muscle,基础代谢→bmr,内脏脂肪→visceral_fat,脂肪重量→fat_mass,肌肉量→muscle_mass。评级文字(肥胖/不足/优/标准/偏低/危险)放同日 ratings 子对象。",
+    "【餐食照片】识别热量写 intake[日期] 对应餐次(breakfast/lunch/dinner/snack)，重算 total=各餐和；同时更新 recipe 卡 intake_log(当天)。",
+    "【运动截图】字段 type/distance_km/duration/active_kcal/total_kcal/avg_pace/avg_hr/max_hr/steps，append 到 exercise[日期] 数组。",
+    "【展示固定为】①7日趋势折线图(体重/体脂/摄入/额外消耗可切换) ②最新身体数据(全项+评级) ③今日摄入 ④今日运动。由脚本自动生成，你只管写 data.json。",
+    "【更新展示命令】改完 data.json 执行：python3 /home/ubuntu/.openclaw/user-data/daily-data/data/generate-display.py（自动重生成 display.json + 通知前端）。",
+    "【edit/write 工具对此目录会报 Path escapes 错误，改用 exec+python 写文件】"
+  ],
+  "user_preferences": [
+    "目标减脂，最关注体重/体脂率/内脏脂肪下降",
+    "标准体重约 73.5kg",
+    "展示近 7 日趋势 + 折线图(体重/体脂/摄入/额外消耗 可切换)"
+  ]
 }

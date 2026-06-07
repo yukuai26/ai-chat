@@ -1,0 +1,30 @@
+{
+  "time_sensitive": true,
+  "single_user": "yukuai26",
+  "trend_days": 7,
+  "interaction_rules": [
+    {"trigger": "体脂秤截图/身体数据", "action": "识别各项→写 body[date]，评级写 ratings；同天覆盖"},
+    {"trigger": "餐食照片/说吃了啥", "action": "识别热量→写 intake[date] 对应餐次，total求和；同时更新 recipe 卡当天 intake_log"},
+    {"trigger": "运动截图", "action": "识别→append 到 exercise[date] 数组"}
+  ],
+  "display_rules": {
+    "summary": "最新体重(+变化) | 今日摄入X | 运动消耗Y kcal",
+    "sections": [
+      {"id": "charts", "type": "chart_tabs", "title": "📈 7日趋势",
+       "tabs": [
+         {"key": "weight", "label": "体重(kg)"},
+         {"key": "body_fat", "label": "体脂(%)"},
+         {"key": "intake", "label": "摄入(kcal)"},
+         {"key": "burn", "label": "额外消耗(kcal)"}
+       ],
+       "default": "weight"},
+      {"id": "body", "type": "kv_rated", "title": "📊 最新身体数据", "note": "体脂秤所有项+评级"},
+      {"id": "intake_today", "type": "table", "title": "🍽️ 今日摄入"},
+      {"id": "exercise_today", "type": "table", "title": "🏃 今日运动"}
+    ]
+  },
+  "display_render": {
+    "charts": "display.charts = {weight:[{date,value}], body_fat:[...], intake:[...], burn:[...]} 近7日,缺失日不填点",
+    "generated_date": "写今天,后端方案C据此判断重建"
+  }
+}

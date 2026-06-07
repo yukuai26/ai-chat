@@ -5128,6 +5128,21 @@
 
     /** 从当前会话文件读取最近 N 轮历史，转为 Gateway messages 格式（不含 system，避免重复注入）。
      *  目的：以磁盘 session 为准重建上下文，模型不再依赖 Gateway 30 分钟内存会话，避免“隔天失忆”。 */
+    // 文件注入辅助: <file> XML 转义(对齐飞书格式, 提升模型识别可靠性 + 防注入)
+    function _escapeXmlAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function _escapeFileBody(s){ return String(s).replace(/<\s*\/\s*file\s*>/gi,'&lt;/file&gt;').replace(/<\s*file\b/gi,'&lt;file'); }
+    // 随机 user: 让 Gateway 每次都当全新会话(会话层自带历史=空), 上下文完全由前端带的历史提供
+    // 这样消除"Gateway自带历史 + 前端塞历史"的重复, 对齐 DeepSeek 无状态模式; 切模型也不丢上下文(历史跟 session 文件走)
+    function _randomUser() {
+      return 'web-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    }
+    // 全量带历史(对齐 DeepSeek 等大厂: 以 session 文件为唯一上下文源, 每次重建)
+    // 加 token 兜底: 估算累计 token 超过 HISTORY_TOKEN_BUDGET 时, 从最旧的开始丢, 防止极端长对话超出模型窗口
+    // 兜底阈值按最小模型窗口(Opus 200K)保守取 150K, 给当前消息+回复留足余量; 实际个人对话基本到不了, 等于全量
+    var HISTORY_TOKEN_BUDGET = 150000;
+    function _estTokens(str) { // 粗估: 中文~1.5字符/token, 英文~4字符/token, 折中按 2 字符/token
+      return Math.ceil((str || '').length / 2);
+    }
     async function loadRecentHistory(sessionId, limit, currentText) {
       if (!sessionId) return [];
       try {
@@ -5139,8 +5154,17 @@
         while (all.length > 0 && all[all.length-1].role === 'user' && currentText != null && all[all.length-1].content === currentText) {
           all.pop();
         }
-        var recent = all.slice(-(limit || 20));
-        return recent.map(function(m){ return { role: m.role, content: m.content }; });
+        // 默认全量; 仅当累计 token 超预算时, 从最旧开始丢弃(从后往前累加, 反转得到保留集)
+        var budget = HISTORY_TOKEN_BUDGET;
+        var used = 0;
+        var kept = [];
+        for (var i = all.length - 1; i >= 0; i--) {
+          var t = _estTokens(all[i].content);
+          if (used + t > budget && kept.length > 0) break; // 超预算且已保留至少1条, 停止
+          used += t;
+          kept.unshift({ role: all[i].role, content: all[i].content });
+        }
+        return kept;
       } catch(e) { console.warn('loadRecentHistory failed:', e); return []; }
     }
 
@@ -5191,16 +5215,16 @@
               var contentType = readResp.headers.get('Content-Type') || '';
               if (contentType.startsWith('text/') || contentType.indexOf('json') !== -1 || contentType.indexOf('javascript') !== -1 || contentType.indexOf('xml') !== -1 || contentType.indexOf('yaml') !== -1) {
                 var ftext = await readResp.text();
-                if (ftext.length > 5000) ftext = ftext.substring(0, 5000) + '\n... (内容已截断)';
-                fileSummaries.push('📄 文件: ' + fp.name + '\n路径: /home/ubuntu/.openclaw' + fp.path + '\n内容:\n```\n' + ftext + '\n```');
+                if (ftext.length > 50000) ftext = ftext.substring(0, 50000) + '\n... (内容已截断)';
+                fileSummaries.push('<file name="' + _escapeXmlAttr(fp.name) + '" mime="' + _escapeXmlAttr(contentType || 'text/plain') + '">\n' + _escapeFileBody(ftext) + '\n</file>');
               } else {
-                fileSummaries.push('📎 文件: ' + fp.name + ' (二进制)\n路径: /home/ubuntu/.openclaw' + fp.path + ' (使用 read 工具读取原始内容)');
+                fileSummaries.push('<file name="' + _escapeXmlAttr(fp.name) + '" mime="' + _escapeXmlAttr(contentType || 'application/octet-stream') + '" note="二进制文件, 路径 /home/ubuntu/.openclaw' + fp.path + ', 请用 read 工具读取">\n(二进制内容未注入)\n</file>');
               }
             } else {
-              fileSummaries.push('📎 文件: ' + fp.name + ' (无法读取)\n路径: /home/ubuntu/.openclaw' + fp.path + ' (尝试使用 read 工具)');
+              fileSummaries.push('<file name="' + _escapeXmlAttr(fp.name) + '" note="无法读取, 路径 /home/ubuntu/.openclaw' + fp.path + ', 请用 read 工具">\n(读取失败)\n</file>');
             }
           } catch(e) {
-            fileSummaries.push('📎 文件: ' + fp.name + ' (读取异常: ' + e.message + ')\n路径: /home/ubuntu/.openclaw' + fp.path + ' (尝试使用 read 工具)');
+            fileSummaries.push('<file name="' + _escapeXmlAttr(fp.name) + '" note="读取异常: ' + _escapeXmlAttr(e.message) + ', 路径 /home/ubuntu/.openclaw' + fp.path + '">\n(读取异常)\n</file>');
           }
         }
       }
@@ -5218,12 +5242,6 @@
           return _fallbackHttpSend(text, filesToSend, fileSummaries, fileIDs, now);
         }
       }
-
-      var messages = [];
-      if (fileSummaries.length > 0) {
-        messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
-      }
-      messages.push({ role: 'user', content: text });
 
       // 上下文由 Gateway session 管理（user 字段）
       var messages = [];
@@ -5246,12 +5264,11 @@
       }
       // 系统指令：告诉模型文件该存哪里（每轮都带，确保模型知道）
       messages.push({ role: 'system', content: '文件操作规则:\n- 你创建的所有文件必须保存到 /home/ubuntu/.openclaw/user-files/ 目录下\n- 可在 user-files 下新建子目录组织文件\n- 回复中引用文件时使用 Markdown 链接格式: [显示文字](/user-files/相对路径)\n  例如: [图表.png](/user-files/charts/temp.png)\n  用户点击链接后可直接跳转到文件浏览器查看文件' });
-      if (fileSummaries.length > 0) {
-        messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
-      }
       var _hist = await loadRecentHistory(activeConversationId, 20, text);
       for (var _hi = 0; _hi < _hist.length; _hi++) { messages.push(_hist[_hi]); }
-      messages.push({ role: 'user', content: text });
+      var _userContent = text;
+      if (fileSummaries.length > 0) { _userContent += '\n\n' + fileSummaries.join('\n\n'); }
+      messages.push({ role: 'user', content: _userContent });
 
       const { container: msgDiv, content: contentDiv } = createAssistantMessageElement();
       var requestId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
@@ -5272,7 +5289,7 @@
         wsConnection.send(JSON.stringify({
           type: 'chat',
           messages: messages,
-          user: activeConversationId || '',
+          user: _randomUser(),
           model: 'openclaw:' + agentId,
           request_id: requestId,
         }));
@@ -5302,12 +5319,11 @@
       }
       // 系统指令：告诉模型文件该存哪里（每轮都带，确保模型知道）
       messages.push({ role: 'system', content: '文件操作规则:\n- 你创建的所有文件必须保存到 /home/ubuntu/.openclaw/user-files/ 目录下\n- 可在 user-files 下新建子目录组织文件\n- 回复中引用文件时使用 Markdown 链接格式: [显示文字](/user-files/相对路径)\n  例如: [图表.png](/user-files/charts/temp.png)\n  用户点击链接后可直接跳转到文件浏览器查看文件' });
-      if (fileSummaries.length > 0) {
-        messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
-      }
       var _hist = await loadRecentHistory(activeConversationId, 20, text);
       for (var _hi = 0; _hi < _hist.length; _hi++) { messages.push(_hist[_hi]); }
-      messages.push({ role: 'user', content: text });
+      var _userContent = text;
+      if (fileSummaries.length > 0) { _userContent += '\n\n' + fileSummaries.join('\n\n'); }
+      messages.push({ role: 'user', content: _userContent });
 
       const { container: msgDiv, content: contentDiv } = createAssistantMessageElement();
       let fullContent = '';
@@ -5318,7 +5334,7 @@
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
           body: JSON.stringify({
             model: 'openclaw:' + agentId, messages: messages,
-            user: activeConversationId || '', stream: true,
+            user: _randomUser(), stream: true,
           }),
         });
         if (!resp.ok) {
@@ -7661,6 +7677,20 @@
           }
           html += '</ul>';
           break;
+
+        case 'chart_tabs':
+          // 可点标题切换的折线图(chart.js)。先放占位,渲染后用 _initChartTabs 初始化
+          var ctId = 'charttabs_' + cardId + '_' + i;
+          var tabs = sec.tabs || [];
+          html += '<div class="chart-tabs" data-charts=\'' + escapeHtml(JSON.stringify(sec.charts || {})) + '\' data-default="' + escapeHtml(sec.default || (tabs[0] && tabs[0].key) || '') + '" data-cid="' + ctId + '">';
+          html += '<div class="chart-tabs-head" style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0;">';
+          for (var ti2 = 0; ti2 < tabs.length; ti2++) {
+            html += '<button class="chart-tab-btn" data-key="' + escapeHtml(tabs[ti2].key) + '" onclick="_switchChartTab(this)" style="padding:3px 10px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer;font-size:12px;">' + escapeHtml(tabs[ti2].label) + '</button>';
+          }
+          html += '</div>';
+          html += '<div style="position:relative;height:200px;"><canvas id="' + ctId + '"></canvas></div>';
+          html += '</div>';
+          break;
       }
 
       html += '</div>';
@@ -7668,324 +7698,148 @@
 
     html += '</div>';
     bodyEl.innerHTML = html;
+    // 初始化所有 chart_tabs
+    setTimeout(function(){ _initAllChartTabs(bodyEl); }, 0);
   }
 
-async function loadTodoCard(cardEl) {
+  // ===== chart_tabs: chart.js 折线图 + 标题切换 =====
+  var _chartInstances = {};
+  function _initAllChartTabs(root) {
+    var nodes = root.querySelectorAll('.chart-tabs');
+    nodes.forEach(function(node){
+      var def = node.dataset.default;
+      var btn = node.querySelector('.chart-tab-btn[data-key="' + def + '"]') || node.querySelector('.chart-tab-btn');
+      if (btn) _switchChartTab(btn);
+    });
+  }
+  function _switchChartTab(btn) {
+    var wrap = btn.closest('.chart-tabs');
+    if (!wrap) return;
+    wrap.querySelectorAll('.chart-tab-btn').forEach(function(b){ b.style.background='var(--bg-card)'; b.style.fontWeight='normal'; });
+    btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.fontWeight='600';
+    // 复位其他按钮颜色
+    wrap.querySelectorAll('.chart-tab-btn').forEach(function(b){ if(b!==btn){ b.style.color=''; }});
+    var charts = {};
+    try { charts = JSON.parse(wrap.dataset.charts || '{}'); } catch(e){}
+    var key = btn.dataset.key;
+    var series = charts[key] || [];
+    var canvas = wrap.querySelector('canvas');
+    if (!canvas || typeof Chart === 'undefined') return;
+    var cid = wrap.dataset.cid;
+    if (_chartInstances[cid]) { _chartInstances[cid].destroy(); }
+    _chartInstances[cid] = new Chart(canvas.getContext('2d'), {
+      type:'line',
+      data:{ labels: series.map(function(p){return p.date;}),
+             datasets:[{ data: series.map(function(p){return p.value;}),
+               borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.1)',
+               fill:true, tension:0.3, pointRadius:4, spanGaps:true }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false} },
+        scales:{ y:{ beginAtZero:false } } }
+    });
+  }
+
+    /* ===== TodoCard V2: 左右两栏 + 三段 + done_date，读 display.columns ===== */
+    let cachedTodoDisplay = null;
+
+    async function loadTodoCard(cardEl) {
       if (!cardEl) return;
       const summary = cardEl.querySelector('.card-summary');
       const body = cardEl.querySelector('.card-body');
       if (!body) return;
-
-      const token = document.getElementById('token').value;
-      if (!token) {
-        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
-        return;
-      }
-
       try {
-        if (!cachedTodoData) {
-          const resp = await fetch('/v1/api/daily/cards/display/todo', {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          var display = (await resp.json()).display || {};
-        var items = display.active || [];
-        var persons = {"我": items};
-        cachedTodoData = {
-          persons: persons,
-          total_done: display.done_count || 0,
-          total_pending: items.length || 0,
-          week_total: display.total || 0,
-          week_done: display.done_count || 0
-        };
-        // cachedTodoData = await resp.json(); // old
-        }
-
-        renderTodoCardCollapsed(summary, body, cachedTodoData);
+        const resp = await authFetch('/v1/api/daily/cards/display/todo');
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        cachedTodoDisplay = (await resp.json()).display || {};
+        renderTodoCollapsed(summary, cachedTodoDisplay);
+        renderTodoExpanded(body, cachedTodoDisplay);
       } catch (e) {
         console.error('加载 Todo 失败:', e);
-        body.innerHTML = '<div class="card-body-placeholder">⚠️ Todo 加载失败</div>';
+        if (summary) summary.textContent = '⚠️ Todo 加载失败';
       }
     }
 
-    function renderTodoCardCollapsed(summaryEl, bodyEl, data) {
-      if (!data || !data.persons || !Object.keys(data.persons).length) {
-        if (summaryEl) summaryEl.textContent = '📋 暂无待办事项';
-        bodyEl.innerHTML = '<div class="card-body-placeholder">📋 暂无待办事项</div>';
-        return;
-      }
-
-      const persons = data.persons;
-      const totalDone = data.total_done || 0;
-      const totalPending = data.total_pending || 0;
-      const total = totalDone + totalPending;
-      const weekTotal = data.week_total || 0;
-      const weekDone = data.week_done || 0;
-
-      // 缩略模式
-      let collapsedHtml = '<div class="todo-collapsed">';
-      for (const [name, person] of Object.entries(persons)) {
-        const pending = person.pending || 0;
-        const done = person.done || 0;
-        const personTotal = pending + done;
-        const pct = personTotal > 0 ? Math.round(done / personTotal * 100) : 0;
-        collapsedHtml += '<div class="todo-person-row">';
-        collapsedHtml += '<span class="todo-person-name">👤 ' + escapeHtml(name) + '</span>';
-        collapsedHtml += '<div class="todo-person-bar"><div class="todo-person-bar-fill" style="width:' + pct + '%"></div></div>';
-        collapsedHtml += '<span class="todo-person-count">' + done + '/' + personTotal + '</span>';
-        collapsedHtml += '</div>';
-      }
-      collapsedHtml += '<div class="todo-week-summary">📅 本周: ' + weekDone + '/' + weekTotal + ' 待办</div>';
-      collapsedHtml += '<div class="todo-expand-hint" onclick="toggleCard(\'todo\', event)">展开查看详情 ▼</div>';
-      collapsedHtml += '</div>';
-
-      if (summaryEl) summaryEl.innerHTML = collapsedHtml;
-      // 展开模式：双人/每日-本周 Tab
-      renderTodoCardExpanded(bodyEl, data);
+    function renderTodoCollapsed(summaryEl, display) {
+      if (!summaryEl) return;
+      summaryEl.textContent = '📋 ' + (display.summary || '暂无待办');
     }
 
-
-    /** DF17: TodoCard 展开模式 */
-    let todoActivePerson = null;
-    let todoActiveView = 'daily'; // 'daily' | 'weekly'
-
-    function renderTodoCardExpanded(bodyEl, data) {
-      if (!data || !data.persons || !Object.keys(data.persons).length) {
-        bodyEl.innerHTML = '<div class="card-body-placeholder">📋 暂无待办事项</div>';
-        return;
+    function renderTodoExpanded(bodyEl, display) {
+      if (!bodyEl) return;
+      const cols = display.columns || [];
+      if (!cols.length) { bodyEl.innerHTML = '<div class="card-body-placeholder">📋 暂无待办</div>'; return; }
+      let html = '<div class="todo-v2-cols" style="display:flex;gap:12px;">';
+      for (const col of cols) {
+        html += '<div class="todo-v2-col" style="flex:1;min-width:0;">';
+        html += '<div class="todo-v2-coltitle" style="font-weight:600;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px;">👤 ' + escapeHtml(col.title || col.user) + '</div>';
+        const secs = col.sections || [];
+        if (!secs.length) {
+          html += '<div style="color:var(--text-secondary);font-size:12px;padding:6px;">🎉 暂无</div>';
+        } else {
+          for (const sec of secs) {
+            html += '<div class="todo-v2-sec" style="margin-bottom:8px;">';
+            html += '<div class="todo-v2-sectitle" style="font-size:12px;color:var(--text-secondary);margin:4px 0;">' + escapeHtml(sec.title || '') + '</div>';
+            for (const it of (sec.items || [])) {
+              const done = !!it.done;
+              const txt = escapeHtml(it.text || '');
+              html += '<div class="todo-item" data-id="' + it.id + '" style="display:flex;align-items:center;gap:6px;padding:3px 0;">' +
+                '<input type="checkbox" class="todo-checkbox"' + (done ? ' checked' : '') + ' onchange="toggleTodoDone(' + it.id + ', this.checked)">' +
+                '<span class="todo-item-text' + (done ? ' done' : '') + '" style="' + (done ? 'text-decoration:line-through;color:var(--text-secondary);' : '') + '">' + txt + '</span>' +
+                '</div>';
+            }
+            html += '</div>';
+          }
+        }
+        // 每栏底部添加框
+        html += '<div class="todo-add-bar" style="margin-top:6px;display:flex;gap:4px;">';
+        html += '<input type="text" class="todo-add-input" data-user="' + escapeHtml(col.user) + '" placeholder="加待办(可说日期)..." style="flex:1;min-width:0;" onkeydown="if(event.key===\'Enter\')addTodoItem(this)">';
+        html += '<button class="todo-add-btn" onclick="addTodoItem(this.previousElementSibling)">+</button>';
+        html += '</div>';
+        html += '</div>';
       }
-
-      const persons = Object.keys(data.persons);
-      if (!todoActivePerson || !persons.includes(todoActivePerson)) {
-        todoActivePerson = persons[0];
-      }
-
-      let html = '<div class="todo-expanded">';
-
-      // 人物 Tabs
-      html += '<div class="todo-tabs">';
-      for (const p of persons) {
-        const active = p === todoActivePerson ? ' active' : '';
-        html += '<button class="todo-tab' + active + '" onclick="switchTodoPerson(\'' + escapeHtml(p) + '\')">👤 ' + escapeHtml(p) + '</button>';
-      }
-      html += '</div>';
-
-      // 日/周 Subtabs
-      html += '<div class="todo-subtabs">';
-      html += '<button class="todo-subtab' + (todoActiveView === 'daily' ? ' active' : '') + '" onclick="switchTodoView(\'daily\')">📅 每日</button>';
-      html += '<button class="todo-subtab' + (todoActiveView === 'weekly' ? ' active' : '') + '" onclick="switchTodoView(\'weekly\')">📆 本周</button>';
-      html += '</div>';
-
-      // 统计行
-      const personData = data.persons[todoActivePerson] || {};
-      const done = personData.done || 0;
-      const pending = personData.pending || 0;
-      const total = done + pending;
-      const pct = total > 0 ? Math.round(done / total * 100) : 0;
-      html += '<div class="todo-stats">✅ ' + done + ' / ' + total + ' 已完成 (' + pct + '%)</div>';
-      html += '<div class="todo-stats-bar"><div class="todo-stats-bar-fill" style="width:' + pct + '%"></div></div>';
-
-      // Todo 列表
-      html += '<div id="todoItemList">';
-      html += '<div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">⏳ 加载中...</div>';
-      html += '</div>';
-
-      // 底部添加输入框
-      html += '<div class="todo-add-bar">';
-      html += '<input type="text" id="todoAddInput" placeholder="输入新待办..." onkeydown="if(event.key===\'Enter\') addTodoItem()">';
-      html += '<button class="todo-add-btn" onclick="addTodoItem()">+ 添加</button>';
-      html += '</div>';
-
       html += '</div>';
       bodyEl.innerHTML = html;
-
-      // 异步加载具体 Todo 列表
-      loadTodoItems();
-    }
-
-    async function loadTodoItems() {
-      const container = document.getElementById('todoItemList');
-      if (!container) return;
-
-      const token = document.getElementById('token').value;
-      if (!token) return;
-
-      let url = '/v1/api/daily/todos?person=' + encodeURIComponent(todoActivePerson) + '&done=false';
-      if (todoActiveView === 'weekly') {
-        url = '/v1/api/daily/todos/week?person=' + encodeURIComponent(todoActivePerson) + '&done=false';
-      }
-
-      try {
-        const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const result = await resp.json();
-        let items;
-        if (todoActiveView === 'weekly') {
-          items = [].concat(result.daily || [], result.weekly || []);
-        } else {
-          items = result.todos || result.items || [];
-        }
-
-        if (!items.length) {
-          container.innerHTML = '<div class="todo-empty">🎉 全部完成！</div>';
-          return;
-        }
-
-        container.innerHTML = items.map(function(item) {
-          const text = escapeHtml(item.text || '');
-          const isDone = item.done;
-          const id = item.id;
-          return '<div class="todo-item" data-id="' + id + '">' +
-            '<input type="checkbox" class="todo-checkbox"' + (isDone ? ' checked' : '') + ' onchange="toggleTodoDone(' + id + ', this.checked)" title="完成">' +
-            '<span class="todo-item-text' + (isDone ? ' done' : '') + '">' + text + '</span>' +
-            '<button class="todo-item-delete" onclick="deleteTodoItem(' + id + ')" title="删除">🗑</button>' +
-            '</div>';
-        }).join('');
-      } catch (e) {
-        console.error('加载 Todo 列表失败:', e);
-        container.innerHTML = '<div class="todo-empty">⚠️ 加载失败</div>';
-      }
-    }
-
-    function switchTodoPerson(person) {
-      todoActivePerson = person;
-      const newsCard = document.querySelector('[data-card-id="todo"]');
-      if (newsCard && cachedTodoData) {
-        const body = newsCard.querySelector('.card-body');
-        if (body) renderTodoCardExpanded(body, cachedTodoData);
-      }
-    }
-
-    function switchTodoView(view) {
-      todoActiveView = view;
-      loadTodoItems();
     }
 
     async function toggleTodoDone(id, checked) {
-      const token = document.getElementById('token').value;
-      if (!token) return;
-
       try {
-        const resp = await fetch('/v1/api/daily/todos/' + id, {
+        const resp = await authFetch('/v1/api/daily/todos/' + id, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify({ done: checked ? 1 : 0 })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ done: checked })
         });
         if (resp.ok) {
-          // DF19: 即时动画 - 更新被勾选的条目
-          const itemEl = document.querySelector('.todo-item[data-id="' + id + '"]');
+          // 即时划线（后端已重建 display + WS 会推送刷新）
+          const itemEl = document.querySelector('.todo-item[data-id="' + id + '"] .todo-item-text');
           if (itemEl) {
-            if (checked) {
-              itemEl.classList.add('check-anim');
-              itemEl.querySelector('.todo-item-text').classList.add('done');
-            } else {
-              itemEl.querySelector('.todo-item-text').classList.remove('done');
-            }
-            setTimeout(function() { itemEl.classList.remove('check-anim'); }, 500);
-            updateTodoStats();
-          }
-
-          // 后台刷新缓存
-          cachedTodoData = null;
-          const todoCard = document.querySelector('[data-card-id="todo"]');
-          if (todoCard) {
-            await loadTodoCard(todoCard);
-            const body = todoCard ? todoCard.querySelector('.card-body') : null;
-            if (body && todoCard.classList.contains('expanded')) {
-              loadTodoItems(); // 重新加载列表
-            }
+            if (checked) { itemEl.classList.add('done'); itemEl.style.textDecoration='line-through'; itemEl.style.color='var(--text-secondary)'; }
+            else { itemEl.classList.remove('done'); itemEl.style.textDecoration=''; itemEl.style.color=''; }
           }
         }
-      } catch (e) {
-        console.error('Toggle todo failed:', e);
-      }
+      } catch (e) { console.error('toggle todo 失败:', e); }
     }
 
-    /** DF19: 即时更新统计栏 */
-    function updateTodoStats() {
-      const items = document.querySelectorAll('#todoItemList .todo-item');
-      if (!items.length) return;
-      const total = items.length;
-      const done = document.querySelectorAll('#todoItemList .todo-item .todo-item-text.done').length;
-      const pct = Math.round(done / total * 100);
-      const stats = document.querySelector('.todo-expanded .todo-stats');
-      const bar = document.querySelector('.todo-stats-bar-fill');
-      if (stats) stats.textContent = '✅ ' + done + ' / ' + total + ' 已完成 (' + pct + '%)';
-      if (bar) bar.style.width = pct + '%';
-    }
-
-    async function deleteTodoItem(id) {
-      if (!confirm('确定删除这个待办？')) return;
-      const token = document.getElementById('token').value;
-      if (!token) return;
-
+    async function addTodoItem(inputEl) {
+      if (!inputEl) return;
+      const text = (inputEl.value || '').trim();
+      if (text.length < 2) { showCommandToast('⚠️ 待办内容至少 2 个字符', 'error'); return; }
+      const user = inputEl.dataset.user || 'yukuai26';
       try {
-        const resp = await fetch('/v1/api/daily/todos/' + id, {
-          method: 'DELETE',
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (resp.ok) {
-          cachedTodoData = null;
-          const todoCard = document.querySelector('[data-card-id="todo"]');
-          if (todoCard) {
-            await loadTodoCard(todoCard);
-            const body = todoCard.querySelector('.card-body');
-            if (body && todoCard.classList.contains('expanded')) {
-              renderTodoCardExpanded(body, cachedTodoData);
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Delete todo failed:', e);
-      }
-    }
-
-    /** DF18: 添加 Todo */
-    async function addTodoItem() {
-      const input = document.getElementById('todoAddInput');
-      if (!input) return;
-      const text = input.value.trim();
-      if (text.length < 2) {
-        showCommandToast('⚠️ 待办内容至少 2 个字符', 'error');
-        return;
-      }
-
-      const token = document.getElementById('token').value;
-      if (!token) {
-        showCommandToast('⚠️ 请先连接 API Token', 'error');
-        return;
-      }
-
-      try {
-        const resp = await fetch('/v1/api/daily/todos', {
+        const resp = await authFetch('/v1/api/daily/todos', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify({
-            person: todoActivePerson,
-            type: todoActiveView === 'weekly' ? 'weekly' : 'daily',
-            text: text
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ person: user, text: text })
         });
         const result = await resp.json();
         if (result.ok) {
-          input.value = '';
-          cachedTodoData = null;
+          inputEl.value = '';
           const todoCard = document.querySelector('[data-card-id="todo"]');
-          if (todoCard) {
-            await loadTodoCard(todoCard);
-            const body = todoCard.querySelector('.card-body');
-            if (body && todoCard.classList.contains('expanded')) {
-              renderTodoCardExpanded(body, cachedTodoData);
-            }
-          }
+          if (todoCard) await loadTodoCard(todoCard);
           showCommandToast('✅ 已添加: ' + text, 'success');
         } else {
           showCommandToast('⚠️ ' + (result.error || '添加失败'), 'error');
         }
-      } catch (e) {
-        console.error('添加 Todo 失败:', e);
-        showCommandToast('⚠️ 网络错误', 'error');
-      }
+      } catch (e) { console.error('添加 Todo 失败:', e); showCommandToast('⚠️ 网络错误', 'error'); }
     }
 
 
@@ -9014,7 +8868,8 @@ async function loadTodoCard(cardEl) {
         console.log('✅ WebSocket 握手完成');
         break;
       case 'todo_changed':
-        if (typeof loadTodoItems === 'function') loadTodoItems();
+        var _tc = document.querySelector('[data-card-id="todo"]');
+        if (_tc && typeof loadTodoCard === 'function') loadTodoCard(_tc);
         showToast('📋 ' + (by ? by + ' ' : '') + '更新了 Todo', 'info', 3000);
         break;
       case 'data_changed':

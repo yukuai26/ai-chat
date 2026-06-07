@@ -1,30 +1,31 @@
 {
-  "summary": "✅ 下周食谱已就绪",
-  "week_plan_preview": [
-    "周一:招牌酸菜鱼片/糖醋排骨",
-    "周二:手撕羊排/板栗红烧肉",
-    "周三:泉水牛肉/香辣烤鱼",
-    "周四:泰式咖喱虾/川香辣子鸡",
-    "周五:潮汕牛肉丸/龙井茶香排骨"
-  ],
-  "week_total": 0,
-  "updated": "2026-06-06T11:00:00+08:00",
+  "summary": "🥗 今日(周日): 今天食谱还没收到 | 已摄入 yukuai26 暂无 gugugu 暂无",
   "sections": [
     {
-      "title": "📋 下周午餐主荤预览",
-      "type": "table",
-      "rows": [
-        {"cells": [{"text": "周一", "style": "color:var(--text-secondary);width:48px"}, {"text": "招牌酸菜鱼片、糖醋排骨、椒盐鸭腿、土鸡蛋杂牛肉"}]},
-        {"cells": [{"text": "周二", "style": "color:var(--text-secondary);width:48px"}, {"text": "手撕羊排、爆炒鱿鱼、沙姜盐焗鸡、板栗红烧肉"}]},
-        {"cells": [{"text": "周三", "style": "color:var(--text-secondary);width:48px"}, {"text": "泉水牛肉、千张肉卷、香辣烤鱼、浇汁大排"}]},
-        {"cells": [{"text": "周四", "style": "color:var(--text-secondary);width:48px"}, {"text": "泰式咖喱虾、川香辣子鸡、香菇酿肉、黄豆焖猪蹄"}]},
-        {"cells": [{"text": "周五", "style": "color:var(--text-secondary);width:48px"}, {"text": "潮汕牛肉丸、龙井茶香排骨、鸡翅年糕、红烧带鱼"}]}
-      ]
+      "title": "🍽️ 今日食谱 (周日)",
+      "type": "text",
+      "text": "今天食谱还没收到 🕐"
     },
     {
-      "title": "🔢 本周累计摄入",
+      "title": "🍿 本周非正餐摄入 · yukuai26",
       "type": "text",
-      "text": "本周累计摄入 0 kcal（暂无饮食记录）"
+      "text": "暂无记录"
+    },
+    {
+      "title": "🍿 本周非正餐摄入 · gugugu",
+      "type": "text",
+      "text": "暂无记录"
+    },
+    {
+      "title": "💊 营养健康推荐 · yukuai26",
+      "type": "text",
+      "text": "暂无摄入记录，记录饮食后可获得营养建议 📝"
+    },
+    {
+      "title": "💊 营养健康推荐 · gugugu",
+      "type": "text",
+      "text": "暂无摄入记录，记录饮食后可获得营养建议 📝"
     }
-  ]
+  ],
+  "updated": "2026-06-07T19:48:39.872423+08:00"
 }

@@ -1,0 +1,141 @@
+{
+  "yukuai26": {
+    "body": {
+      "2026-06-01": {
+        "weight": 107.5,
+        "bmi": 31.4,
+        "body_fat": 31.8,
+        "water_rate": 49.5,
+        "muscle_rate": 65.2,
+        "visceral_fat": 21.0,
+        "bmr": 2170,
+        "fat_mass": 34.2,
+        "muscle_mass": 70.1,
+        "ratings": {
+          "bmi": "肥胖",
+          "body_fat": "肥胖",
+          "visceral_fat": "危险"
+        }
+      },
+      "2026-06-03": {
+        "weight": 107.1,
+        "bmi": 31.3,
+        "body_fat": 31.5,
+        "water_rate": 49.8,
+        "muscle_rate": 65.5,
+        "visceral_fat": 20.8,
+        "bmr": 2168,
+        "fat_mass": 33.7,
+        "muscle_mass": 70.2,
+        "ratings": {
+          "body_fat": "肥胖",
+          "visceral_fat": "危险"
+        }
+      },
+      "2026-06-05": {
+        "weight": 106.8,
+        "bmi": 31.2,
+        "body_fat": 31.2,
+        "water_rate": 50.0,
+        "muscle_rate": 65.8,
+        "visceral_fat": 20.6,
+        "bmr": 2167,
+        "fat_mass": 33.3,
+        "muscle_mass": 70.3,
+        "ratings": {
+          "body_fat": "肥胖",
+          "visceral_fat": "危险"
+        }
+      },
+      "2026-06-07": {
+        "weight": 106.75,
+        "bmi": 31.2,
+        "body_fat": 31.1,
+        "water_rate": 50.0,
+        "muscle_rate": 65.9,
+        "protein_rate": 15.9,
+        "skeletal_muscle": 35.4,
+        "bmr": 2166,
+        "visceral_fat": 20.5,
+        "fat_mass": 33.2,
+        "muscle_mass": 70.4,
+        "ratings": {
+          "bmi": "肥胖",
+          "body_fat": "肥胖",
+          "water_rate": "不足",
+          "muscle_rate": "优",
+          "protein_rate": "偏低",
+          "skeletal_muscle": "标准",
+          "bmr": "优",
+          "visceral_fat": "危险"
+        }
+      }
+    },
+    "intake": {
+      "2026-06-04": {
+        "breakfast": 350,
+        "lunch": 600,
+        "dinner": 550,
+        "water": 6,
+        "total": 1500
+      },
+      "2026-06-05": {
+        "breakfast": 300,
+        "lunch": 650,
+        "dinner": 500,
+        "snack": 150,
+        "water": 7,
+        "total": 1600
+      },
+      "2026-06-06": {
+        "breakfast": 400,
+        "lunch": 550,
+        "water": 5,
+        "total": 950
+      },
+      "2026-06-07": {
+        "breakfast": 380,
+        "lunch": 620,
+        "water": 4,
+        "total": 1000
+      }
+    },
+    "exercise": {
+      "2026-06-01": [
+        {
+          "type": "室内跑步",
+          "distance_km": 2.01,
+          "duration": "01:53:59",
+          "active_kcal": 969,
+          "total_kcal": 1182,
+          "avg_pace": "56'44\"",
+          "avg_hr": 113,
+          "max_hr": 167,
+          "steps": 2692
+        }
+      ],
+      "2026-06-04": [
+        {
+          "type": "室内跑步",
+          "distance_km": 3.0,
+          "duration": "00:35:00",
+          "active_kcal": 320,
+          "total_kcal": 420,
+          "avg_hr": 130,
+          "steps": 4200
+        }
+      ],
+      "2026-06-07": [
+        {
+          "type": "室内跑步",
+          "distance_km": 2.5,
+          "duration": "00:28:00",
+          "active_kcal": 280,
+          "total_kcal": 360,
+          "avg_hr": 125,
+          "steps": 3500
+        }
+      ]
+    }
+  }
+}

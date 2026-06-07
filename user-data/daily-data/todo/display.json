@@ -1,9 +1,18 @@
 {
-  "summary": "📋 0 个待办",
-  "active": [],
-  "today": [],
-  "work": [],
-  "total": 0,
-  "done_count": 0,
-  "generated": "2026-05-29T17:47:57.250956+08:00"
+  "summary": "玩UKAI 26 0/0　咕咕咕 0/0",
+  "layout": "two_column",
+  "columns": [
+    {
+      "user": "yukuai26",
+      "title": "玩UKAI 26",
+      "sections": []
+    },
+    {
+      "user": "gugugu",
+      "title": "咕咕咕",
+      "sections": []
+    }
+  ],
+  "generated_date": "2026-06-07",
+  "generated": "2026-06-07T19:23:41.392020+08:00"
 }

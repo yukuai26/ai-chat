@@ -1,31 +1,29 @@
 {
   "card_name": "todo",
   "data_schema": {
-    "description": "每个用户一个 key，数组存 todo 条目",
+    "description": "按用户分组，每个用户一个 todo 数组(扁平，不再按 daily/weekly 分类)。存所有历史 todo，不删除。",
     "structure": {
       "yukuai26": [
         {
-          "id": "number",
-          "text": "string",
-          "done": "boolean",
-          "type": "daily|work|personal",
-          "date": "YYYY-MM-DD"
+          "id": "number, 该用户内唯一自增",
+          "text": "string, 待办内容",
+          "done": "boolean, 是否已完成",
+          "date": "YYYY-MM-DD, 这条 todo 计划/归属的日期",
+          "done_date": "YYYY-MM-DD 或 null, 被勾选完成的日期(关键!取消勾选则置 null)"
         }
       ],
-      "gugugu": [
-        {
-          "id": "number",
-          "text": "string",
-          "done": "boolean",
-          "type": "daily|work|personal",
-          "date": "YYYY-MM-DD"
-        }
-      ]
+      "gugugu": ["同上结构"]
     }
   },
-  "best_practices": [],
+  "best_practices": [
+    "数据存所有历史 todo(含已完成)，绝不删除，只改 done / done_date。",
+    "新增 todo：解析用户说的日期(今天/明天/下周三等)算出 date；done=false，done_date=null。",
+    "勾选完成：done=true，done_date=当天日期；取消完成：done=false，done_date=null。",
+    "展示由 generate-display.py 按‘当日 + 逾期未完成(或今天刚勾的) + 未来3/7天重要项’三段生成，不要手改 display.json。",
+    "两个用户 yukuai26 / gugugu，展开态左右两栏分别展示。",
+    "未来 todo：把未来 3 天和未来 7 天内较重要的列入(由你判断重要性)。",
+    "改完 data 必须跑 generate-display.py 再发通知。"
+  ],
   "user_preferences": [],
-  "apply_rules_behavior": {
-    "summary_generation": "代码自动生成 done/total 计数摘要"
-  }
+  "interaction_note": "用户两种修改方式：①对话框自然语言(你处理) ②前端展开态勾选框(后端 REST 处理，会自动记 done_date 并重建 display)。两者都改同一个 data.json。"
 }

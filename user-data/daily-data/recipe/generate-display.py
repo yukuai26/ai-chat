@@ -60,7 +60,16 @@ def classify_snack(name, time_str=None):
     return "其他"
 
 
-def build_summary(today_label, recommendation, today_total):
+def build_summary(today_label, recommendation, today_total, today_menu=None):
+    intake_parts = ["已摄入"]
+    for user in USERS:
+        cal = today_total.get(user, {}).get("calories", 0)
+        if cal:
+            intake_parts.append(f"{user} {cal}kcal")
+        else:
+            intake_parts.append(f"{user} 暂无")
+    if not today_menu:
+        return f"🥗 今日({today_label}): 今天食谱还没收到 | {' '.join(intake_parts)}"
     recom = recommendation.get("items", [])
     recom_text = "待定"
     if recom:
@@ -202,6 +211,14 @@ def build_sections(today_label, today_menu, recommendation, today_intake, today_
     """构建前端 sections 数组"""
     sections = []
 
+    # 0. 食谱未收到提示
+    if not today_menu:
+        sections.append({
+            "title": f"🍽️ 今日食谱 ({today_label})",
+            "type": "text",
+            "text": "今天食谱还没收到 🕐"
+        })
+
     # 1. 今日食谱
     if today_menu:
         rows = []
@@ -294,7 +311,7 @@ def generate():
 
     today_menu = plan.get(today_label, {}).get("lunch", {}).get("menu", {})
 
-    summary = build_summary(today_label, recommendation, today_total)
+    summary = build_summary(today_label, recommendation, today_total, today_menu)
     week_dates = get_week_dates(today_dt)
 
     sections = build_sections(today_label, today_menu, recommendation,

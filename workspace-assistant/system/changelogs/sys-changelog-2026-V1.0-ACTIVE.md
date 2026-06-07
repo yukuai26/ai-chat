@@ -111,3 +111,12 @@ created: "2026-05-26"
 - **更新** `MEMORY.md` — 修正网页源文件路径:权威源=/var/www/chat/,代码仓库=workspace-build-cat/repo,废弃canvas/index.html
 - **修复** Web Chat 登录页JS崩溃:删除index.html主script 2处多余`}`(线上+repo+force push对齐)
 - **代码仓库** workspace-build-cat/repo main 以线上为准,commit 15691ec,force push origin main(剔除issue-439营养)
+
+## 2026-06-07
+- Web Chat 上下文架构对齐 DeepSeek：随机 user(Gateway无状态) + 全量历史(150K兜底) + 切模型不丢 (commit 7b9f5b0)
+- 持久记忆铁律写入 workspace-webchat/SOUL.md
+- 设计文档：baseline 新增 O 模块 + 设计↔代码双向同步铁律(三处)；audit V2.0 全量重审(零未完成TODO)
+- B3-1 文件注入改 <file> XML 格式 + 防注入 + 截断调大 (commit 00a762d)
+- C2-1 白名单补设计对齐(user-files)
+- 新增 2 条 lesson：misjudge-token-invalid(误判e0fb40) / misled-by-surface-symptom(诊断被表面401带偏)
+- 日记 memory/2026-06-07.md + MEMORY.md 更新

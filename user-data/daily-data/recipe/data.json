@@ -215,41 +215,5 @@
     "spice_tolerance": "微辣以下为主，中辣偶尔可接受，重辣避免",
     "allergies": []
   },
-  "today_recommendation": {
-    "dish": "潮汕牛肉丸 + 清炒菠菜 + 清炒红苋菜 + 五常大米 + 红糖凉粉(少量)",
-    "items": [
-      {
-        "name": "潮汕牛肉丸(配煲条少量)",
-        "portion": "150g(汤煮)",
-        "calories": 200
-      },
-      {
-        "name": "清炒菠菜",
-        "portion": "150g",
-        "calories": 55
-      },
-      {
-        "name": "清炒红苋菜",
-        "portion": "120g",
-        "calories": 50
-      },
-      {
-        "name": "五常大米",
-        "portion": "100g(熟)",
-        "calories": 115
-      },
-      {
-        "name": "红糖凉粉",
-        "portion": "小份(少糖)",
-        "calories": 90
-      }
-    ],
-    "total": {
-      "calories": 510,
-      "protein": "38g",
-      "carbs": "52g",
-      "fat": "11g"
-    },
-    "tip": "潮汕牛肉丸高蛋白低脂(汤煮不油炸) + 双绿叶菜(菠菜+红苋菜)补铁补纤维 + 米饭控量100g，避开中辣青椒油豆腐与油大的鸡翅年糕，红糖凉粉小份解馋，契合减脂高蛋白目标"
-  }
+  "today_recommendation": {}
 }

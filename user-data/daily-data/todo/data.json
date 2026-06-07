@@ -1,16 +1,4 @@
 {
-  "yukuai26": {
-    "daily": [
-      {
-        "id": 1,
-        "text": "喝水",
-        "done": false,
-        "type": "daily",
-        "date": "2026-05-28"
-      }
-    ]
-  },
-  "gugugu": {
-    "daily": []
-  }
+  "yukuai26": [],
+  "gugugu": []
 }

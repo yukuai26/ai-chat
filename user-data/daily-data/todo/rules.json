@@ -1,6 +1,50 @@
 {
-  "summary_template": "☑ {done}/{total} ({percent}%)",
-  "limit": 10,
-  "group_by": "date",
-  "order": "desc"
+  "time_sensitive": true,
+  "interaction_rules": [
+    {
+      "trigger": "用户说‘加/记一个 todo’(含日期描述如 今天/明天/下周三)",
+      "action": "解析日期→date；在对应 user 数组 append {id自增, text, done:false, date, done_date:null}"
+    },
+    {
+      "trigger": "前端勾选框点击 / 用户说‘完成了X’",
+      "action": "找到该 todo，done=true，done_date=今天"
+    },
+    {
+      "trigger": "取消完成",
+      "action": "done=false，done_date=null"
+    }
+  ],
+  "display_rules": {
+    "layout": "two_column",
+    "columns": [
+      {"user": "yukuai26", "title": "玩UKAI 26"},
+      {"user": "gugugu", "title": "咕咕咕"}
+    ],
+    "sections_per_column": [
+      {
+        "id": "today",
+        "title": "📅 今日",
+        "filter": "date == today",
+        "note": "今日全部，完成的划线(done=true 渲染删除线)",
+        "order": "未完成在前，已完成(划线)在后"
+      },
+      {
+        "id": "overdue",
+        "title": "⏰ 逾期未完成",
+        "filter": "date < today AND (done == false OR done_date == today)",
+        "note": "逾期未完成 + 今天刚勾完成的(划线保留当天)，按 date 升序"
+      },
+      {
+        "id": "future",
+        "title": "🔮 即将到来",
+        "filter": "today < date <= today+7",
+        "note": "未来 7 天内的(重点未来3天)，按 date 升序"
+      }
+    ],
+    "summary": "折叠态：每个用户显示 已完成/总数，分母=该用户(当日+逾期未完成)的总数。格式：‘玩UKAI26 2/5  咕咕咕 1/3’"
+  },
+  "display_render": {
+    "output": "display.json 含 summary + sections。sections 用 type=list，每项 {text,id,done,user,column}。前端两栏渲染，list 项带勾选框。",
+    "generated_date": "每次生成写入今天日期，后端方案C据此判断是否需重建"
+  }
 }

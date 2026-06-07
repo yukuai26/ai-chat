@@ -5128,6 +5128,18 @@
 
     /** 从当前会话文件读取最近 N 轮历史，转为 Gateway messages 格式（不含 system，避免重复注入）。
      *  目的：以磁盘 session 为准重建上下文，模型不再依赖 Gateway 30 分钟内存会话，避免“隔天失忆”。 */
+    // 随机 user: 让 Gateway 每次都当全新会话(会话层自带历史=空), 上下文完全由前端带的历史提供
+    // 这样消除"Gateway自带历史 + 前端塞历史"的重复, 对齐 DeepSeek 无状态模式; 切模型也不丢上下文(历史跟 session 文件走)
+    function _randomUser() {
+      return 'web-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    }
+    // 全量带历史(对齐 DeepSeek 等大厂: 以 session 文件为唯一上下文源, 每次重建)
+    // 加 token 兜底: 估算累计 token 超过 HISTORY_TOKEN_BUDGET 时, 从最旧的开始丢, 防止极端长对话超出模型窗口
+    // 兜底阈值按最小模型窗口(Opus 200K)保守取 150K, 给当前消息+回复留足余量; 实际个人对话基本到不了, 等于全量
+    var HISTORY_TOKEN_BUDGET = 150000;
+    function _estTokens(str) { // 粗估: 中文~1.5字符/token, 英文~4字符/token, 折中按 2 字符/token
+      return Math.ceil((str || '').length / 2);
+    }
     async function loadRecentHistory(sessionId, limit, currentText) {
       if (!sessionId) return [];
       try {
@@ -5139,8 +5151,17 @@
         while (all.length > 0 && all[all.length-1].role === 'user' && currentText != null && all[all.length-1].content === currentText) {
           all.pop();
         }
-        var recent = all.slice(-(limit || 20));
-        return recent.map(function(m){ return { role: m.role, content: m.content }; });
+        // 默认全量; 仅当累计 token 超预算时, 从最旧开始丢弃(从后往前累加, 反转得到保留集)
+        var budget = HISTORY_TOKEN_BUDGET;
+        var used = 0;
+        var kept = [];
+        for (var i = all.length - 1; i >= 0; i--) {
+          var t = _estTokens(all[i].content);
+          if (used + t > budget && kept.length > 0) break; // 超预算且已保留至少1条, 停止
+          used += t;
+          kept.unshift({ role: all[i].role, content: all[i].content });
+        }
+        return kept;
       } catch(e) { console.warn('loadRecentHistory failed:', e); return []; }
     }
 
@@ -5272,7 +5293,7 @@
         wsConnection.send(JSON.stringify({
           type: 'chat',
           messages: messages,
-          user: activeConversationId || '',
+          user: _randomUser(),
           model: 'openclaw:' + agentId,
           request_id: requestId,
         }));
@@ -5318,7 +5339,7 @@
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
           body: JSON.stringify({
             model: 'openclaw:' + agentId, messages: messages,
-            user: activeConversationId || '', stream: true,
+            user: _randomUser(), stream: true,
           }),
         });
         if (!resp.ok) {

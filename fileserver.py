@@ -938,8 +938,22 @@ TEXT_EXTENSIONS: set[str] = {
     ".vue", ".svelte",
     ".tf", ".tfvars", ".hcl",
 }
-MAX_TEXT_EXTRACT_SIZE = 100 * 1024  # 100KB，超过此大小的文本文件跳过内容提取
-MAX_EXTRACT_CONTENT_LENGTH = 4000   # 注入 Gateway 的最大字符数
+MAX_TEXT_EXTRACT_SIZE = 500 * 1024  # 500KB，超过此大小的文本文件跳过内容提取
+MAX_EXTRACT_CONTENT_LENGTH = 50000  # 注入 Gateway 的最大字符数
+
+
+def _xml_escape_attr(v: str) -> str:
+    """转义 XML 属性值（文件名/mime）。"""
+    return (str(v).replace("&", "&amp;").replace('"', "&quot;")
+            .replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def _escape_file_body(v: str) -> str:
+    """转义文件正文里伪造的 <file>/</file> 标签，防止上下文注入。"""
+    import re as _re
+    v = _re.sub(r"<\s*/\s*file\s*>", "&lt;/file&gt;", v, flags=_re.I)
+    v = _re.sub(r"<\s*file\b", "&lt;file", v, flags=_re.I)
+    return v
 MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024  # 10MB，超过此大小的文件附件拒绝注入，提示走文件浏览器
 
 
@@ -1003,9 +1017,10 @@ def _parse_file_attachment(file_path_str: str) -> dict:
         result["mime"] = mime_desc
         result["size"] = file_size
         result["summary"] = (
-            f"⚠️ 文件过大 ({size_str}): {file_path.name}\n"
-            f"类型: {mime_desc}\n"
-            f"请使用文件浏览器 (左侧目录树 → 找到文件 → 点击查看) 在独立窗口中打开此文件。"
+            f'<file name="{_xml_escape_attr(file_path.name)}" '
+            f'mime="{_xml_escape_attr(mime_desc)}" '
+            f'note="文件过大({size_str})，未提取内容，请用 read 工具或文件浏览器打开">\n'
+            f"(文件过大，内容未注入)\n</file>"
         )
         return result
 
@@ -1025,8 +1040,9 @@ def _parse_file_attachment(file_path_str: str) -> dict:
                     + f"\n\n... (文件内容已截断，完整 {total_len} 字符)"
                 )
             result["summary"] = (
-                f"📄 文件: {file_path.name} ({mime_desc})\n"
-                f"```\n{content}\n```"
+                f'<file name="{_xml_escape_attr(file_path.name)}" '
+                f'mime="{_xml_escape_attr(mime_desc)}">\n'
+                f"{_escape_file_body(content)}\n</file>"
             )
             return result
         except (UnicodeDecodeError, OSError):
@@ -1045,7 +1061,10 @@ def _parse_file_attachment(file_path_str: str) -> dict:
     result["mime"] = mime_desc
     result["size"] = file_size
     result["summary"] = (
-        f"📎 文件: {file_path.name} | 类型: {mime_desc} | 大小: {size_str} | 路径: {file_path}"
+        f'<file name="{_xml_escape_attr(file_path.name)}" '
+        f'mime="{_xml_escape_attr(mime_desc)}" '
+        f'note="二进制文件({size_str})，未提取文本，路径 {file_path}，请用 read 工具读取">\n'
+        f"(二进制内容未注入)\n</file>"
     )
     return result
 
@@ -1090,13 +1109,10 @@ def _build_gateway_messages(
         elif role == "assistant":
             messages.append({"role": "assistant", "content": content})
 
-    # 新消息的文件附件
+    # 新消息的文件附件: 以 <file> XML 块追加到 user 消息正文(对齐 OpenClaw/飞书格式, 提升模型识别可靠性)
     if new_files:
-        summaries = [_parse_file_attachment(f)["summary"] for f in new_files]
-        messages.append({
-            "role": "system",
-            "content": "用户选择了以下文件:\n\n" + "\n---\n".join(summaries),
-        })
+        blocks = [_parse_file_attachment(f)["summary"] for f in new_files]
+        new_message = new_message + "\n\n" + "\n\n".join(blocks)
 
     messages.append({"role": "user", "content": new_message})
 

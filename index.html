@@ -5128,6 +5128,9 @@
 
     /** 从当前会话文件读取最近 N 轮历史，转为 Gateway messages 格式（不含 system，避免重复注入）。
      *  目的：以磁盘 session 为准重建上下文，模型不再依赖 Gateway 30 分钟内存会话，避免“隔天失忆”。 */
+    // 文件注入辅助: <file> XML 转义(对齐飞书格式, 提升模型识别可靠性 + 防注入)
+    function _escapeXmlAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function _escapeFileBody(s){ return String(s).replace(/<\s*\/\s*file\s*>/gi,'&lt;/file&gt;').replace(/<\s*file\b/gi,'&lt;file'); }
     // 随机 user: 让 Gateway 每次都当全新会话(会话层自带历史=空), 上下文完全由前端带的历史提供
     // 这样消除"Gateway自带历史 + 前端塞历史"的重复, 对齐 DeepSeek 无状态模式; 切模型也不丢上下文(历史跟 session 文件走)
     function _randomUser() {
@@ -5212,16 +5215,16 @@
               var contentType = readResp.headers.get('Content-Type') || '';
               if (contentType.startsWith('text/') || contentType.indexOf('json') !== -1 || contentType.indexOf('javascript') !== -1 || contentType.indexOf('xml') !== -1 || contentType.indexOf('yaml') !== -1) {
                 var ftext = await readResp.text();
-                if (ftext.length > 5000) ftext = ftext.substring(0, 5000) + '\n... (内容已截断)';
-                fileSummaries.push('📄 文件: ' + fp.name + '\n路径: /home/ubuntu/.openclaw' + fp.path + '\n内容:\n```\n' + ftext + '\n```');
+                if (ftext.length > 50000) ftext = ftext.substring(0, 50000) + '\n... (内容已截断)';
+                fileSummaries.push('<file name="' + _escapeXmlAttr(fp.name) + '" mime="' + _escapeXmlAttr(contentType || 'text/plain') + '">\n' + _escapeFileBody(ftext) + '\n</file>');
               } else {
-                fileSummaries.push('📎 文件: ' + fp.name + ' (二进制)\n路径: /home/ubuntu/.openclaw' + fp.path + ' (使用 read 工具读取原始内容)');
+                fileSummaries.push('<file name="' + _escapeXmlAttr(fp.name) + '" mime="' + _escapeXmlAttr(contentType || 'application/octet-stream') + '" note="二进制文件, 路径 /home/ubuntu/.openclaw' + fp.path + ', 请用 read 工具读取">\n(二进制内容未注入)\n</file>');
               }
             } else {
-              fileSummaries.push('📎 文件: ' + fp.name + ' (无法读取)\n路径: /home/ubuntu/.openclaw' + fp.path + ' (尝试使用 read 工具)');
+              fileSummaries.push('<file name="' + _escapeXmlAttr(fp.name) + '" note="无法读取, 路径 /home/ubuntu/.openclaw' + fp.path + ', 请用 read 工具">\n(读取失败)\n</file>');
             }
           } catch(e) {
-            fileSummaries.push('📎 文件: ' + fp.name + ' (读取异常: ' + e.message + ')\n路径: /home/ubuntu/.openclaw' + fp.path + ' (尝试使用 read 工具)');
+            fileSummaries.push('<file name="' + _escapeXmlAttr(fp.name) + '" note="读取异常: ' + _escapeXmlAttr(e.message) + ', 路径 /home/ubuntu/.openclaw' + fp.path + '">\n(读取异常)\n</file>');
           }
         }
       }
@@ -5239,12 +5242,6 @@
           return _fallbackHttpSend(text, filesToSend, fileSummaries, fileIDs, now);
         }
       }
-
-      var messages = [];
-      if (fileSummaries.length > 0) {
-        messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
-      }
-      messages.push({ role: 'user', content: text });
 
       // 上下文由 Gateway session 管理（user 字段）
       var messages = [];
@@ -5267,12 +5264,11 @@
       }
       // 系统指令：告诉模型文件该存哪里（每轮都带，确保模型知道）
       messages.push({ role: 'system', content: '文件操作规则:\n- 你创建的所有文件必须保存到 /home/ubuntu/.openclaw/user-files/ 目录下\n- 可在 user-files 下新建子目录组织文件\n- 回复中引用文件时使用 Markdown 链接格式: [显示文字](/user-files/相对路径)\n  例如: [图表.png](/user-files/charts/temp.png)\n  用户点击链接后可直接跳转到文件浏览器查看文件' });
-      if (fileSummaries.length > 0) {
-        messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
-      }
       var _hist = await loadRecentHistory(activeConversationId, 20, text);
       for (var _hi = 0; _hi < _hist.length; _hi++) { messages.push(_hist[_hi]); }
-      messages.push({ role: 'user', content: text });
+      var _userContent = text;
+      if (fileSummaries.length > 0) { _userContent += '\n\n' + fileSummaries.join('\n\n'); }
+      messages.push({ role: 'user', content: _userContent });
 
       const { container: msgDiv, content: contentDiv } = createAssistantMessageElement();
       var requestId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
@@ -5323,12 +5319,11 @@
       }
       // 系统指令：告诉模型文件该存哪里（每轮都带，确保模型知道）
       messages.push({ role: 'system', content: '文件操作规则:\n- 你创建的所有文件必须保存到 /home/ubuntu/.openclaw/user-files/ 目录下\n- 可在 user-files 下新建子目录组织文件\n- 回复中引用文件时使用 Markdown 链接格式: [显示文字](/user-files/相对路径)\n  例如: [图表.png](/user-files/charts/temp.png)\n  用户点击链接后可直接跳转到文件浏览器查看文件' });
-      if (fileSummaries.length > 0) {
-        messages.push({ role: 'system', content: '用户选择了以下文件:\n\n' + fileSummaries.join('\n---\n') });
-      }
       var _hist = await loadRecentHistory(activeConversationId, 20, text);
       for (var _hi = 0; _hi < _hist.length; _hi++) { messages.push(_hist[_hi]); }
-      messages.push({ role: 'user', content: text });
+      var _userContent = text;
+      if (fileSummaries.length > 0) { _userContent += '\n\n' + fileSummaries.join('\n\n'); }
+      messages.push({ role: 'user', content: _userContent });
 
       const { container: msgDiv, content: contentDiv } = createAssistantMessageElement();
       let fullContent = '';

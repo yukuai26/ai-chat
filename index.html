@@ -7677,6 +7677,20 @@
           }
           html += '</ul>';
           break;
+
+        case 'chart_tabs':
+          // 可点标题切换的折线图(chart.js)。先放占位,渲染后用 _initChartTabs 初始化
+          var ctId = 'charttabs_' + cardId + '_' + i;
+          var tabs = sec.tabs || [];
+          html += '<div class="chart-tabs" data-charts=\'' + escapeHtml(JSON.stringify(sec.charts || {})) + '\' data-default="' + escapeHtml(sec.default || (tabs[0] && tabs[0].key) || '') + '" data-cid="' + ctId + '">';
+          html += '<div class="chart-tabs-head" style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0;">';
+          for (var ti2 = 0; ti2 < tabs.length; ti2++) {
+            html += '<button class="chart-tab-btn" data-key="' + escapeHtml(tabs[ti2].key) + '" onclick="_switchChartTab(this)" style="padding:3px 10px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer;font-size:12px;">' + escapeHtml(tabs[ti2].label) + '</button>';
+          }
+          html += '</div>';
+          html += '<div style="position:relative;height:200px;"><canvas id="' + ctId + '"></canvas></div>';
+          html += '</div>';
+          break;
       }
 
       html += '</div>';
@@ -7684,6 +7698,45 @@
 
     html += '</div>';
     bodyEl.innerHTML = html;
+    // 初始化所有 chart_tabs
+    setTimeout(function(){ _initAllChartTabs(bodyEl); }, 0);
+  }
+
+  // ===== chart_tabs: chart.js 折线图 + 标题切换 =====
+  var _chartInstances = {};
+  function _initAllChartTabs(root) {
+    var nodes = root.querySelectorAll('.chart-tabs');
+    nodes.forEach(function(node){
+      var def = node.dataset.default;
+      var btn = node.querySelector('.chart-tab-btn[data-key="' + def + '"]') || node.querySelector('.chart-tab-btn');
+      if (btn) _switchChartTab(btn);
+    });
+  }
+  function _switchChartTab(btn) {
+    var wrap = btn.closest('.chart-tabs');
+    if (!wrap) return;
+    wrap.querySelectorAll('.chart-tab-btn').forEach(function(b){ b.style.background='var(--bg-card)'; b.style.fontWeight='normal'; });
+    btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.fontWeight='600';
+    // 复位其他按钮颜色
+    wrap.querySelectorAll('.chart-tab-btn').forEach(function(b){ if(b!==btn){ b.style.color=''; }});
+    var charts = {};
+    try { charts = JSON.parse(wrap.dataset.charts || '{}'); } catch(e){}
+    var key = btn.dataset.key;
+    var series = charts[key] || [];
+    var canvas = wrap.querySelector('canvas');
+    if (!canvas || typeof Chart === 'undefined') return;
+    var cid = wrap.dataset.cid;
+    if (_chartInstances[cid]) { _chartInstances[cid].destroy(); }
+    _chartInstances[cid] = new Chart(canvas.getContext('2d'), {
+      type:'line',
+      data:{ labels: series.map(function(p){return p.date;}),
+             datasets:[{ data: series.map(function(p){return p.value;}),
+               borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.1)',
+               fill:true, tension:0.3, pointRadius:4, spanGaps:true }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false} },
+        scales:{ y:{ beginAtZero:false } } }
+    });
   }
 
     /* ===== TodoCard V2: 左右两栏 + 三段 + done_date，读 display.columns ===== */

@@ -1767,6 +1767,96 @@ def _save_todos(data: dict):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+import subprocess as _subprocess
+
+def _maybe_refresh_timesensitive(card_id: str):
+    """方案C：若卡片 time_sensitive 且 display.generated_date != 今天，则重建。
+    避免同一天重复跑，开销最小。"""
+    card_dir = os.path.join(DAILY_DATA_DIR, card_id)
+    rules_path = os.path.join(card_dir, "rules.json")
+    disp_path = os.path.join(card_dir, "display.json")
+    try:
+        if not os.path.isfile(rules_path):
+            return
+        rules = json.load(open(rules_path, encoding="utf-8"))
+        if not rules.get("time_sensitive"):
+            return
+        from datetime import datetime as _dt
+        from zoneinfo import ZoneInfo as _ZI
+        today = _dt.now(_ZI("Asia/Shanghai")).strftime("%Y-%m-%d")
+        gen_date = None
+        if os.path.isfile(disp_path) and os.path.getsize(disp_path) > 0:
+            try:
+                gen_date = json.load(open(disp_path, encoding="utf-8")).get("generated_date")
+            except Exception:
+                gen_date = None
+        if gen_date != today:
+            _regenerate_display(card_id)
+    except Exception as e:
+        logger.warning(f"_maybe_refresh_timesensitive({card_id}) 失败: {e}")
+
+
+def _regenerate_display(card_id: str):
+    """运行卡片的 generate-display.py 重生成 display.json + 通知前端。
+    无脚本则跳过(返回 False)。开销极小(~几十ms)。"""
+    script = os.path.join(DAILY_DATA_DIR, card_id, "generate-display.py")
+    if not os.path.isfile(script):
+        return False
+    try:
+        _subprocess.run(["python3", script, "--no-notify"], timeout=15,
+                        capture_output=True, cwd=os.path.join(DAILY_DATA_DIR, card_id))
+        # 统一在这里广播(脚本带 --no-notify 避免重复)
+        try:
+            _broadcast({"event": "card_changed", "by": "system", "card": card_id})
+        except Exception:
+            pass
+        return True
+    except Exception as e:
+        logger.warning(f"_regenerate_display({card_id}) 失败: {e}")
+        return False
+
+
+# ---- todo 新格式(扁平 + done_date)读写 ----
+def _load_todos_v2() -> dict:
+    """读 todo data.json，返回新扁平格式 {user:[{id,text,done,date,done_date}]}。
+    兼容旧嵌套格式(自动拍平)。"""
+    raw = {}
+    try:
+        if os.path.isfile(TODOS_PATH) and os.path.getsize(TODOS_PATH) > 0:
+            with open(TODOS_PATH, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+    except (json.JSONDecodeError, IOError):
+        raw = {}
+    result = {}
+    for user, val in (raw or {}).items():
+        items = []
+        if isinstance(val, list):
+            items = val
+        elif isinstance(val, dict):  # 旧嵌套
+            for cat, lst in val.items():
+                if isinstance(lst, list):
+                    items.extend(lst)
+        norm = []
+        for it in items:
+            norm.append({
+                "id": it.get("id"),
+                "text": it.get("text", ""),
+                "done": bool(it.get("done", False)),
+                "date": it.get("date"),
+                "done_date": it.get("done_date") if it.get("done") else None,
+            })
+        result[user] = norm
+    for u in CARD_PERSONS:
+        result.setdefault(u, [])
+    return result
+
+
+def _save_todos_v2(data: dict):
+    os.makedirs(os.path.dirname(TODOS_PATH), exist_ok=True)
+    with open(TODOS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
 
 # ---- 每日卡片: 卡片级 prompt 系统 ----
 
@@ -2060,6 +2150,7 @@ def get_all_card_displays():
         dpath = os.path.join(DAILY_DATA_DIR, d)
         if not os.path.isdir(dpath):
             continue
+        _maybe_refresh_timesensitive(d)  # 方案C：时效卡片过期则重建
         display_path = os.path.join(dpath, "display.json")
         if os.path.isfile(display_path) and os.path.getsize(display_path) > 0:
             try:
@@ -2075,6 +2166,7 @@ def get_all_card_displays():
 @require_token
 def get_card_display(card_id):
     """GET /v1/api/daily/cards/display/todo — 返回单张卡片的 display.json。"""
+    _maybe_refresh_timesensitive(card_id)  # 方案C
     card_dir = os.path.join(DAILY_DATA_DIR, card_id)
     display_path = os.path.join(card_dir, "display.json")
 
@@ -2563,37 +2655,28 @@ def todos_list():
       GET  → {"ok":true, "todos": {...}, "total": N}
       POST → {"ok":true, "todo": {...}, "message": "已添加"}
     """
+    tz = ZoneInfo("Asia/Shanghai")
+    today = datetime.now(tz).strftime("%Y-%m-%d")
+
     if request.method == "GET":
-        todos = _load_todos()
+        todos = _load_todos_v2()
         person = _get_person()
-        todo_type = request.args.get("type", "").strip()
         done_filter = request.args.get("done", "any").strip()
 
-        # 按人员过滤
-        if person:
-            if person in todos:
-                filtered = {person: todos[person]}
-            else:
-                filtered = {}
-        else:
-            filtered = todos
+        def _filter(items):
+            if done_filter in ("true", "false"):
+                want = (done_filter == "true")
+                return [i for i in items if bool(i.get("done", False)) == want]
+            return items
 
-        # 按类型/状态过滤
-        if todo_type or done_filter != "any":
-            result = {}
-            for p, cats in filtered.items():
-                result[p] = {}
-                for cat, items in cats.items():
-                    if todo_type and cat != todo_type:
-                        continue
-                    if done_filter in ("true", "false"):
-                        want_done = (done_filter == "true")
-                        items = [i for i in items if i.get("done", False) == want_done]
-                    result[p][cat] = items
-            filtered = result
-
-        total = sum(len(v) for cats in filtered.values() for v in cats.values())
-        return jsonify({"ok": True, "todos": filtered, "total": total})
+        if person and person in todos:
+            items = _filter(todos[person])
+            # 前端 loadTodoItems 期望 result.todos 为 list
+            return jsonify({"ok": True, "todos": items, "items": items, "total": len(items)})
+        # 无 person：返回全部(按用户分组)
+        result = {u: _filter(v) for u, v in todos.items()}
+        total = sum(len(v) for v in result.values())
+        return jsonify({"ok": True, "todos": result, "total": total})
 
     if request.method == "POST":
         data = request.get_json(silent=True)
@@ -2603,27 +2686,24 @@ def todos_list():
         if len(text) < 2:
             return error_response("内容至少 2 个字符", 400)
 
-        person = data.get("person", "").strip() or _get_person() or _get_person()
-        if person not in KNOWN_PERSONS:
-            return error_response(f"未知用户: {person}", 400)
+        person = (data.get("person", "") or "").strip() or _get_person()
+        if person not in CARD_PERSONS:
+            return error_response(f"未知用户: {person}（仅 {CARD_PERSONS}）", 400)
 
-        todo_type = data.get("type", "daily").strip()
-        if todo_type not in VALID_TODO_TYPES:
-            return error_response(f"无效类型: {todo_type}", 400)
+        # date：支持指定(未来/历史)，默认今天
+        date = (data.get("date", "") or "").strip() or today
 
-        todos = _load_todos()
-        todos.setdefault(person, {}).setdefault(todo_type, [])
-
-        tz = ZoneInfo("Asia/Shanghai")
-        today = datetime.now(tz).strftime("%Y-%m-%d")
+        todos = _load_todos_v2()
+        todos.setdefault(person, [])
         new_id = 1
-        for item in todos[person].get(todo_type, []):
+        for item in todos[person]:
             if item.get("id", 0) >= new_id:
                 new_id = item["id"] + 1
 
-        todo_item = {"id": new_id, "text": text, "done": False, "type": todo_type, "date": today}
-        todos[person][todo_type].append(todo_item)
-        _save_todos(todos)
+        todo_item = {"id": new_id, "text": text, "done": False, "date": date, "done_date": None}
+        todos[person].append(todo_item)
+        _save_todos_v2(todos)
+        _regenerate_display("todo")  # 方案A钩子：改完data自动重建display+通知
 
         return jsonify({"ok": True, "todo": todo_item, "message": f"已添加 Todo: {text}"})
 
@@ -2640,21 +2720,18 @@ def todos_item(todo_id):
       PUT    → {"ok":true, "todo": {...}}
       DELETE → {"ok":true, "message": "已删除"}
     """
-    todos = _load_todos()
+    tz = ZoneInfo("Asia/Shanghai")
+    today = datetime.now(tz).strftime("%Y-%m-%d")
+    todos = _load_todos_v2()
 
-    # 查找 Todo
+    # 查找 Todo（扁平格式）
     found = None
     found_person = None
-    found_cat = None
-    for p, cats in todos.items():
-        for cat, items in cats.items():
-            for item in items:
-                if item.get("id") == todo_id:
-                    found = item
-                    found_person = p
-                    found_cat = cat
-                    break
-            if found:
+    for usr, items in todos.items():
+        for item in items:
+            if item.get("id") == todo_id:
+                found = item
+                found_person = usr
                 break
         if found:
             break
@@ -2663,8 +2740,9 @@ def todos_item(todo_id):
         return error_response(f"Todo #{todo_id} 不存在", 404)
 
     if request.method == "DELETE":
-        todos[found_person][found_cat] = [i for i in todos[found_person][found_cat] if i["id"] != todo_id]
-        _save_todos(todos)
+        todos[found_person] = [i for i in todos[found_person] if i["id"] != todo_id]
+        _save_todos_v2(todos)
+        _regenerate_display("todo")
         return jsonify({"ok": True, "message": f"已删除 Todo #{todo_id}"})
 
     if request.method == "PUT":
@@ -2675,7 +2753,10 @@ def todos_item(todo_id):
         changed = False
 
         if "done" in data:
-            found["done"] = bool(data["done"])
+            new_done = bool(data["done"])
+            found["done"] = new_done
+            # 关键：记/清 done_date
+            found["done_date"] = today if new_done else None
             changed = True
 
         if "text" in data:
@@ -2685,22 +2766,15 @@ def todos_item(todo_id):
             found["text"] = new_text
             changed = True
 
-        if "type" in data:
-            new_type = data["type"].strip()
-            if new_type not in VALID_TODO_TYPES:
-                return error_response(f"无效类型: {new_type}", 400)
-            if new_type != found_cat:
-                # 移动到另一个分类
-                todos[found_person][found_cat] = [i for i in todos[found_person][found_cat] if i["id"] != todo_id]
-                found["type"] = new_type
-                todos[found_person].setdefault(new_type, []).append(found)
+        if "date" in data and data["date"]:
+            found["date"] = data["date"].strip()
             changed = True
 
         if not changed:
             return jsonify({"ok": True, "todo": found, "message": "无变更"})
 
-        _save_todos(todos)
-        _notify_partner(person if request.user else person or request.user, {"event": "todo_changed", "by": person})
+        _save_todos_v2(todos)
+        _regenerate_display("todo")  # 方案A钩子：改完data自动重建display+通知
         return jsonify({"ok": True, "todo": found, "message": f"已更新 Todo #{todo_id}"})
 
 

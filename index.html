@@ -7686,322 +7686,107 @@
     bodyEl.innerHTML = html;
   }
 
-async function loadTodoCard(cardEl) {
+    /* ===== TodoCard V2: 左右两栏 + 三段 + done_date，读 display.columns ===== */
+    let cachedTodoDisplay = null;
+
+    async function loadTodoCard(cardEl) {
       if (!cardEl) return;
       const summary = cardEl.querySelector('.card-summary');
       const body = cardEl.querySelector('.card-body');
       if (!body) return;
-
-      const token = document.getElementById('token').value;
-      if (!token) {
-        if (summary) summary.textContent = '⚠️ 请先连接 API Token';
-        return;
-      }
-
       try {
-        if (!cachedTodoData) {
-          const resp = await fetch('/v1/api/daily/cards/display/todo', {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          var display = (await resp.json()).display || {};
-        var items = display.active || [];
-        var persons = {"我": items};
-        cachedTodoData = {
-          persons: persons,
-          total_done: display.done_count || 0,
-          total_pending: items.length || 0,
-          week_total: display.total || 0,
-          week_done: display.done_count || 0
-        };
-        // cachedTodoData = await resp.json(); // old
-        }
-
-        renderTodoCardCollapsed(summary, body, cachedTodoData);
+        const resp = await authFetch('/v1/api/daily/cards/display/todo');
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        cachedTodoDisplay = (await resp.json()).display || {};
+        renderTodoCollapsed(summary, cachedTodoDisplay);
+        renderTodoExpanded(body, cachedTodoDisplay);
       } catch (e) {
         console.error('加载 Todo 失败:', e);
-        body.innerHTML = '<div class="card-body-placeholder">⚠️ Todo 加载失败</div>';
+        if (summary) summary.textContent = '⚠️ Todo 加载失败';
       }
     }
 
-    function renderTodoCardCollapsed(summaryEl, bodyEl, data) {
-      if (!data || !data.persons || !Object.keys(data.persons).length) {
-        if (summaryEl) summaryEl.textContent = '📋 暂无待办事项';
-        bodyEl.innerHTML = '<div class="card-body-placeholder">📋 暂无待办事项</div>';
-        return;
-      }
-
-      const persons = data.persons;
-      const totalDone = data.total_done || 0;
-      const totalPending = data.total_pending || 0;
-      const total = totalDone + totalPending;
-      const weekTotal = data.week_total || 0;
-      const weekDone = data.week_done || 0;
-
-      // 缩略模式
-      let collapsedHtml = '<div class="todo-collapsed">';
-      for (const [name, person] of Object.entries(persons)) {
-        const pending = person.pending || 0;
-        const done = person.done || 0;
-        const personTotal = pending + done;
-        const pct = personTotal > 0 ? Math.round(done / personTotal * 100) : 0;
-        collapsedHtml += '<div class="todo-person-row">';
-        collapsedHtml += '<span class="todo-person-name">👤 ' + escapeHtml(name) + '</span>';
-        collapsedHtml += '<div class="todo-person-bar"><div class="todo-person-bar-fill" style="width:' + pct + '%"></div></div>';
-        collapsedHtml += '<span class="todo-person-count">' + done + '/' + personTotal + '</span>';
-        collapsedHtml += '</div>';
-      }
-      collapsedHtml += '<div class="todo-week-summary">📅 本周: ' + weekDone + '/' + weekTotal + ' 待办</div>';
-      collapsedHtml += '<div class="todo-expand-hint" onclick="toggleCard(\'todo\', event)">展开查看详情 ▼</div>';
-      collapsedHtml += '</div>';
-
-      if (summaryEl) summaryEl.innerHTML = collapsedHtml;
-      // 展开模式：双人/每日-本周 Tab
-      renderTodoCardExpanded(bodyEl, data);
+    function renderTodoCollapsed(summaryEl, display) {
+      if (!summaryEl) return;
+      summaryEl.textContent = '📋 ' + (display.summary || '暂无待办');
     }
 
-
-    /** DF17: TodoCard 展开模式 */
-    let todoActivePerson = null;
-    let todoActiveView = 'daily'; // 'daily' | 'weekly'
-
-    function renderTodoCardExpanded(bodyEl, data) {
-      if (!data || !data.persons || !Object.keys(data.persons).length) {
-        bodyEl.innerHTML = '<div class="card-body-placeholder">📋 暂无待办事项</div>';
-        return;
+    function renderTodoExpanded(bodyEl, display) {
+      if (!bodyEl) return;
+      const cols = display.columns || [];
+      if (!cols.length) { bodyEl.innerHTML = '<div class="card-body-placeholder">📋 暂无待办</div>'; return; }
+      let html = '<div class="todo-v2-cols" style="display:flex;gap:12px;">';
+      for (const col of cols) {
+        html += '<div class="todo-v2-col" style="flex:1;min-width:0;">';
+        html += '<div class="todo-v2-coltitle" style="font-weight:600;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px;">👤 ' + escapeHtml(col.title || col.user) + '</div>';
+        const secs = col.sections || [];
+        if (!secs.length) {
+          html += '<div style="color:var(--text-secondary);font-size:12px;padding:6px;">🎉 暂无</div>';
+        } else {
+          for (const sec of secs) {
+            html += '<div class="todo-v2-sec" style="margin-bottom:8px;">';
+            html += '<div class="todo-v2-sectitle" style="font-size:12px;color:var(--text-secondary);margin:4px 0;">' + escapeHtml(sec.title || '') + '</div>';
+            for (const it of (sec.items || [])) {
+              const done = !!it.done;
+              const txt = escapeHtml(it.text || '');
+              html += '<div class="todo-item" data-id="' + it.id + '" style="display:flex;align-items:center;gap:6px;padding:3px 0;">' +
+                '<input type="checkbox" class="todo-checkbox"' + (done ? ' checked' : '') + ' onchange="toggleTodoDone(' + it.id + ', this.checked)">' +
+                '<span class="todo-item-text' + (done ? ' done' : '') + '" style="' + (done ? 'text-decoration:line-through;color:var(--text-secondary);' : '') + '">' + txt + '</span>' +
+                '</div>';
+            }
+            html += '</div>';
+          }
+        }
+        // 每栏底部添加框
+        html += '<div class="todo-add-bar" style="margin-top:6px;display:flex;gap:4px;">';
+        html += '<input type="text" class="todo-add-input" data-user="' + escapeHtml(col.user) + '" placeholder="加待办(可说日期)..." style="flex:1;min-width:0;" onkeydown="if(event.key===\'Enter\')addTodoItem(this)">';
+        html += '<button class="todo-add-btn" onclick="addTodoItem(this.previousElementSibling)">+</button>';
+        html += '</div>';
+        html += '</div>';
       }
-
-      const persons = Object.keys(data.persons);
-      if (!todoActivePerson || !persons.includes(todoActivePerson)) {
-        todoActivePerson = persons[0];
-      }
-
-      let html = '<div class="todo-expanded">';
-
-      // 人物 Tabs
-      html += '<div class="todo-tabs">';
-      for (const p of persons) {
-        const active = p === todoActivePerson ? ' active' : '';
-        html += '<button class="todo-tab' + active + '" onclick="switchTodoPerson(\'' + escapeHtml(p) + '\')">👤 ' + escapeHtml(p) + '</button>';
-      }
-      html += '</div>';
-
-      // 日/周 Subtabs
-      html += '<div class="todo-subtabs">';
-      html += '<button class="todo-subtab' + (todoActiveView === 'daily' ? ' active' : '') + '" onclick="switchTodoView(\'daily\')">📅 每日</button>';
-      html += '<button class="todo-subtab' + (todoActiveView === 'weekly' ? ' active' : '') + '" onclick="switchTodoView(\'weekly\')">📆 本周</button>';
-      html += '</div>';
-
-      // 统计行
-      const personData = data.persons[todoActivePerson] || {};
-      const done = personData.done || 0;
-      const pending = personData.pending || 0;
-      const total = done + pending;
-      const pct = total > 0 ? Math.round(done / total * 100) : 0;
-      html += '<div class="todo-stats">✅ ' + done + ' / ' + total + ' 已完成 (' + pct + '%)</div>';
-      html += '<div class="todo-stats-bar"><div class="todo-stats-bar-fill" style="width:' + pct + '%"></div></div>';
-
-      // Todo 列表
-      html += '<div id="todoItemList">';
-      html += '<div style="text-align:center;color:var(--text-secondary);font-size:12px;padding:8px;">⏳ 加载中...</div>';
-      html += '</div>';
-
-      // 底部添加输入框
-      html += '<div class="todo-add-bar">';
-      html += '<input type="text" id="todoAddInput" placeholder="输入新待办..." onkeydown="if(event.key===\'Enter\') addTodoItem()">';
-      html += '<button class="todo-add-btn" onclick="addTodoItem()">+ 添加</button>';
-      html += '</div>';
-
       html += '</div>';
       bodyEl.innerHTML = html;
-
-      // 异步加载具体 Todo 列表
-      loadTodoItems();
-    }
-
-    async function loadTodoItems() {
-      const container = document.getElementById('todoItemList');
-      if (!container) return;
-
-      const token = document.getElementById('token').value;
-      if (!token) return;
-
-      let url = '/v1/api/daily/todos?person=' + encodeURIComponent(todoActivePerson) + '&done=false';
-      if (todoActiveView === 'weekly') {
-        url = '/v1/api/daily/todos/week?person=' + encodeURIComponent(todoActivePerson) + '&done=false';
-      }
-
-      try {
-        const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const result = await resp.json();
-        let items;
-        if (todoActiveView === 'weekly') {
-          items = [].concat(result.daily || [], result.weekly || []);
-        } else {
-          items = result.todos || result.items || [];
-        }
-
-        if (!items.length) {
-          container.innerHTML = '<div class="todo-empty">🎉 全部完成！</div>';
-          return;
-        }
-
-        container.innerHTML = items.map(function(item) {
-          const text = escapeHtml(item.text || '');
-          const isDone = item.done;
-          const id = item.id;
-          return '<div class="todo-item" data-id="' + id + '">' +
-            '<input type="checkbox" class="todo-checkbox"' + (isDone ? ' checked' : '') + ' onchange="toggleTodoDone(' + id + ', this.checked)" title="完成">' +
-            '<span class="todo-item-text' + (isDone ? ' done' : '') + '">' + text + '</span>' +
-            '<button class="todo-item-delete" onclick="deleteTodoItem(' + id + ')" title="删除">🗑</button>' +
-            '</div>';
-        }).join('');
-      } catch (e) {
-        console.error('加载 Todo 列表失败:', e);
-        container.innerHTML = '<div class="todo-empty">⚠️ 加载失败</div>';
-      }
-    }
-
-    function switchTodoPerson(person) {
-      todoActivePerson = person;
-      const newsCard = document.querySelector('[data-card-id="todo"]');
-      if (newsCard && cachedTodoData) {
-        const body = newsCard.querySelector('.card-body');
-        if (body) renderTodoCardExpanded(body, cachedTodoData);
-      }
-    }
-
-    function switchTodoView(view) {
-      todoActiveView = view;
-      loadTodoItems();
     }
 
     async function toggleTodoDone(id, checked) {
-      const token = document.getElementById('token').value;
-      if (!token) return;
-
       try {
-        const resp = await fetch('/v1/api/daily/todos/' + id, {
+        const resp = await authFetch('/v1/api/daily/todos/' + id, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify({ done: checked ? 1 : 0 })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ done: checked })
         });
         if (resp.ok) {
-          // DF19: 即时动画 - 更新被勾选的条目
-          const itemEl = document.querySelector('.todo-item[data-id="' + id + '"]');
+          // 即时划线（后端已重建 display + WS 会推送刷新）
+          const itemEl = document.querySelector('.todo-item[data-id="' + id + '"] .todo-item-text');
           if (itemEl) {
-            if (checked) {
-              itemEl.classList.add('check-anim');
-              itemEl.querySelector('.todo-item-text').classList.add('done');
-            } else {
-              itemEl.querySelector('.todo-item-text').classList.remove('done');
-            }
-            setTimeout(function() { itemEl.classList.remove('check-anim'); }, 500);
-            updateTodoStats();
-          }
-
-          // 后台刷新缓存
-          cachedTodoData = null;
-          const todoCard = document.querySelector('[data-card-id="todo"]');
-          if (todoCard) {
-            await loadTodoCard(todoCard);
-            const body = todoCard ? todoCard.querySelector('.card-body') : null;
-            if (body && todoCard.classList.contains('expanded')) {
-              loadTodoItems(); // 重新加载列表
-            }
+            if (checked) { itemEl.classList.add('done'); itemEl.style.textDecoration='line-through'; itemEl.style.color='var(--text-secondary)'; }
+            else { itemEl.classList.remove('done'); itemEl.style.textDecoration=''; itemEl.style.color=''; }
           }
         }
-      } catch (e) {
-        console.error('Toggle todo failed:', e);
-      }
+      } catch (e) { console.error('toggle todo 失败:', e); }
     }
 
-    /** DF19: 即时更新统计栏 */
-    function updateTodoStats() {
-      const items = document.querySelectorAll('#todoItemList .todo-item');
-      if (!items.length) return;
-      const total = items.length;
-      const done = document.querySelectorAll('#todoItemList .todo-item .todo-item-text.done').length;
-      const pct = Math.round(done / total * 100);
-      const stats = document.querySelector('.todo-expanded .todo-stats');
-      const bar = document.querySelector('.todo-stats-bar-fill');
-      if (stats) stats.textContent = '✅ ' + done + ' / ' + total + ' 已完成 (' + pct + '%)';
-      if (bar) bar.style.width = pct + '%';
-    }
-
-    async function deleteTodoItem(id) {
-      if (!confirm('确定删除这个待办？')) return;
-      const token = document.getElementById('token').value;
-      if (!token) return;
-
+    async function addTodoItem(inputEl) {
+      if (!inputEl) return;
+      const text = (inputEl.value || '').trim();
+      if (text.length < 2) { showCommandToast('⚠️ 待办内容至少 2 个字符', 'error'); return; }
+      const user = inputEl.dataset.user || 'yukuai26';
       try {
-        const resp = await fetch('/v1/api/daily/todos/' + id, {
-          method: 'DELETE',
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (resp.ok) {
-          cachedTodoData = null;
-          const todoCard = document.querySelector('[data-card-id="todo"]');
-          if (todoCard) {
-            await loadTodoCard(todoCard);
-            const body = todoCard.querySelector('.card-body');
-            if (body && todoCard.classList.contains('expanded')) {
-              renderTodoCardExpanded(body, cachedTodoData);
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Delete todo failed:', e);
-      }
-    }
-
-    /** DF18: 添加 Todo */
-    async function addTodoItem() {
-      const input = document.getElementById('todoAddInput');
-      if (!input) return;
-      const text = input.value.trim();
-      if (text.length < 2) {
-        showCommandToast('⚠️ 待办内容至少 2 个字符', 'error');
-        return;
-      }
-
-      const token = document.getElementById('token').value;
-      if (!token) {
-        showCommandToast('⚠️ 请先连接 API Token', 'error');
-        return;
-      }
-
-      try {
-        const resp = await fetch('/v1/api/daily/todos', {
+        const resp = await authFetch('/v1/api/daily/todos', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify({
-            person: todoActivePerson,
-            type: todoActiveView === 'weekly' ? 'weekly' : 'daily',
-            text: text
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ person: user, text: text })
         });
         const result = await resp.json();
         if (result.ok) {
-          input.value = '';
-          cachedTodoData = null;
+          inputEl.value = '';
           const todoCard = document.querySelector('[data-card-id="todo"]');
-          if (todoCard) {
-            await loadTodoCard(todoCard);
-            const body = todoCard.querySelector('.card-body');
-            if (body && todoCard.classList.contains('expanded')) {
-              renderTodoCardExpanded(body, cachedTodoData);
-            }
-          }
+          if (todoCard) await loadTodoCard(todoCard);
           showCommandToast('✅ 已添加: ' + text, 'success');
         } else {
           showCommandToast('⚠️ ' + (result.error || '添加失败'), 'error');
         }
-      } catch (e) {
-        console.error('添加 Todo 失败:', e);
-        showCommandToast('⚠️ 网络错误', 'error');
-      }
+      } catch (e) { console.error('添加 Todo 失败:', e); showCommandToast('⚠️ 网络错误', 'error'); }
     }
 
 
@@ -9030,7 +8815,8 @@ async function loadTodoCard(cardEl) {
         console.log('✅ WebSocket 握手完成');
         break;
       case 'todo_changed':
-        if (typeof loadTodoItems === 'function') loadTodoItems();
+        var _tc = document.querySelector('[data-card-id="todo"]');
+        if (_tc && typeof loadTodoCard === 'function') loadTodoCard(_tc);
         showToast('📋 ' + (by ? by + ' ' : '') + '更新了 Todo', 'info', 3000);
         break;
       case 'data_changed':

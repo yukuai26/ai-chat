@@ -1,0 +1,26 @@
+{
+  "card_id": "stock",
+  "card_name": "股票看板",
+  "refresh": {
+    "intraday_quote_min": 15,
+    "kline_daily_once": true,
+    "note": "盘中每15分钟刷实时行情(A股新浪无限流/美股Yahoo少量)；K线一天抓一次(收盘后)缓存复用；AI点评每天1-2次"
+  },
+  "interaction_rules": [
+    {"trigger": "加自选 XXX / 关注 XXX / 盯一下 XXX", "action": "识别市场+代码→append 到 watchlist(含 source/yahoo_sym)；A股用 shXXXXXX/szXXXXXX，港股 hkXXXXX，美股直接代码"},
+    {"trigger": "删自选 XXX / 取消关注 XXX / 别看 XXX", "action": "从 watchlist 移除该项"},
+    {"trigger": "点评 XXX / XXX怎么样 / XXX能买吗", "action": "读该标的 quotes+klines+indicators→生成大白话点评写 ai_comment[code]"}
+  ],
+  "display_rules": {
+    "summary": "上证指数 + 涨跌幅最大一只",
+    "sections": [
+      {"id": "watchlist", "type": "table", "title": "⭐ 自选股", "note": "市场/名称/现价/涨跌幅(红涨绿跌)"},
+      {"id": "per_stock", "type": "stock_detail", "title": "每只: 双图(折线/蜡烛可切换)+多周期(1D/1W/1M/3M)+详情+指标(MA/RSI/MACD/布林)+AI点评"}
+    ]
+  },
+  "data_sources": {
+    "a_share": "新浪 hq.sinajs.cn 实时(GBK,含五档) + quotes.sina.cn 日K (直连零限流)",
+    "yahoo": "港股/美股/加密 走代理 172.29.4.175:22222 (限流敏感,大间隔+缓存)",
+    "fallback": "Yahoo失败→用 data.json 缓存兜底(quote 标 _stale, kline 用旧)"
+  }
+}

@@ -120,3 +120,16 @@ created: "2026-05-26"
 - C2-1 白名单补设计对齐(user-files)
 - 新增 2 条 lesson：misjudge-token-invalid(误判e0fb40) / misled-by-surface-symptom(诊断被表面401带偏)
 - 日记 memory/2026-06-07.md + MEMORY.md 更新
+
+## 2026-06-08
+- **新增** `projects/ac/ac-data-sources-V1.0-ACTIVE.md` — 信息源与金融数据源完整清单(资讯+股票/ETF/国债/大宗，含可爬/不可爬+实测验证+国外源代理策略)
+- **更新** `projects/ac/_index.md` — 登记 data-sources 文档
+- **更新** `lessons/.../lesson-2026-06-07-toolcall-in-text.md` — 标🔴反复发作，追加06-08复发记录+加固规则(调工具回合零文字)
+- **更新** `lessons/_index.md` — toolcall-in-text 状态→反复发作
+- **实测结论(06-07~06-08)**: 国外源(BBC/NYT/Yahoo等)需代理172.29.4.175:22222；A股直连零延迟五档；美股/全球/ETF/国债/黄金大宗走Yahoo(代理)；微博/抖音/小红书/推特原文/石墨爬不了
+- **新增** `projects/ac/ac-stock-system-design-V1.0-DRAFT.md` — 股票/金融功能系统设计(Phase1数据展示看板/Phase2回测/Phase3虚拟盘/Phase4自动交易，登记Phase1/2/3 TODO，借鉴开源项目)
+- **更新** `projects/ac/_index.md` — 登记 stock-system 文档
+- **复发** lesson toolcall-in-text 06-08 第3、4次复发(整理文档/读源码过程中)，已追加记录
+- **新增** `projects/ac/ac-stock-handoff-2026-06-08.md` — Session交接文档(因反复出现工具调用写正文错误决定重启新对话，记录全部上下文供无缝接续)
+- **新session接续(22:00后)**: 走代理拿到四类标杆仓库README原文(StockSharp10055/portfolio-performance3898/woshijielie-stock_prediction_and_recommendation361/femtotrader-pandas_talib780)；订正③真名带_and_recommendation后缀、④作者femtotrader。修正:pandas_talib自标work-in-progress,改用pandas-ta
+- **新增** `projects/ac/ac-stock-card-design-V1.0-DRAFT.md` — stock卡片Phase1详细架构(贴合现有卡片系统5文件机制,已核对data卡真实结构;每市场各1样板;完整展示;自选股=卡片喵改watchlist接口)，待管理员review

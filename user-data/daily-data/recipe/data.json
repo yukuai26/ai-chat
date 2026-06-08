@@ -215,5 +215,78 @@
     "spice_tolerance": "微辣以下为主，中辣偶尔可接受，重辣避免",
     "allergies": []
   },
-  "today_recommendation": {}
+  "today_recommendation": {
+    "date": "2026-06-08",
+    "weekday": "周一",
+    "items": [
+      {
+        "name": "招牌酸菜鱼片(微辣)",
+        "portion": "200g",
+        "calories": 240,
+        "macros": {
+          "protein": "40g",
+          "carbs": "5g",
+          "fat": "6g"
+        }
+      },
+      {
+        "name": "土鸡蛋杂牛肉(微辣)",
+        "portion": "100g",
+        "calories": 150,
+        "macros": {
+          "protein": "14g",
+          "carbs": "3g",
+          "fat": "9g"
+        }
+      },
+      {
+        "name": "蚝油生菜",
+        "portion": "150g",
+        "calories": 60,
+        "macros": {
+          "protein": "2g",
+          "carbs": "6g",
+          "fat": "3g"
+        }
+      },
+      {
+        "name": "清炒杭白菜",
+        "portion": "100g",
+        "calories": 35,
+        "macros": {
+          "protein": "2g",
+          "carbs": "4g",
+          "fat": "1g"
+        }
+      },
+      {
+        "name": "五常大米",
+        "portion": "150g(熟)",
+        "calories": 175,
+        "macros": {
+          "protein": "4g",
+          "carbs": "39g",
+          "fat": "0g"
+        }
+      },
+      {
+        "name": "莲藕排骨汤",
+        "portion": "1碗(去油)",
+        "calories": 90,
+        "macros": {
+          "protein": "6g",
+          "carbs": "8g",
+          "fat": "4g"
+        }
+      }
+    ],
+    "total": {
+      "calories": 650,
+      "protein": "68g",
+      "carbs": "65g",
+      "fat": "23g",
+      "veggies": "250g"
+    },
+    "tip": "减脂期午餐：酸菜鱼片+鸡蛋牛肉双高蛋白打底，绿叶菜补纤维，主食控制在150g，排骨汤记得撇油。避开糖醋排骨/椒盐鸭腿等高油菜。"
+  }
 }

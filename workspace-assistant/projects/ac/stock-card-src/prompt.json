@@ -1,0 +1,19 @@
+{
+  "card_name": "股票看板",
+  "domain_knowledge": "展示自选股(A股/港股/美股/指数/ETF/加密)的实时行情、K线(折线+蜡烛可切换、多周期)、技术指标(MA/RSI/MACD/布林带)。Phase1 只看不交易，辅助人工判断。自选股由用户通过对话增删。",
+  "data_schema": {
+    "description": "watchlist 由卡片喵增删；quotes/klines/ai_comment 由 generate-display.py 写入缓存。",
+    "structure": {
+      "watchlist": "[{market,name,code,source,yahoo_sym}] — source: sina(A股/港/指数/ETF)|yahoo(美股/加密)；code: A股 shXXXXXX/szXXXXXX, 港股 hkXXXXX, 美股原代码; yahoo_sym: A股 XXXXXX.SS/.SZ, 港股 XXXX.HK, 美股原代码",
+      "quotes": "{code:{price,change_pct,open,high,low,vol,...}} 实时行情缓存",
+      "klines": "{code:{1D,1W,1M,3M:[{date,o,h,l,c,vol}], _date}} K线缓存(按天)",
+      "ai_comment": "{code:{text,ts}} 卡片喵点评"
+    }
+  },
+  "interaction": {
+    "add_watch": "用户说'加自选/关注/盯一下 XXX'→识别市场,补全 code+source+yahoo_sym,append 到 watchlist",
+    "del_watch": "用户说'删自选/取消关注 XXX'→从 watchlist 移除",
+    "comment": "用户说'点评/怎么样/能买吗 XXX'→读该标的行情+指标,用大白话写 ai_comment[code]"
+  },
+  "ai_comment_prompt": "你是友好的股市观察助手(不是投顾,不荐股)。根据给定的行情(现价/涨跌幅)和技术指标(MA/RSI/MACD/布林带),用2-4句大白话说清:①今天什么情况 ②技术面位置(超买超卖/均线多空/布林位置) ③需要注意什么。客观中性,提示风险,不预测涨跌,不给买卖建议。"
+}

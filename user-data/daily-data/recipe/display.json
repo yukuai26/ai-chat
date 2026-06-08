@@ -1,10 +1,190 @@
 {
-  "summary": "🥗 今日(周日): 今天食谱还没收到 | 已摄入 yukuai26 暂无 gugugu 暂无",
+  "summary": "🥗 周一 推荐: 招牌酸菜鱼片(微辣)200g(240kcal) + 土鸡蛋杂牛肉(微辣)100g(150kcal) + 蚝油生菜150g(60kcal) + 清炒杭白菜100g(35kcal) + 五常大米150g(熟)(175kcal) + 莲藕排骨汤1碗(去油)(90kcal) = 650kcal | 已摄入 yukuai26 暂无 gugugu 暂无",
   "sections": [
     {
-      "title": "🍽️ 今日食谱 (周日)",
-      "type": "text",
-      "text": "今天食谱还没收到 🕐"
+      "title": "🍽️ 今日食谱 (周一)",
+      "type": "table",
+      "rows": [
+        {
+          "cells": [
+            {
+              "text": "主荤菜",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "招牌酸菜鱼片(微辣)、糖醋排骨、椒盐鸭腿、土鸡蛋杂牛肉(微辣)"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "素菜",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "什锦玉米粒、蚝油生菜、清炒杭白菜"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "主食",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "五常大米、猪油拌粉"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "小吃",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "香酥鸡米花"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "五谷杂粮",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "贝贝南瓜、土豆"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "汤粥",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "莲藕排骨汤"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "小菜",
+              "style": "color:var(--text-secondary);width:60px"
+            },
+            {
+              "text": "酱黄瓜、秘制辣椒酱"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "🥗 午餐推荐配比",
+      "type": "table",
+      "rows": [
+        {
+          "cells": [
+            {
+              "text": "招牌酸菜鱼片(微辣)"
+            },
+            {
+              "text": "200g"
+            },
+            {
+              "text": "240kcal"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "土鸡蛋杂牛肉(微辣)"
+            },
+            {
+              "text": "100g"
+            },
+            {
+              "text": "150kcal"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "蚝油生菜"
+            },
+            {
+              "text": "150g"
+            },
+            {
+              "text": "60kcal"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "清炒杭白菜"
+            },
+            {
+              "text": "100g"
+            },
+            {
+              "text": "35kcal"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "五常大米"
+            },
+            {
+              "text": "150g(熟)"
+            },
+            {
+              "text": "175kcal"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "莲藕排骨汤"
+            },
+            {
+              "text": "1碗(去油)"
+            },
+            {
+              "text": "90kcal"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "合计",
+              "style": "font-weight:bold"
+            },
+            {
+              "text": ""
+            },
+            {
+              "text": "650kcal (P:68g C:65g F:23g)",
+              "style": "font-weight:bold"
+            }
+          ]
+        }
+      ],
+      "footer": {
+        "text": "💡 减脂期午餐：酸菜鱼片+鸡蛋牛肉双高蛋白打底，绿叶菜补纤维，主食控制在150g，排骨汤记得撇油。避开糖醋排骨/椒盐鸭腿等高油菜。"
+      }
     },
     {
       "title": "🍿 本周非正餐摄入 · yukuai26",
@@ -27,5 +207,5 @@
       "text": "暂无摄入记录，记录饮食后可获得营养建议 📝"
     }
   ],
-  "updated": "2026-06-07T19:48:39.872423+08:00"
+  "updated": "2026-06-08T11:02:01.583109+08:00"
 }

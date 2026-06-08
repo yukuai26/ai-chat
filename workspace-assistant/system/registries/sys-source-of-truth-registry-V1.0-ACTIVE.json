@@ -165,7 +165,31 @@
       "type": "设计文档",
       "created": "2026-05-28T00:00:00+08:00",
       "description": "Phase 17 营养追踪与食谱系统设计文档（周食谱/午餐推荐/热量记录/Dashboard卡片）"
+    },
+    "ac-data-sources-V1.0-ACTIVE": {
+      "path": "projects/ac/ac-data-sources-V1.0-ACTIVE.md",
+      "status": "ACTIVE",
+      "purpose": "信息源与金融数据源完整清单(资讯+股票金融全品类，实测验证)",
+      "updated": "2026-06-08"
+    },
+    "ac-stock-system-design-V1.0-DRAFT": {
+      "path": "projects/ac/ac-stock-system-design-V1.0-DRAFT.md",
+      "status": "DRAFT",
+      "purpose": "股票/金融功能系统设计(Phase1-4+TODO)",
+      "updated": "2026-06-08"
+    },
+    "ac-stock-card-design-V1.0-DRAFT": {
+      "path": "projects/ac/ac-stock-card-design-V1.0-DRAFT.md",
+      "status": "DRAFT",
+      "purpose": "stock卡片Phase1详细架构(贴合现有5文件卡片系统,样板标的,完整展示,自选股=卡片喵改watchlist)",
+      "updated": "2026-06-08"
+    },
+    "ac-stock-handoff-2026-06-08": {
+      "path": "projects/ac/ac-stock-handoff-2026-06-08.md",
+      "status": "ACTIVE",
+      "purpose": "股票功能session交接文档",
+      "updated": "2026-06-08"
     }
   },
-  "_updated": "2026-05-28T00:00:00+08:00"
+  "_updated": "2026-06-08T22:40:00+08:00"
 }

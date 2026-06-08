@@ -5901,6 +5901,16 @@ def server_error(e):
 
 # ---- 入口 ----
 
+# ===== QuantDinger BFF 蓝图注册 (量化页面后端接口) =====
+try:
+    from quant_bff import quant_bp, init_quant
+    init_quant(auth_required)
+    app.register_blueprint(quant_bp)
+    logger.info("✅ QuantDinger BFF 蓝图已注册 (/v1/api/quant/*)")
+except Exception as _e:
+    logger.warning(f"QuantDinger BFF 注册失败(不影响其它功能): {_e}")
+
+
 if __name__ == "__main__":
     _ensure_directories()
     port = int(os.environ.get("PORT", 5050))

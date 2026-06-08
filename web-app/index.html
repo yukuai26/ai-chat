@@ -6956,7 +6956,7 @@
         }
 
         // 加载所有卡片（统一使用 display.json sections 渲染）
-        var allCardIds = ['news','todo','data','recipe','wishes','notes','bookmarks','photos','shares','reminders','habits','summary'];
+        var allCardIds = ['news','todo','data','recipe','wishes','notes','bookmarks','photos','shares','reminders','habits','stock','summary'];
         for (var ai = 0; ai < allCardIds.length; ai++) {
           var cid = allCardIds[ai];
           var cel = document.querySelector('[data-card-id="' + cid + '"]');
@@ -7318,12 +7318,13 @@
         shares: '💬 分享板 · 心情记录',
         reminders: '⏰ 提醒 · 定时备忘',
         habits: '✅ 习惯打卡 · 每日坚持',
+        stock: '📈 股票看板 · 行情K线指标',
       };
       return summaries[card.id] || '卡片数据加载中...';
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos", "shares", "reminders", "habits"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos", "shares", "reminders", "habits", "stock"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -7691,6 +7692,20 @@
           html += '<div style="position:relative;height:200px;"><canvas id="' + ctId + '"></canvas></div>';
           html += '</div>';
           break;
+
+        case 'stock_detail': {
+          // 每只股票一个可折叠块：标题(市场+名) → 内部 sub 段(stock_chart/kv/note)
+          var sdId = 'stockdet_' + cardId + '_' + i;
+          html += '<div class="stock-detail" style="border:1px solid var(--border);border-radius:10px;margin:8px 0;overflow:hidden;">';
+          html += '<div class="stock-detail-head" onclick="_toggleStockDetail(this)" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;cursor:pointer;background:var(--bg-card);">';
+          html += '<span style="font-weight:600;"><span style="font-size:11px;color:var(--text-secondary);border:1px solid var(--border);border-radius:6px;padding:1px 5px;margin-right:6px;">' + escapeHtml(sec.market || '') + '</span>' + escapeHtml(sec.title || '') + '</span>';
+          html += '<span class="stock-detail-arrow" style="color:var(--text-secondary);transition:transform .2s;">▸</span>';
+          html += '</div>';
+          html += '<div class="stock-detail-body" style="display:none;padding:8px 12px;">';
+          html += _renderStockSub(sec.sub || [], sdId);
+          html += '</div></div>';
+          break;
+        }
       }
 
       html += '</div>';
@@ -7737,6 +7752,110 @@
         plugins:{ legend:{display:false} },
         scales:{ y:{ beginAtZero:false } } }
     });
+  }
+
+  // ===== 股票卡: 每股可折叠块 + 折线/蜡烛切换 + 周期切换 =====
+  var _stockCharts = {};  // 实例缓存
+  function _toggleStockDetail(head){
+    var body = head.nextElementSibling;
+    var arrow = head.querySelector('.stock-detail-arrow');
+    if(!body) return;
+    var open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    if(arrow) arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(90deg)';
+    if(!open){
+      // 展开时初始化图表
+      var wrap = body.querySelector('.stock-chart');
+      if(wrap && !wrap.dataset.inited){ _initStockChart(wrap); wrap.dataset.inited='1'; }
+    }
+  }
+  function _renderStockSub(sub, sdId){
+    var h='';
+    for(var j=0;j<sub.length;j++){
+      var sc=sub[j];
+      if(sc.type==='stock_chart'){
+        var scId = sdId+'_chart';
+        var periods = sc.periods || ['1W','1M','3M'];
+        var defp = sc.default_period || '1M';
+        h += '<div class="stock-chart" data-line=\''+escapeHtml(JSON.stringify(sc.line||{}))+'\' data-candle=\''+escapeHtml(JSON.stringify(sc.candle||{}))+'\' data-period="'+escapeHtml(defp)+'" data-mode="candle" data-cid="'+scId+'">';
+        // 工具条: 折线/蜡烛切换(可点标题) + 周期切换
+        h += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin:2px 0 6px;">';
+        h += '<div class="stock-chart-modes" style="display:flex;gap:4px;">';
+        h += '<button class="sc-mode-btn" data-mode="candle" onclick="_switchStockMode(this)" style="padding:3px 12px;border-radius:12px;border:1px solid var(--border);background:var(--accent);color:#fff;cursor:pointer;font-size:12px;font-weight:600;">蜡烛图</button>';
+        h += '<button class="sc-mode-btn" data-mode="line" onclick="_switchStockMode(this)" style="padding:3px 12px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer;font-size:12px;">折线图</button>';
+        h += '</div>';
+        h += '<div class="stock-chart-periods" style="display:flex;gap:4px;flex-wrap:wrap;">';
+        for(var pi=0;pi<periods.length;pi++){
+          var on = periods[pi]===defp;
+          h += '<button class="sc-period-btn" data-period="'+escapeHtml(periods[pi])+'" onclick="_switchStockPeriod(this)" style="padding:3px 9px;border-radius:10px;border:1px solid var(--border);background:'+(on?'var(--accent)':'var(--bg-card)')+';color:'+(on?'#fff':'inherit')+';cursor:pointer;font-size:11px;">'+escapeHtml(periods[pi])+'</button>';
+        }
+        h += '</div></div>';
+        h += '<div style="position:relative;height:220px;"><canvas id="'+scId+'"></canvas></div>';
+        h += '</div>';
+      } else if(sc.type==='kv'){
+        if(sc.title) h += '<b style="display:block;margin:6px 0 2px;">'+escapeHtml(sc.title)+'</b>';
+        h += '<table class="recipe-detail-table">';
+        var kv=sc.pairs||[];
+        for(var k=0;k<kv.length;k++){ h += '<tr><td style="color:var(--text-secondary);width:90px">'+escapeHtml(kv[k].key||'')+'</td><td>'+escapeHtml(kv[k].value||'')+'</td></tr>'; }
+        h += '</table>';
+        if(sc.footer) h += '<div style="color:var(--text-secondary);font-size:12px;padding-top:3px">'+escapeHtml(sc.footer)+'</div>';
+      } else if(sc.type==='note'){
+        if(sc.title) h += '<b style="display:block;margin:6px 0 2px;">'+escapeHtml(sc.title)+'</b>';
+        h += '<div style="background:var(--bg-card);border-radius:8px;padding:8px;font-size:13px;line-height:1.5;">'+escapeHtml(sc.text||'')+'</div>';
+      }
+    }
+    return h;
+  }
+  function _initStockChart(wrap){
+    _drawStockChart(wrap);
+  }
+  function _switchStockMode(btn){
+    var wrap = btn.closest('.stock-chart'); if(!wrap) return;
+    wrap.querySelectorAll('.sc-mode-btn').forEach(function(b){ b.style.background='var(--bg-card)'; b.style.color=''; b.style.fontWeight='normal'; });
+    btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.fontWeight='600';
+    wrap.dataset.mode = btn.dataset.mode;
+    _drawStockChart(wrap);
+  }
+  function _switchStockPeriod(btn){
+    var wrap = btn.closest('.stock-chart'); if(!wrap) return;
+    wrap.querySelectorAll('.sc-period-btn').forEach(function(b){ b.style.background='var(--bg-card)'; b.style.color=''; });
+    btn.style.background='var(--accent)'; btn.style.color='#fff';
+    wrap.dataset.period = btn.dataset.period;
+    _drawStockChart(wrap);
+  }
+  function _drawStockChart(wrap){
+    if(typeof Chart==='undefined') return;
+    var cid = wrap.dataset.cid, mode = wrap.dataset.mode, period = wrap.dataset.period;
+    var line={}, candle={};
+    try{ line=JSON.parse(wrap.dataset.line||'{}'); }catch(e){}
+    try{ candle=JSON.parse(wrap.dataset.candle||'{}'); }catch(e){}
+    var canvas = wrap.querySelector('canvas'); if(!canvas) return;
+    if(_stockCharts[cid]){ _stockCharts[cid].destroy(); }
+    var ctx = canvas.getContext('2d');
+    if(mode==='candle'){
+      var cd = (candle[period]||[]).map(function(p){ return {x:luxon.DateTime.fromISO(p.x).valueOf(), o:p.o,h:p.h,l:p.l,c:p.c}; });
+      _stockCharts[cid] = new Chart(ctx, {
+        type:'candlestick',
+        data:{ datasets:[{ label:period, data:cd,
+          color:{ up:'#ef4444', down:'#22c55e', unchanged:'#888' } }] },
+        options:{ responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{display:false} },
+          scales:{ x:{ type:'time', time:{ unit: period==='1W'?'day':(period==='1M'?'week':'month') }, ticks:{ maxTicksLimit:8, font:{size:10} } },
+                   y:{ beginAtZero:false } } }
+      });
+    } else {
+      var ld = line[period]||[];
+      _stockCharts[cid] = new Chart(ctx, {
+        type:'line',
+        data:{ labels: ld.map(function(p){return p.date;}),
+               datasets:[{ data: ld.map(function(p){return p.value;}),
+                 borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.1)',
+                 fill:true, tension:0.25, pointRadius:0, borderWidth:2, spanGaps:true }] },
+        options:{ responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{display:false} },
+          scales:{ x:{ ticks:{ maxTicksLimit:8, font:{size:10} } }, y:{ beginAtZero:false } } }
+      });
+    }
   }
 
     /* ===== TodoCard V2: 左右两栏 + 三段 + done_date，读 display.columns ===== */
@@ -9479,6 +9598,10 @@
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <!-- 股票蜡烛图: financial 插件 + luxon 日期轴适配器 -->
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
 
 <script>
 function hideAppContent() {

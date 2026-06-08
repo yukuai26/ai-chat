@@ -202,11 +202,19 @@ related: ["ac-stock-system-design-V1.0-DRAFT.md", "ac-data-sources-V1.0-ACTIVE.m
 - **应对(已实现)**：① K线一天抓一次缓存复用(`klines[code]._date`) ② Yahoo quote 失败→缓存兜底(`_stale`) ③ 全局节流 `YH_MIN_INTERVAL`(env 可调) ④ A股完全不依赖 Yahoo(走新浪)
 - **当前**：港/美/加密用了**样本缓存数据**(`_sample:true`，基于实测真实现价造的走势)跑通全量；待代理恢复后用 `--refresh-kline` 换真实数据
 
-### ⬜ 前端待做（下一步）
-- 引入 Chart.js financial 插件(`chartjs-chart-financial@0.2.1` + `chartjs-adapter-luxon` + `luxon`，CDN 已验证200)
-- 在 `index.html` renderCardBody 支持新 section type：`stock_chart`(折线/蜡烛可点击切换 + 周期tab) + `stock_detail`(每标的容器)
-- card-registry 注册 stock 卡 + 前端验证渲染
-- 注意：display.json 约 216K(蜡烛点多)，后续可优化懒加载
+### ✅ 数据源全部改国内直连（2026-06-09，零代理！）
+- 管理员要求"能不走代理就不走代理"→ 实测国内源全市场可用，**彻底废弃 Yahoo+代理**
+- A股/指数/ETF=新浪 | 港股=新浪+腾讯fqkline | 美股=腾讯us+新浪US_MinKService(40年) | 加密=新浪btc_+新浪GlobalFutures
+- 六支全真实数据跑通，零限流。watchlist 字段改为 `mkt`(ashare/hk/us/crypto) 路由
+
+### ✅ 前端已完成（2026-06-09）
+- 引入 Chart.js financial 插件(`chartjs-chart-financial@0.2.1` + `chartjs-adapter-luxon` + `luxon`) 到 index.html head
+- renderCardBody 加 `stock_detail` case(可折叠每股块) + `_renderStockSub`/`_drawStockChart`/`_switchStockMode`/`_switchStockPeriod`/`_toggleStockDetail` 函数
+- **折线/蜡烛可点击标题切换 + 周期(1W/1M/3M)切换**
+- 注册：fileserver.py DEFAULT_CARD_REGISTRY(stock卡+layout.order) + index.html(allCardIds/IMPLEMENTED_CARDS/getCardSummary)
+- fileserver.service 已重启，registry/display API 验证返回正常
+- 1D 周期因无免费分时(单点)已自动剔除，只暴露 1W/1M/3M
+- ⚠️ **服务器无浏览器，渲染效果待管理员在浏览器实测**(tunnel: yoga-findlaw-louisiana-strong.trycloudflare.com)
 
 ### ⬜ 运维待做
 - cron：盘中15min刷行情 / 收盘后抓K线+算指标+AI点评（按各市场交易时段配，注意美股=北京时间晚上）

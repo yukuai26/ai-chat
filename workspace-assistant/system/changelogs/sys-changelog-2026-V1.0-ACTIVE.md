@@ -133,3 +133,7 @@ created: "2026-05-26"
 - **新增** `projects/ac/ac-stock-handoff-2026-06-08.md` — Session交接文档(因反复出现工具调用写正文错误决定重启新对话，记录全部上下文供无缝接续)
 - **新session接续(22:00后)**: 走代理拿到四类标杆仓库README原文(StockSharp10055/portfolio-performance3898/woshijielie-stock_prediction_and_recommendation361/femtotrader-pandas_talib780)；订正③真名带_and_recommendation后缀、④作者femtotrader。修正:pandas_talib自标work-in-progress,改用pandas-ta
 - **新增** `projects/ac/ac-stock-card-design-V1.0-DRAFT.md` — stock卡片Phase1详细架构(贴合现有卡片系统5文件机制,已核对data卡真实结构;每市场各1样板;完整展示;自选股=卡片喵改watchlist接口)，待管理员review
+- **2026-06-09 stock卡片前端+零代理完成**: 数据源全改国内直连(新浪/腾讯,废弃Yahoo+代理); 前端 index.html 加 stock_detail/stock_chart 渲染(折线/蜡烛可切换+周期切换)+引入 chartjs-chart-financial; fileserver.py+index.html 注册 stock 卡; fileserver.service 重启验证通过
+- **新增** `projects/ac/ac-stock-card-maintenance-V1.0-ACTIVE.md` — 卡片喵维护手册(增删自选股/AI点评/刷新/排障)
+- **新增** lesson `lesson-2026-06-08-shared-proxy-rate-limit.md` — 共享代理对Yahoo自身限流
+- **新增** `projects/ac/ac-stock-MASTER-handoff-V1.0-ACTIVE.md` — ⭐股票卡片唯一权威主交接(全过程记录,失忆可接续); AI点评打通(6条); cron定时刷新已配(系统crontab,refresh-stock.sh)

@@ -189,7 +189,19 @@
       "status": "ACTIVE",
       "purpose": "股票功能session交接文档",
       "updated": "2026-06-08"
+    },
+    "ac-stock-card-maintenance-V1.0-ACTIVE": {
+      "path": "projects/ac/ac-stock-card-maintenance-V1.0-ACTIVE.md",
+      "status": "ACTIVE",
+      "purpose": "stock卡片卡片喵维护手册(增删自选股/AI点评/刷新/排障,全国内直连)",
+      "updated": "2026-06-09"
+    },
+    "ac-stock-MASTER-handoff-V1.0-ACTIVE": {
+      "path": "projects/ac/ac-stock-MASTER-handoff-V1.0-ACTIVE.md",
+      "status": "ACTIVE",
+      "purpose": "股票卡片唯一权威主交接文档(全过程:调研/设计/后端/前端/坑/继续)",
+      "updated": "2026-06-09"
     }
   },
-  "_updated": "2026-06-08T22:40:00+08:00"
+  "_updated": "2026-06-09T00:41:04.262443+08:00"
 }

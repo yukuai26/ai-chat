@@ -58,15 +58,19 @@ def http_get(url, headers=None, use_proxy=False, timeout=20, binary=False):
         raw = r.read()
     return raw if binary else raw.decode("utf-8", "replace")
 
-# ---------------- 行情抓取 ----------------
-def fetch_sina(codes):
-    """新浪实时行情，返回 {code: parsed}。GBK 编码。"""
+# ================= 行情抓取（全部国内直连，零代理，零限流） =================
+SINA_REF = {"Referer": "https://finance.sina.com.cn"}
+TX_REF   = {"Referer": "https://gu.qq.com/"}
+
+# ---------- 实时行情 ----------
+def fetch_sina_realtime(codes):
+    """新浪实时行情(GBK)。支持 A股/指数/ETF(shXXX/szXXX)、港股(hkXXXXX)、美股(gb_xxx)、加密(btc_btcbtcusd)。"""
+    if not codes: return {}
     url = "https://hq.sinajs.cn/list=" + ",".join(codes)
     try:
-        raw = http_get(url, headers={"User-Agent": UA, "Referer": "https://finance.sina.com.cn"}, binary=True)
-        text = raw.decode("gbk", "replace")
+        text = http_get(url, headers=SINA_REF, binary=True).decode("gbk", "replace")
     except Exception as e:
-        print(f"  ⚠️ sina 抓取失败: {e}"); return {}
+        print(f"  ⚠️ sina 实时抓取失败: {e}"); return {}
     out = {}
     for line in text.strip().split("\n"):
         if "=" not in line: continue
@@ -76,107 +80,119 @@ def fetch_sina(codes):
         if len(f) < 4: continue
         try:
             if code.startswith("hk"):
-                # 港股: name_en, name_cn, open, prevclose, high, low, now, chg, chgpct, ...
-                name = f[1]; openp=float(f[2]); prev=float(f[3]); high=float(f[4]); low=float(f[5])
+                name=f[1]; openp=float(f[2]); prev=float(f[3]); high=float(f[4]); low=float(f[5])
                 now=float(f[6]); chg=float(f[7]); chgpct=float(f[8])
                 out[code]={"name":name,"price":now,"open":openp,"prev":prev,"high":high,"low":low,
-                           "change":chg,"change_pct":chgpct,"vol":None,"date":f[17] if len(f)>17 else "","l2":[]}
+                           "change":round(chg,3),"change_pct":round(chgpct,2),"vol":None,
+                           "amp":round((high-low)/prev*100,2) if prev else None,"l2":[]}
+            elif code.startswith("gb_"):
+                # 美股: name, price, chgpct, time, chg, openp?, prevclose, high, low, w52h, w52l, vol, ...
+                name=f[0]; now=float(f[1]); chgpct=float(f[2]); chg=float(f[4])
+                prev=float(f[26]) if len(f)>26 and f[26] else (now-chg)
+                openp=float(f[5]) if f[5] else None; high=float(f[6]) if f[6] else None; low=float(f[7]) if f[7] else None
+                w52h=float(f[8]) if len(f)>8 and f[8] else None; w52l=float(f[9]) if len(f)>9 and f[9] else None
+                vol=float(f[10]) if len(f)>10 and f[10] else None
+                out[code]={"name":name,"price":now,"open":openp,"prev":round(prev,3),"high":high,"low":low,
+                           "change":round(chg,3),"change_pct":round(chgpct,2),"vol":vol,
+                           "w52h":w52h,"w52l":w52l,"l2":[]}
+            elif code.startswith("btc_"):
+                # btc_btcbtcusd: time, ?, ?, now, ?, ?, high, low, prevclose?, name, ...
+                now=float(f[3]) or float(f[5]); high=float(f[6]); low=float(f[7]); prev=float(f[8])
+                name=f[9] if len(f)>9 else "比特币"
+                chg=now-prev; chgpct=(chg/prev*100) if prev else 0.0
+                out[code]={"name":name,"price":now,"open":None,"prev":prev,"high":high,"low":low,
+                           "change":round(chg,2),"change_pct":round(chgpct,2),"vol":None,
+                           "amp":round((high-low)/prev*100,2) if prev else None,"l2":[]}
             else:
-                # A股/指数/ETF: name, open, prevclose, now, high, low, ...(五档)... vol, amount
+                # A股/指数/ETF
                 name=f[0]; openp=float(f[1]); prev=float(f[2]); now=float(f[3]); high=float(f[4]); low=float(f[5])
                 vol=float(f[8]) if len(f)>8 and f[8] else None
-                chg = now-prev; chgpct = (chg/prev*100) if prev else 0.0
-                # 买卖五档(A股有，指数为0)
+                chg=now-prev; chgpct=(chg/prev*100) if prev else 0.0
                 l2=[]
                 try:
                     for i in range(5):
-                        bvol=f[10+i*2]; bp=f[11+i*2]
+                        bp=f[11+i*2]; bvol=f[10+i*2]
                         if bp and float(bp)>0: l2.append(("买"+str(i+1), bp, bvol))
                     for i in range(5):
-                        avol=f[20+i*2]; ap=f[21+i*2]
+                        ap=f[21+i*2]; avol=f[20+i*2]
                         if ap and float(ap)>0: l2.append(("卖"+str(i+1), ap, avol))
                 except Exception: pass
-                amp = ((high-low)/prev*100) if prev else 0.0
                 out[code]={"name":name,"price":now,"open":openp,"prev":prev,"high":high,"low":low,
-                           "change":round(chg,3),"change_pct":round(chgpct,2),"vol":vol,"amp":round(amp,2),
-                           "date":(f[30] if len(f)>30 else ""),"l2":l2}
+                           "change":round(chg,3),"change_pct":round(chgpct,2),"vol":vol,
+                           "amp":round((high-low)/prev*100,2) if prev else None,"l2":l2}
         except Exception as e:
-            print(f"  ⚠️ 解析 {code} 失败: {e}")
+            print(f"  ⚠️ 解析实时 {code} 失败: {e}")
     return out
 
-_LAST_YH = [0.0]
-YH_MIN_INTERVAL = float(os.environ.get("YH_GAP", "12"))  # Yahoo 全局间隔(秒)，可用环境变量覆盖。共享代理IP限流敏感
-
-def _yahoo_throttle():
-    dt = time.time() - _LAST_YH[0]
-    if dt < YH_MIN_INTERVAL:
-        time.sleep(YH_MIN_INTERVAL - dt)
-    _LAST_YH[0] = time.time()
-
-def _yahoo_get(symbol, rng, interval):
-    """Yahoo chart 取数。全局节流(>=5s/次) + query2代理 + 429退避 + 直连兜底。返回 result[0] 或 None。"""
-    sym = urllib.parse.quote(symbol)
-    url = f"https://query2.finance.yahoo.com/v8/finance/chart/{sym}?interval={interval}&range={rng}"
-    _yahoo_throttle()
-    for attempt in range(2):  # 代理 + 429退避
-        try:
-            d = json.loads(http_get(url, use_proxy=True, timeout=15))
-            return d["chart"]["result"][0]
-        except urllib.error.HTTPError as e:
-            if e.code == 429:
-                time.sleep(15)
-                continue
-            break
-        except Exception:
-            break
-    # 直连兜底一次
+def fetch_tx_realtime(tx_code):
+    """腾讯实时行情(qt.gtimg.cn)，用于美股 usAAPL 等。返回单条 dict 或 None。"""
     try:
-        d = json.loads(http_get(url, use_proxy=False, timeout=12))
-        return d["chart"]["result"][0]
-    except Exception:
-        return None
-
-def fetch_yahoo_quote(symbol):
-    """Yahoo 实时行情(取 chart meta)。query2+退避+直连兜底。"""
-    r = _yahoo_get(symbol, "5d", "1d")
-    if not r:
-        print(f"  ⚠️ yahoo quote {symbol} 取数失败")
-        return None
-    try:
-        m = r["meta"]
-        price = m.get("regularMarketPrice"); prev = m.get("chartPreviousClose") or m.get("previousClose")
-        chg = (price-prev) if (price is not None and prev) else None
-        chgpct = (chg/prev*100) if (chg is not None and prev) else None
-        return {"name":symbol,"price":price,"prev":prev,
-                "open":m.get("regularMarketOpen"),"high":m.get("regularMarketDayHigh"),
-                "low":m.get("regularMarketDayLow"),"vol":m.get("regularMarketVolume"),
-                "change":round(chg,4) if chg is not None else None,
-                "change_pct":round(chgpct,2) if chgpct is not None else None,
-                "w52h":m.get("fiftyTwoWeekHigh"),"w52l":m.get("fiftyTwoWeekLow"),
-                "currency":m.get("currency"),"l2":[]}
+        text = http_get(f"https://qt.gtimg.cn/q={tx_code}", binary=True).decode("gbk","replace")
+        val = text.split('"',1)[1].rsplit('"',1)[0]
+        f = val.split("~")
+        if len(f) < 6: return None
+        name=f[1]; now=float(f[3]); prev=float(f[4]); openp=float(f[5])
+        chg=float(f[31]) if len(f)>31 and f[31] else now-prev
+        chgpct=float(f[32]) if len(f)>32 and f[32] else (chg/prev*100 if prev else 0)
+        high=float(f[33]) if len(f)>33 and f[33] else None
+        low=float(f[34]) if len(f)>34 and f[34] else None
+        return {"name":name,"price":now,"open":openp,"prev":prev,"high":high,"low":low,
+                "change":round(chg,3),"change_pct":round(chgpct,2),"vol":None,"l2":[]}
     except Exception as e:
-        print(f"  ⚠️ yahoo quote {symbol} 解析失败: {e}")
-        return None
+        print(f"  ⚠️ 腾讯实时 {tx_code} 失败: {e}"); return None
 
-# ---------------- 历史K线（统一走 Yahoo：所有市场都支持） ----------------
-def fetch_yahoo_kline(symbol, rng, interval):
-    r = _yahoo_get(symbol, rng, interval)
-    if not r:
-        print(f"  ⚠️ yahoo kline {symbol} {rng} 取数失败"); return []
+# ---------- 历史日K（全部国内直连） ----------
+def _sina_jsonp_arr(url):
+    """新浪 jsonp 接口取数组。"""
+    import re
+    raw = http_get(url, headers=SINA_REF)
+    m = re.search(r'(\[.*\])', raw, re.S)
+    return json.loads(m.group(1)) if m else []
+
+def fetch_kline_ashare(code, datalen=130):
+    """A股/指数/ETF 日K：新浪 getKLineData。code=shXXXXXX。"""
+    url=(f"https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData"
+         f"?symbol={code}&scale=240&ma=no&datalen={datalen}")
     try:
-        ts=r.get("timestamp") or []; q=r["indicators"]["quote"][0]
-        intraday = "m" in interval  # 分钟级带时分
-        out=[]
-        for i,t in enumerate(ts):
-            o,h,l,c=q["open"][i],q["high"][i],q["low"][i],q["close"][i]
-            if None in (o,h,l,c): continue
-            fmt="%Y-%m-%d %H:%M" if intraday else "%Y-%m-%d"
-            dt=datetime.fromtimestamp(t,TZ).strftime(fmt)
-            out.append({"date":dt,"o":round(o,3),"h":round(h,3),"l":round(l,3),"c":round(c,3),
-                        "vol":q["volume"][i]})
-        return out
+        arr=json.loads(http_get(url, headers=SINA_REF))
+        return [{"date":it["day"][:10],"o":float(it["open"]),"h":float(it["high"]),
+                 "l":float(it["low"]),"c":float(it["close"]),"vol":float(it.get("volume",0) or 0)} for it in arr]
     except Exception as e:
-        print(f"  ⚠️ yahoo kline {symbol} {rng} 解析失败: {e}"); return []
+        print(f"  ⚠️ A股K线 {code} 失败: {e}"); return []
+
+def fetch_kline_us(sym, n=130):
+    """美股日K：新浪 US_MinKService.getDailyK (40年历史)。"""
+    url=f"https://stock.finance.sina.com.cn/usstock/api/jsonp.php/var=/US_MinKService.getDailyK?symbol={sym}&___qn=3"
+    try:
+        arr=_sina_jsonp_arr(url)
+        out=[{"date":it["d"][:10],"o":float(it["o"]),"h":float(it["h"]),
+              "l":float(it["l"]),"c":float(it["c"]),"vol":float(it.get("v",0) or 0)} for it in arr]
+        return out[-n:]
+    except Exception as e:
+        print(f"  ⚠️ 美股K线 {sym} 失败: {e}"); return []
+
+def fetch_kline_hk(code, n=130):
+    """港股日K：腾讯 fqkline。code=hk00700。返回 [[date,open,close,high,low,vol],...]。"""
+    num = code.replace("hk","")
+    url=f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=hk{num},day,,,{n},qfq"
+    try:
+        d=json.loads(http_get(url, headers=TX_REF))
+        rows=d["data"][f"hk{num}"].get("qfqday") or d["data"][f"hk{num}"].get("day") or []
+        return [{"date":r[0],"o":float(r[1]),"c":float(r[2]),"h":float(r[3]),"l":float(r[4]),
+                 "vol":float(r[5]) if len(r)>5 else 0} for r in rows]
+    except Exception as e:
+        print(f"  ⚠️ 港股K线 {code} 失败: {e}"); return []
+
+def fetch_kline_crypto(sym, n=130):
+    """加密日K：新浪 GlobalFuturesService。sym=BTC。"""
+    url=f"https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var=/GlobalFuturesService.getGlobalFuturesDailyKLine?symbol={sym}"
+    try:
+        arr=_sina_jsonp_arr(url)
+        out=[{"date":it["date"][:10],"o":float(it["open"]),"h":float(it["high"]),
+              "l":float(it["low"]),"c":float(it["close"]),"vol":float(it.get("volume",0) or 0)} for it in arr]
+        return out[-n:]
+    except Exception as e:
+        print(f"  ⚠️ 加密K线 {sym} 失败: {e}"); return []
 
 # ---------------- 技术指标(自实现) ----------------
 def _ma(closes, n):
@@ -263,59 +279,46 @@ def indicator_text(ind, price):
 PERIODS = ["1D", "1W", "1M", "3M"]
 SLICE = {"1W": 5, "1M": 22, "3M": 66}  # 从日线尾部切的交易日数
 
-YH_GAP = 6  # Yahoo 请求间隔(秒)，防 429
-
-def fetch_sina_kline(code, datalen=130):
-    """新浪日K(A股/指数/ETF直连，零限流)。code 形如 sh600519/sh000001/sh510300。"""
-    url=(f"https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData"
-         f"?symbol={code}&scale=240&ma=no&datalen={datalen}")
-    try:
-        arr=json.loads(http_get(url, headers={"Referer":"https://finance.sina.com.cn"}))
-        out=[]
-        for it in arr:
-            out.append({"date":it["day"][:10],"o":float(it["open"]),"h":float(it["high"]),
-                        "l":float(it["low"]),"c":float(it["close"]),"vol":float(it.get("volume",0) or 0)})
-        return out
-    except Exception as e:
-        print(f"  ⚠️ sina kline {code} 失败: {e}"); return []
-
 def fetch_kline_bundle(w):
-    """按 source 路由：A股/指数/ETF 走新浪日K(无限流)；港股/美股/加密走 Yahoo。
-       w = watchlist 条目。返回 {1D,1W,1M,3M}。"""
-    code=w["code"]; src=w.get("source"); ysym=w.get("yahoo_sym", code)
-    is_a_share = src=="sina" and not code.startswith("hk")  # A股/指数/ETF
-    if is_a_share:
-        daily = fetch_sina_kline(code, 130)
-        # A股暂无免费分时，1D 用最近交易日的日K切片占位(后续可接腾讯分时)
-        per = {"1D": daily[-1:] if daily else []}
-        for label, n in SLICE.items():
-            per[label] = daily[-n:] if daily else []
-        return per
-    # 港股/美股/加密 → Yahoo
-    daily = fetch_yahoo_kline(ysym, "6mo", "1d")
-    intraday = fetch_yahoo_kline(ysym, "5d", "5m")
-    per = {"1D": intraday}
-    for label, n in SLICE.items():
-        per[label] = daily[-n:] if daily else []
+    """按 mkt 路由日K，全部国内直连。返回 {1D,1W,1M,3M}。1D 用最近交易日(日K粒度,后续可接分时)。"""
+    code=w["code"]; mkt=w.get("mkt"); sym=w.get("sym")
+    if mkt=="ashare":   daily=fetch_kline_ashare(code,130)
+    elif mkt=="hk":     daily=fetch_kline_hk(code,130)
+    elif mkt=="us":     daily=fetch_kline_us(sym or code.replace("us_",""),130)
+    elif mkt=="crypto": daily=fetch_kline_crypto(sym or "BTC",130)
+    else:               daily=[]
+    per={"1D": daily[-1:] if daily else []}
+    for label,n in SLICE.items():
+        per[label]=daily[-n:] if daily else []
     return per
 
 def main():
     data = load("data.json", {})
     watchlist = data.get("watchlist", [])
     ai_comment = data.get("ai_comment", {})
-
-    sina_codes=[w["code"] for w in watchlist if w.get("source")=="sina"]
-    quotes={}
-    if sina_codes:
-        quotes.update(fetch_sina(sina_codes))
     cached_quotes = data.get("quotes", {})
+
+    # ---- 实时行情(全部国内直连) ----
+    quotes={}
+    # 新浪一把抓: A股/港股/指数/ETF/加密(都用各自 code)；美股单独用腾讯
+    sina_codes=[]
     for w in watchlist:
-        if w.get("source")=="yahoo":
-            q=fetch_yahoo_quote(w.get("yahoo_sym", w["code"]))
+        mkt=w.get("mkt")
+        if mkt in ("ashare","hk","crypto"):
+            sina_codes.append(w["code"])
+    if sina_codes:
+        quotes.update(fetch_sina_realtime(sina_codes))
+    # 美股走腾讯 usSYM
+    for w in watchlist:
+        if w.get("mkt")=="us":
+            q=fetch_tx_realtime("us"+(w.get("sym") or w["code"].replace("us_","")))
             if not q and cached_quotes.get(w["code"]):
-                q=dict(cached_quotes[w["code"]]); q["_stale"]=True  # Yahoo失败→用缓存quote兜底
+                q=dict(cached_quotes[w["code"]]); q["_stale"]=True
                 print(f"  · {w['name']} quote 用缓存兜底", flush=True)
-            if q: q["name"]=w["name"]; quotes[w["code"]]=q
+            if q: quotes[w["code"]]=q
+    # 统一覆盖中文名
+    for w in watchlist:
+        if w["code"] in quotes: quotes[w["code"]]["name"]=w["name"]
 
     # 自选列表
     rows=[]
@@ -396,9 +399,11 @@ def main():
             candle_charts[label]=[{"x":p["date"],"o":p["o"],"h":p["h"],"l":p["l"],"c":p["c"]} for p in k]
         q=det.get("quote",{})
         sub=[]
-        # 双图卡：chartType 可切 line/candlestick，tabs 切周期
+        # 双图卡：可切 折线/蜡烛 + 周期。只暴露有≥2个点的周期(1D无免费分时,单点不画)
+        avail_periods=[p for p in PERIODS if len(candle_charts.get(p,[]))>=2]
+        defp = "1M" if "1M" in avail_periods else (avail_periods[-1] if avail_periods else "3M")
         sub.append({"type":"stock_chart","title":f"{w['name']} ({code})",
-            "periods":PERIODS,"default_period":"1M",
+            "periods":avail_periods or PERIODS,"default_period":defp,
             "line":line_charts,"candle":candle_charts})
         # 详情 kv
         pairs=[]

@@ -1,5 +1,13 @@
 # MEMORY.md — 长期记忆
 
+## ⏳ 待跟进（最近，醒来先看）
+- **2026-06-09 股票卡片实测**：昨夜(06-08深夜)做完了 stock 股票看板卡片 Phase1（六支股票:茅台/腾讯/苹果/上证/沪深300ETF/BTC，含蜡烛/折线K线可切换+指标+AI点评，全国内直连零代理）。**管理员说今天要去实际网站看效果**。
+  - 👉 他一提"网站/股票卡片/看了/效果/蜡烛图"等 = 在说这个。
+  - 网址：`https://yoga-findlaw-louisiana-strong.trycloudflare.com`（添加"📈 股票看板"卡 → 点开某股 → 看折线/蜡烛切换、周期切换）
+  - 服务器无浏览器我没自测过渲染，**正在等他反馈**。若他说"空白/不显示/报错"→ 让他发 F12 控制台报错，重点查 chartjs-chart-financial/luxon 加载 + _drawStockChart。
+  - 全部细节见 `projects/ac/ac-stock-MASTER-handoff-V1.0-ACTIVE.md`（失忆先读这篇）。
+  - 其它待办：补1D分时 / AI点评自动化 / Phase2回测。
+
 ## 基本信息
 - 上线日期：2026-03-01
 - 管理员：张三，Feishu ID：ou_fd61aa406c75527901328967376e4a69
@@ -76,6 +84,35 @@ Phase 1-16 全部完成（文件浏览器、Dashboard、搜索、WebSocket、日
 | `projects/ac/ac-project-plan-V1.0-ACTIVE.md` | 完整项目规划（Phase 0.1-0.4） |
 | `projects/ac/ac-file-browser-design-V1.0-ACTIVE.md` | 文件浏览器设计（26 TODO） |
 | `projects/ac/ac-changes-V1.0-ACTIVE.md` | 变更记录 |
+
+---
+
+## 📈 股票看板卡片（stock，2026-06-09 Phase1 完成）
+
+> ⭐ 权威总文档：`projects/ac/ac-stock-MASTER-handoff-V1.0-ACTIVE.md`（失忆先读这篇）
+> 维护手册：`ac-stock-card-maintenance-V1.0-ACTIVE.md`
+
+### 一句话
+AC Dashboard 新卡片 `stock`。六支样板(茅台/腾讯/苹果/上证/沪深300ETF/BTC)，完整展示=列表+蜡烛/折线K线(可切换)+全套指标(MA/RSI/MACD/布林)+AI点评。Phase1 后端+前端完成上线，**待浏览器实测渲染**。
+
+### 数据源（全部国内直连，零代理！）
+- A股/指数/ETF=新浪hq+新浪日K | 港股=新浪hq+腾讯fqkline | 美股=腾讯usAAPL+新浪US_MinKService(40年) | 加密=新浪btc_+新浪GlobalFutures
+- ❌ 弃用 Yahoo+代理(共享代理对Yahoo自身限流,见 lesson-2026-06-08)
+- ❌ 东财接口本服务器不通(DNS/防火墙)
+- ⬜ 1D分时缺(国内免费源难),只有1W/1M/3M
+
+### 文件
+- 运行实体：`user-data/daily-data/stock/`(data/rules/prompt/generate-display/display.json + refresh-stock.sh)
+- 源码副本：`workspace-assistant/projects/ac/stock-card-src/`
+- 前端：`/var/www/chat/index.html`(stock_detail/stock_chart渲染+蜡烛插件) + `fileserver.py`(registry注册),均有备份
+- 指标**自实现**(纯Python,pandas_ta不兼容pandas3弃用)
+
+### 关键
+- watchlist 每条 `mkt`(ashare/hk/us/crypto)路由数据源；卡片喵增删=改 data.json.watchlist
+- K线一天抓一次缓存,--refresh-kline 强制重抓
+- cron已配(系统crontab):盘中15min quote / 每天6:00 full
+- 改fileserver.py重启 **fileserver.service**(不是chat-fileserver,后者僵尸)
+- 蜡烛涨红跌绿,Chart.js financial插件
 
 ---
 

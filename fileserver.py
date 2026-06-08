@@ -1597,11 +1597,21 @@ DEFAULT_CARD_REGISTRY = {
             "api": "/v1/api/daily/habits",
             "persons": ["yukuai26", "gugugu"],
             "expandable": True
+        },
+        {
+            "id": "stock",
+            "name": "📈 股票看板",
+            "icon": "📈",
+            "width": "wide",
+            "enabled": True,
+            "api": "/v1/api/daily/cards/display/stock",
+            "expandable": True,
+            "refreshInterval": 900
         }
     ],
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares", "reminders", "habits"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares", "reminders", "habits", "stock"],
         "gap": 16
     },
     "commandPrefixes": [

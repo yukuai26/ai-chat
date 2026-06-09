@@ -3796,6 +3796,14 @@
         </div>
       </div>
       <div class="cmd-file-tags" id="cmdFileTags"></div>
+      <div class="dashboard-command-bar" id="dashboard-command-bar">
+        <span class="cmd-hint" id="cmdHint">@todo @done @data ...</span>
+        <button class="cmd-attach-btn" id="cmdAttachBtn" title="选择文件" onclick="openDashboardFilePicker()">📎</button>
+        <input type="text" class="cmd-input" id="cmdInput"
+          placeholder="输入指令，如 @todo 管理员 买牛奶"
+          onkeydown="if(event.key==='Enter') sendCommand()" />
+        <button class="cmd-send" id="cmdSend" onclick="sendCommand()">发送</button>
+      </div>
       </div>
     </div>
 

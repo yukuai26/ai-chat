@@ -7140,6 +7140,9 @@
       const text = input.value.trim();
       if (!text) return;
 
+      // 捕获命令栏当前选中的文件（修复：自然语言回退首次发送丢文件的 bug）
+      const cmdFiles = (typeof selectedFiles !== 'undefined' && selectedFiles) ? selectedFiles.slice() : [];
+
       const token = authJwt || document.getElementById('token').value;
       if (!token && !authJwt) {
         showCommandToast('⚠️ 请先连接 API Token', 'error');
@@ -7177,7 +7180,7 @@
                 }
                 setTimeout(function() {
                   if (typeof _doSendMessage === 'function') {
-                    _doSendMessage(text, []).then(function() {
+                    _doSendMessage(text, cmdFiles).then(function() {
                       processQueue();
                     }).catch(function(e) {
                       console.error('Daily send error:', e);
@@ -7185,6 +7188,12 @@
                     });
                   }
                 }, 300);
+                // 文件已随首条消息发出，清空命令栏选择，避免下次重复附带
+                if (typeof selectedFiles !== 'undefined') {
+                  selectedFiles = [];
+                  if (typeof renderCmdFileTags === 'function') renderCmdFileTags();
+                  if (typeof renderSelectedFileTags === 'function') renderSelectedFileTags();
+                }
               } else {
                 showCommandToast('✅ 已创建 Daily 对话', 'success');
               }

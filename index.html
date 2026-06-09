@@ -7134,6 +7134,79 @@
     });
 
 
+    async function sendCommand() {
+      const input = document.getElementById('cmdInput');
+      const sendBtn = document.getElementById('cmdSend');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const token = authJwt || document.getElementById('token').value;
+      if (!token && !authJwt) {
+        showCommandToast('⚠️ 请先连接 API Token', 'error');
+        return;
+      }
+
+      input.disabled = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = '⏳';
+
+      try {
+        var hdrs = { 'Content-Type': 'application/json' };
+        if (!authJwt) { hdrs['Authorization'] = 'Bearer ' + token; }
+
+        const resp = await fetch('/v1/api/daily/command', {
+          method: 'POST',
+          headers: hdrs,
+          body: JSON.stringify({ text })
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+          if (data.prefix) {
+            const msg = data.message || ('指令 ' + data.prefix + ' 已处理');
+            showCommandToast('✅ ' + msg, 'success');
+            if (data.prefix === '@todo' || data.prefix === '@done') {
+              loadDashboard();
+            }
+          } else if (data.type === 'chat') {
+            if (data.session_id) {
+              if (typeof selectConversation === 'function') {
+                await selectConversation(data.session_id);
+                if (typeof loadConversations === 'function') {
+                  setTimeout(function() { loadConversations(); }, 500);
+                }
+                setTimeout(function() {
+                  if (typeof _doSendMessage === 'function') {
+                    _doSendMessage(text, []).then(function() {
+                      processQueue();
+                    }).catch(function(e) {
+                      console.error('Daily send error:', e);
+                      processQueue();
+                    });
+                  }
+                }, 300);
+              } else {
+                showCommandToast('✅ 已创建 Daily 对话', 'success');
+              }
+            } else {
+              showCommandToast(data.content || '无回复', 'info');
+            }
+          }
+        } else {
+          showCommandToast('⚠️ ' + (data.error || '请求失败'), 'error');
+        }
+      } catch (e) {
+        console.error('发送指令失败:', e);
+        showCommandToast('⚠️ 网络错误，请重试', 'error');
+      } finally {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = '发送';
+        input.value = '';
+        input.focus();
+      }
+    }
+
     /** 显示 Toast 通知 */
     function showCommandToast(msg, type) {
       // 移除已有 toast
@@ -7171,6 +7244,12 @@
       setTimeout(function() {
         if (toast.parentNode) toast.remove();
       }, 200);
+    }
+
+    function updateCommandHint() {
+      const hint = document.getElementById('cmdHint');
+      const knownPrefixes = ['@todo', '@done', '@data', '@news', '@recipe', '@schedule', '@wish', '@sum'];
+      if (hint) hint.textContent = knownPrefixes.join(' ');
     }
 
     /* ===== DF9: 拖拽上传区域 ===== */

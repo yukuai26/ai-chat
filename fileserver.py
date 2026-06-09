@@ -1868,6 +1868,110 @@ def _save_todos_v2(data: dict):
 
 
 
+def _dispatch_add_todo(person: str, text: str):
+    """@todo 指令处理器：添加一条 Todo。"""
+    if not person or not text:
+        return {"ok": False, "message": "用法: @todo <管理员|伴侣> <内容>"}
+    if person not in KNOWN_PERSONS:
+        return {"ok": False, "message": f"未知用户: {person}，可用: {KNOWN_PERSONS}"}
+
+    todos = _load_todos()
+    if person not in todos:
+        todos[person] = {}
+    if "daily" not in todos[person]:
+        todos[person]["daily"] = []
+
+    tz = ZoneInfo("Asia/Shanghai")
+    today = datetime.now(tz).strftime("%Y-%m-%d")
+    new_id = 1
+    for item in todos[person].get("daily", []):
+        if item.get("id", 0) >= new_id:
+            new_id = item["id"] + 1
+
+    todo_item = {
+        "id": new_id,
+        "text": text,
+        "done": False,
+        "type": "daily",
+        "date": today,
+    }
+    todos[person]["daily"].append(todo_item)
+    _save_todos(todos)
+
+    return {"ok": True, "message": f"已添加 {person} Todo: {text}", "todo": todo_item}
+
+
+def _dispatch_done(person: str, todo_id_str: str):
+    """@done 指令处理器：勾选一条 Todo。"""
+    if not person or not todo_id_str:
+        return {"ok": False, "message": "用法: @done <管理员|伴侣> <id>"}
+    try:
+        todo_id = int(todo_id_str)
+    except ValueError:
+        return {"ok": False, "message": "Todo ID 必须是数字"}
+
+    todos = _load_todos()
+    if person not in todos:
+        return {"ok": False, "message": f"用户 {person} 无 Todo"}
+
+    for category in ["daily", "weekly"]:
+        for item in todos[person].get(category, []):
+            if item["id"] == todo_id:
+                item["done"] = True
+                _save_todos(todos)
+                return {"ok": True, "message": f"已完成 {person} Todo #{todo_id}: {item['text']}"}
+
+    return {"ok": False, "message": f"未找到 {person} Todo #{todo_id}"}
+
+
+def _parse_command(text: str) -> dict:
+    """解析指令文本，提取前缀、用户、内容。
+
+    Returns:
+        {
+            "prefix": "@todo" | None,
+            "person": "管理员" | "伴侣" | None,
+            "text": "买牛奶",
+            "matched": True | False,
+            "action": "add_todo" | None,
+            "api": "/v1/api/daily/todos" | None
+        }
+    """
+    text = text.strip()
+    if not text or not text.startswith("@"):
+        return {"prefix": None, "person": None, "text": text, "matched": False, "action": None, "api": None}
+
+    # 从注册表加载指令前缀
+    registry = _load_card_registry()
+    prefixes = registry.get("commandPrefixes", [])
+
+    # 找到第一个匹配的 @前缀
+    for pf in sorted(prefixes, key=lambda x: -len(x["prefix"])):  # 长前缀优先
+        prefix = pf["prefix"]
+        if text.startswith(prefix + " ") or text == prefix:
+            remaining = text[len(prefix):].strip()
+
+            # 检查是否包含已知用户名
+            person = None
+            for p in KNOWN_PERSONS:
+                if remaining.startswith(p + " ") or remaining == p:
+                    person = p
+                    remaining = remaining[len(p):].strip()
+                    break
+
+            return {
+                "prefix": prefix,
+                "person": person,
+                "text": remaining,
+                "matched": True,
+                "action": pf.get("action", ""),
+                "api": pf.get("api", ""),
+            }
+
+    # @ 开头但未匹配任何前缀 → 不改写，由 caller 决定回退
+    return {"prefix": None, "person": None, "text": text, "matched": False, "action": None, "api": None}
+
+
 # ---- 每日卡片: 卡片级 prompt 系统 ----
 
 # 卡片关键词映射（用于从用户输入中检测目标卡片）
@@ -2262,6 +2366,107 @@ def update_card_prompt(card_id):
 
     logger.info(f"卡片 prompt 已更新: {card_id}")
     return jsonify({"ok": True, "card_id": card_id, "prompt": old})
+
+
+@app.route("/v1/api/daily/command", methods=["POST"])
+@require_token
+def daily_command():
+    """POST /v1/api/daily/command - 统一指令中枢。
+
+    请求体: {"text": "@todo 管理员 买牛奶"} 或 {"text": "今天天气怎么样"}
+
+    流程:
+      1. 解析 @前缀，匹配卡片注册表中的 commandPrefixes
+      2. 匹配成功 → 分发到对应处理器
+      3. 无匹配 → 回退为自然语言，调用 Gateway 处理
+
+    返回:
+      - 指令匹配: {"ok": true, "prefix": "@todo", "action": "add_todo", ...}
+      - 自然语言: {"ok": true, "type": "chat", "content": "AI 回复..."}
+    """
+    data = request.get_json(silent=True)
+    if not data or "text" not in data:
+        return error_response("缺少必填参数", 400, "请求体需包含 text 字段")
+
+    text = data["text"]
+    if not isinstance(text, str) or not text.strip():
+        return error_response("指令内容不能为空", 400)
+
+    # 解析指令
+    parsed = _parse_command(text)
+
+    # 匹配到前缀 → 分发
+    if parsed["matched"]:
+        prefix = parsed["prefix"]
+        person = parsed["person"]
+        content = parsed["text"]
+
+        logger.info(f"指令解析: prefix={prefix}, person={person}, text={content}")
+
+        # @todo - 添加 Todo
+        if prefix == "@todo":
+            result = _dispatch_add_todo(person, content)
+            result["prefix"] = prefix
+            result["action"] = parsed["action"]
+            return jsonify(result)
+
+        # @done - 勾选 Todo
+        if prefix == "@done":
+            result = _dispatch_done(person, content)
+            result["prefix"] = prefix
+            result["action"] = parsed["action"]
+            return jsonify(result)
+
+        # 其他指令 - 返回解析结果（处理器在后续 Phase 实现）
+        return jsonify({
+            "ok": True,
+            "prefix": prefix,
+            "action": parsed["action"],
+            "parsed": {"person": person, "text": content},
+            "message": f"指令 {prefix} 已解析，处理器将在后续 Phase 实现",
+        })
+
+    # 未匹配前缀 → 回退自然语言：创建 Daily 会话路由到卡片喵 agent
+    logger.info(f"指令中枢 → 自然语言回退，创建 Daily 会话: {text[:80]}")
+    try:
+        import uuid, datetime as _dt
+
+        # 创建新会话
+        now = _dt.datetime.now()
+        session_id = f"sess_daily_{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+        session_file = os.path.join(SESSION_DIR, f"{session_id}.json")
+
+        # 注入当前用户身份（JWT 解析），其他信息卡片喵自己探索
+        current_user = request.user.get("username", "") if hasattr(request, 'user') else ""
+        user_hint = f"当前说话的用户：{current_user}"
+
+        session_data = {
+            "id": session_id,
+            "title": f"Daily 指令 {now.strftime('%m月%d日 %H:%M')}",
+            "created": now.isoformat(),
+            "updated": now.isoformat(),
+            "messages": [
+                {"role": "system", "content": user_hint},
+                {"role": "user", "content": text}
+            ],
+            "tags": ["daily"]
+        }
+
+        # 保存会话文件
+        os.makedirs(SESSION_DIR, exist_ok=True)
+        with open(session_file, "w", encoding="utf-8") as f:
+            json.dump(session_data, f, ensure_ascii=False, indent=2)
+
+        logger.info(f"Daily 会话已创建: {session_id}（流式管道由前端 WebSocket 处理）")
+
+        return jsonify({
+            "ok": True,
+            "type": "chat",
+            "prefix": None,
+            "session_id": session_id,
+        })
+    except Exception as e:
+        return error_response(f"指令处理失败: {e}", 502)
 
 
 # ---- 每日 Dashboard: 面板配置 API (DB4) ----

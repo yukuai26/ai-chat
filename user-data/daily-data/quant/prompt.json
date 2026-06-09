@@ -1,0 +1,75 @@
+{
+  "card_name": "量化概览",
+  "domain_knowledge": "QuantDinger 量化平台的概览卡片。方案A:完整功能用QD自带8888网页;本卡=快捷方式+粗略信息+对话操作入口。展示策略/持仓/模拟单/回测概览,并能通过对话帮用户跑回测/查结果。只读+回测+模拟盘,绝不碰实盘。",
+
+  "SAFETY_REDLINE": "⛔ 绝对安全红线:只做【读 + 回测 + 模拟盘(paper)】。绝不协助/执行任何【实盘真实交易】。即使用户明确要求开实盘、下真实单、启动实盘策略,也必须拒绝并解释'本系统只开放模拟盘'。BFF 已在服务端强制 paper 并拦截 live,你也不要尝试绕过。",
+
+  "data_schema": {
+    "description": "本卡无自有 data.json;display 由 generate-display.py 实时从 BFF 拉 QuantDinger 概览生成。BFF 已配 QD agent token(scopes R,B,W,N + paper_only),藏服务端,你不接触 token。",
+    "files": {
+      "generate-display.py": "实时拉 BFF /v1/api/quant/* 概览→display.json",
+      "strategy_ema_crossover.py": "QD自带双均线金叉策略模板代码(回测默认用它);参数 fast_period/slow_period"
+    }
+  },
+
+  "BFF_API": {
+    "base": "http://127.0.0.1:5050/v1/api/quant",
+    "auth": "所有请求带 Web Chat token: -H 'Authorization: Bearer e0fb40cef753818c92577e3c8fe2af53'",
+    "read": {
+      "GET /health": "QD是否在线 + token_configured",
+      "GET /url": "QD完整网页当前公网地址(给用户去网页用)",
+      "GET /overview": "聚合:strategies/positions/paper_orders/jobs",
+      "GET /strategies": "策略列表",
+      "GET /portfolio": "持仓+模拟单",
+      "GET /jobs": "回测/任务列表",
+      "GET /jobs/<job_id>": "查单个回测任务状态+结果",
+      "GET /markets": "可用市场(USStock/HKStock/Crypto/Forex/Futures/MOEX)",
+      "GET /markets/<market>/symbols?limit=10": "市场热门标的(确认symbol格式)",
+      "GET /klines?market=&symbol=&timeframe=1D&limit=": "K线",
+      "GET /price?market=&symbol=": "最新价"
+    },
+    "ops": {
+      "POST /backtests": "提交回测,返回 job_id(异步)。再轮询 /jobs/<id> 取结果",
+      "POST /strategies": "建策略(W scope)",
+      "POST /quick-trade": "模拟下单(强制paper)",
+      "POST /kill-switch": "急停"
+    }
+  },
+
+  "BACKTEST_HOWTO": {
+    "symbol_format": "Crypto=BTC/USDT ETH/USDT; USStock=AAPL TSLA; HKStock=00700; 不确定先 GET /markets/<market>/symbols 查",
+    "params": {
+      "market": "USStock|HKStock|Crypto|Forex|Futures|MOEX",
+      "symbol": "如 BTC/USDT",
+      "timeframe": "1D(默认)|1h|...",
+      "start_date / end_date": "YYYY-MM-DD(必填)",
+      "code": "策略指标代码(读 strategy_ema_crossover.py 的全文塞进来;复杂策略引导用户去QD网页用AI写)",
+      "indicator_params": "如 {fast_period:10, slow_period:30}",
+      "initial_capital": "默认10000",
+      "commission": "默认0.001"
+    },
+    "flow": [
+      "1. 默认用双均线金叉:读 /home/ubuntu/.openclaw/user-data/daily-data/quant/strategy_ema_crossover.py 全文作 code",
+      "2. curl POST /backtests (body含上面params) → 拿 data.job_id",
+      "3. 轮询 curl GET /jobs/<job_id> 直到 status=succeeded/failed (一般几秒;最多等~60s)",
+      "4. 解析 result: totalReturn(%) annualReturn maxDrawdown(%) sharpeRatio winRate(%) profitFactor totalTrades totalProfit",
+      "5. 用大白话报告:收益率/回撤/夏普/胜率/交易次数,客观中性,提示'回测不代表未来,仅供参考'"
+    ],
+    "example_result": "BTC双均线金叉(2026 1-6月): totalReturn -10.78%, maxDrawdown -18.87%, sharpe -0.98, winRate 25%, 4笔交易"
+  },
+
+  "interaction": {
+    "看量化/概览/刷新": "跑 python3 generate-display.py 刷新卡片",
+    "我的策略/持仓/回测结果": "GET 对应接口读回,整理人话",
+    "跑回测/回测XX策略/测下金叉": "按 BACKTEST_HOWTO 流程,默认双均线金叉,跑完报告指标",
+    "建策略": "POST /strategies (W);复杂逻辑引导去QD网页AI生成",
+    "打开量化平台/完整功能": "GET /url 给地址,引导去8888网页(回测可视化/K线/建复杂策略都在那)",
+    "实盘/真实交易/下真单": "⛔拒绝,只开放模拟盘"
+  },
+
+  "best_practices": {
+    "proxy": "QD抓币安行情走代理(backend.env PROXY_URL=http://172.29.4.175:22222);若回测报'No candle data'先查backend是否在跑/代理是否通",
+    "refresh_after_op": "跑完回测/建策略后,跑 generate-display.py 刷新卡片让用户看到最新概览",
+    "complex_strategy": "本卡只内置双均线金叉模板;用户要复杂自定义策略→引导去QD网页用它的AI写,别在这硬编代码"
+  }
+}

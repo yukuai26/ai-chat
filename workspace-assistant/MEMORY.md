@@ -1,12 +1,24 @@
 # MEMORY.md — 长期记忆
 
 ## ⏳ 待跟进（最近，醒来先看）
-- **2026-06-09 股票卡片实测**：昨夜(06-08深夜)做完了 stock 股票看板卡片 Phase1（六支股票:茅台/腾讯/苹果/上证/沪深300ETF/BTC，含蜡烛/折线K线可切换+指标+AI点评，全国内直连零代理）。**管理员说今天要去实际网站看效果**。
+> 📈 **金融功能(股票卡+量化页面)新对话先读这篇总入口**：`projects/ac/ac-FINANCE-overview-V1.0-ACTIVE.md`（做了啥/没做啥/整体设计全在里面）
+
+- **2026-06-09 股票卡片实测**：昨夜(06-08深夜)做完了 stock 股票看板卡片 Phase1（六支股票:茅台/腾讯/苹果/上证/沪深300ETF/BTC，含蜡烛/折线K线可切换+指标+AI点评，全国内直连零代理）。**管理员说要去实际网站看效果**。
   - 👉 他一提"网站/股票卡片/看了/效果/蜡烛图"等 = 在说这个。
   - 网址：`https://yoga-findlaw-louisiana-strong.trycloudflare.com`（添加"📈 股票看板"卡 → 点开某股 → 看折线/蜡烛切换、周期切换）
   - 服务器无浏览器我没自测过渲染，**正在等他反馈**。若他说"空白/不显示/报错"→ 让他发 F12 控制台报错，重点查 chartjs-chart-financial/luxon 加载 + _drawStockChart。
   - 全部细节见 `projects/ac/ac-stock-MASTER-handoff-V1.0-ACTIVE.md`（失忆先读这篇）。
-  - 其它待办：补1D分时 / AI点评自动化 / Phase2回测。
+
+- **2026-06-09 量化页面工程（进行中）**：决定用 **QuantDinger(7565⭐ 开源AI量化平台)** 作后端，在 Web Chat 加一个**与卡片Dashboard/对话同等入口级的新"量化"页面**，展示+操作它(只读先做)，**只做回测+模拟盘，不碰实盘**。
+  - ✅ **S1已完成**：Docker装好(v29.5.3,配了代理拉镜像)，QuantDinger四容器全healthy。前端`8888`、后端API`127.0.0.1:5000`(/api/agent/v1/*)、pg5432、redis6379。管理员账号 quantdinger/密码见 `/home/ubuntu/quantdinger/.admin_pw_REMEMBER`。容器在 `/home/ubuntu/quantdinger/`。
+  - ✅ **S3已完成**：`/var/www/chat/quant_bff.py` BFF转发蓝图(/v1/api/quant/* → QuantDinger,注入QD token藏服务器,实盘拦截,token未配置优雅503)。fileserver已注册,验证/quant/health探到QD ok。commit ffa63ca push main。
+  - ⬜ **下一步 S2(需管理员参与)**：先给8888挂tunnel让管理员能访问 → 他登录发agent token(最小scope:读+paper) → 写入 `/home/ubuntu/quantdinger/agent_token.txt`，BFF就能拿真数据。
+  - ⬜ **S4**：index.html加"量化"顶级页面(与Dashboard/对话同级,只读概览)。
+  - 💡 token=调QuantDinger的限权钥匙,只能在8888后台生成,所以需管理员本人发。
+  - 👉 他一提"量化/QuantDinger/回测/模拟盘/那个新页面/token" = 在说这个。
+  - 完整设计+部署记录见 `projects/ac/ac-quant-page-design-V1.0-DRAFT.md`（失忆先读这篇）。
+
+  - 其它零散待办：股票卡补1D分时 / 股票AI点评自动化。
 
 ## 基本信息
 - 上线日期：2026-03-01

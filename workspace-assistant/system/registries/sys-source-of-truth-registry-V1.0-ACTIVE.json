@@ -201,7 +201,19 @@
       "status": "ACTIVE",
       "purpose": "股票卡片唯一权威主交接文档(全过程:调研/设计/后端/前端/坑/继续)",
       "updated": "2026-06-09"
+    },
+    "ac-FINANCE-overview-V1.0-ACTIVE": {
+      "path": "projects/ac/ac-FINANCE-overview-V1.0-ACTIVE.md",
+      "status": "ACTIVE",
+      "purpose": "⭐金融功能总览(新对话接续唯一入口:股票卡+量化页面,做了啥/没做啥/设计)",
+      "updated": "2026-06-09"
+    },
+    "ac-quant-page-design-V1.0-DRAFT": {
+      "path": "projects/ac/ac-quant-page-design-V1.0-DRAFT.md",
+      "status": "DRAFT",
+      "purpose": "量化页面设计+QuantDinger部署记录+BFF接口",
+      "updated": "2026-06-09"
     }
   },
-  "_updated": "2026-06-09T00:41:04.262443+08:00"
+  "_updated": "2026-06-09T03:23:00.199225+08:00"
 }

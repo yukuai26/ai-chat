@@ -31,3 +31,9 @@ created: "2026-05-26"
 - **变更原因**：项目启动
 - **影响范围**：全部新功能
 - **确认人**：管理员
+
+## 2026-06-09 修复：恢复 Dashboard 卡片页指令输入框
+- **问题**：`#tab-daily` 内的 `dashboard-command-bar`（与卡片喵对话的指令框）HTML 元素被误删（疑似 6/2~6/9 改股票/量化卡片时），CSS 与 JS 完好仅缺 DOM
+- **修复**：补回 8 行 HTML（cmdHint/cmdAttachBtn/cmdInput/cmdSend），位置在 cmdFileTags 之后
+- **设计一致性**：本次为回归修复，使代码重新对齐既有设计基线（命令栏本就是设计的一部分），无新增设计
+- commit: 30e40fa

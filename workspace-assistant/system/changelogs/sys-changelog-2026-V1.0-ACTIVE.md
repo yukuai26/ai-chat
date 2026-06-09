@@ -137,3 +137,6 @@ created: "2026-05-26"
 - **新增** `projects/ac/ac-stock-card-maintenance-V1.0-ACTIVE.md` — 卡片喵维护手册(增删自选股/AI点评/刷新/排障)
 - **新增** lesson `lesson-2026-06-08-shared-proxy-rate-limit.md` — 共享代理对Yahoo自身限流
 - **新增** `projects/ac/ac-stock-MASTER-handoff-V1.0-ACTIVE.md` — ⭐股票卡片唯一权威主交接(全过程记录,失忆可接续); AI点评打通(6条); cron定时刷新已配(系统crontab,refresh-stock.sh)
+- **新增** `projects/ac/ac-quant-page-design-V1.0-DRAFT.md` — 量化页面设计(QuantDinger 7565⭐作后端; 新顶级页面与卡片/对话同级; BFF中间层搭读+操作接口; 基于QD Agent Gateway 28端点; vs StockSharp选型结论)
+- **新增** `projects/ac/ac-FINANCE-overview-V1.0-ACTIVE.md` — ⭐金融功能总览(新对话接续唯一入口)
+- **新增** `quant_bff.py` QuantDinger BFF转发蓝图(/v1/api/quant/*); fileserver注册; 验证QD health ok; commit ffa63ca push main

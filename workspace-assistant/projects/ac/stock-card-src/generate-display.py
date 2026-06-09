@@ -194,6 +194,31 @@ def fetch_kline_crypto(sym, n=130):
     except Exception as e:
         print(f"  ⚠️ 加密K线 {sym} 失败: {e}"); return []
 
+
+def fetch_minute_tx(tx_code):
+    """腾讯当日分时(web.ifzq.gtimg.cn/minute)。tx_code: A股 shXXXXXX / 港股 hkXXXXX / 美股 usSYM。
+    返回 [{date:'YYYY-MM-DD HH:MM', o,h,l,c, vol}]，分时每点价格作 OHLC(蜡烛退化为点，折线正常)。
+    加密(新浪 btc_ 代码)腾讯不支持 → 返回 []。"""
+    url=f"https://web.ifzq.gtimg.cn/appstock/app/minute/query?code={tx_code}"
+    try:
+        d=json.loads(http_get(url, headers=TX_REF))
+        node=d.get("data",{}).get(tx_code,{}).get("data",{})
+        rows=node.get("data") or []
+        day=node.get("date") or NOW.strftime("%Y%m%d")
+        day_fmt=f"{day[:4]}-{day[4:6]}-{day[6:8]}"
+        out=[]
+        for r in rows:
+            parts=r.split()
+            if len(parts)<2: continue
+            hhmm=parts[0]; price=float(parts[1])
+            vol=float(parts[2]) if len(parts)>2 and parts[2] else 0
+            ts=f"{day_fmt} {hhmm[:2]}:{hhmm[2:]}"
+            out.append({"date":ts,"o":price,"h":price,"l":price,"c":price,"vol":vol})
+        return out
+    except Exception as e:
+        print(f"  ⚠️ 分时 {tx_code} 失败: {e}"); return []
+
+
 # ---------------- 技术指标(自实现) ----------------
 def _ma(closes, n):
     out=[None]*len(closes)
@@ -280,14 +305,20 @@ PERIODS = ["1D", "1W", "1M", "3M"]
 SLICE = {"1W": 5, "1M": 22, "3M": 66}  # 从日线尾部切的交易日数
 
 def fetch_kline_bundle(w):
-    """按 mkt 路由日K，全部国内直连。返回 {1D,1W,1M,3M}。1D 用最近交易日(日K粒度,后续可接分时)。"""
+    """按 mkt 路由日K，全部国内直连。返回 {1D,1W,1M,3M}。
+    1D = 腾讯当日分时(ashare/hk/us)；crypto 无免费分时，1D 退化为最近日K单点。"""
     code=w["code"]; mkt=w.get("mkt"); sym=w.get("sym")
     if mkt=="ashare":   daily=fetch_kline_ashare(code,130)
     elif mkt=="hk":     daily=fetch_kline_hk(code,130)
     elif mkt=="us":     daily=fetch_kline_us(sym or code.replace("us_",""),130)
     elif mkt=="crypto": daily=fetch_kline_crypto(sym or "BTC",130)
     else:               daily=[]
-    per={"1D": daily[-1:] if daily else []}
+    # 1D 分时：腾讯 minute（A股/港股/美股）。腾讯代码：A股=code, 港股=code, 美股=us+sym
+    minute=[]
+    if mkt=="ashare":   minute=fetch_minute_tx(code)
+    elif mkt=="hk":     minute=fetch_minute_tx(code)
+    elif mkt=="us":     minute=fetch_minute_tx("us"+(sym or code.replace("us_","")))
+    per={"1D": minute if minute else (daily[-1:] if daily else [])}
     for label,n in SLICE.items():
         per[label]=daily[-n:] if daily else []
     return per
@@ -344,7 +375,16 @@ def main():
         cached = klines_cache.get(code, {})
         if (not force) and cached.get("_date")==TODAY_S and cached.get("3M"):
             perranges={k:cached[k] for k in PERIODS if k in cached}
-            print(f"  · {w['name']}({code}) 用今日K线缓存", flush=True)
+            # 1D 分时盘中实时变化：缓存命中也重抓分时(单请求,便宜)，日K仍复用
+            mkt=w.get("mkt"); sym=w.get("sym")
+            if mkt=="ashare":   _m=fetch_minute_tx(code)
+            elif mkt=="hk":     _m=fetch_minute_tx(code)
+            elif mkt=="us":     _m=fetch_minute_tx("us"+(sym or code.replace("us_","")))
+            else:               _m=[]
+            if _m:
+                perranges["1D"]=_m
+                klines_cache[code]["1D"]=_m  # 同步缓存
+            print(f"  · {w['name']}({code}) 用今日K线缓存(1D分时已刷新 {len(perranges.get('1D',[]))}点)", flush=True)
         else:
             perranges=fetch_kline_bundle(w)  # 按 source 路由
             got = sum(1 for v in perranges.values() if v)
@@ -395,11 +435,14 @@ def main():
         # 折线序列(收盘) + 蜡烛序列(ohlc)，按周期
         line_charts={}; candle_charts={}
         for label,k in per.items():
-            line_charts[label]=[{"date":p["date"][5:],"value":p["c"]} for p in k]
+            def _dlabel(dt):
+                # 分时 "YYYY-MM-DD HH:MM" → "HH:MM"；日K "YYYY-MM-DD" → "MM-DD"
+                return dt[11:] if (" " in dt and len(dt)>=16) else dt[5:]
+            line_charts[label]=[{"date":_dlabel(p["date"]),"value":p["c"]} for p in k]
             candle_charts[label]=[{"x":p["date"],"o":p["o"],"h":p["h"],"l":p["l"],"c":p["c"]} for p in k]
         q=det.get("quote",{})
         sub=[]
-        # 双图卡：可切 折线/蜡烛 + 周期。只暴露有≥2个点的周期(1D无免费分时,单点不画)
+        # 双图卡：可切 折线/蜡烛 + 周期。只暴露有≥2个点的周期(1D=腾讯分时;crypto无分时则1D单点被剔除)
         avail_periods=[p for p in PERIODS if len(candle_charts.get(p,[]))>=2]
         defp = "1M" if "1M" in avail_periods else (avail_periods[-1] if avail_periods else "3M")
         sub.append({"type":"stock_chart","title":f"{w['name']} ({code})",

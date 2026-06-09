@@ -3796,6 +3796,14 @@
         </div>
       </div>
       <div class="cmd-file-tags" id="cmdFileTags"></div>
+      <div class="dashboard-command-bar" id="dashboard-command-bar">
+        <span class="cmd-hint" id="cmdHint">@todo @done @data ...</span>
+        <button class="cmd-attach-btn" id="cmdAttachBtn" title="选择文件" onclick="openDashboardFilePicker()">📎</button>
+        <input type="text" class="cmd-input" id="cmdInput"
+          placeholder="输入指令，如 @todo 管理员 买牛奶"
+          onkeydown="if(event.key==='Enter') sendCommand()" />
+        <button class="cmd-send" id="cmdSend" onclick="sendCommand()">发送</button>
+      </div>
       </div>
     </div>
 
@@ -6956,7 +6964,7 @@
         }
 
         // 加载所有卡片（统一使用 display.json sections 渲染）
-        var allCardIds = ['news','todo','data','recipe','wishes','notes','bookmarks','photos','shares','reminders','habits','stock','summary'];
+        var allCardIds = ['news','todo','data','recipe','wishes','notes','bookmarks','photos','shares','reminders','habits','stock','quant','summary'];
         for (var ai = 0; ai < allCardIds.length; ai++) {
           var cid = allCardIds[ai];
           var cel = document.querySelector('[data-card-id="' + cid + '"]');
@@ -7126,6 +7134,88 @@
     });
 
 
+    async function sendCommand() {
+      const input = document.getElementById('cmdInput');
+      const sendBtn = document.getElementById('cmdSend');
+      const text = input.value.trim();
+      if (!text) return;
+
+      // 捕获命令栏当前选中的文件（修复：自然语言回退首次发送丢文件的 bug）
+      const cmdFiles = (typeof selectedFiles !== 'undefined' && selectedFiles) ? selectedFiles.slice() : [];
+
+      const token = authJwt || document.getElementById('token').value;
+      if (!token && !authJwt) {
+        showCommandToast('⚠️ 请先连接 API Token', 'error');
+        return;
+      }
+
+      input.disabled = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = '⏳';
+
+      try {
+        var hdrs = { 'Content-Type': 'application/json' };
+        if (!authJwt) { hdrs['Authorization'] = 'Bearer ' + token; }
+
+        const resp = await fetch('/v1/api/daily/command', {
+          method: 'POST',
+          headers: hdrs,
+          body: JSON.stringify({ text })
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+          if (data.prefix) {
+            const msg = data.message || ('指令 ' + data.prefix + ' 已处理');
+            showCommandToast('✅ ' + msg, 'success');
+            if (data.prefix === '@todo' || data.prefix === '@done') {
+              loadDashboard();
+            }
+          } else if (data.type === 'chat') {
+            if (data.session_id) {
+              if (typeof selectConversation === 'function') {
+                await selectConversation(data.session_id);
+                if (typeof loadConversations === 'function') {
+                  setTimeout(function() { loadConversations(); }, 500);
+                }
+                setTimeout(function() {
+                  if (typeof _doSendMessage === 'function') {
+                    _doSendMessage(text, cmdFiles).then(function() {
+                      processQueue();
+                    }).catch(function(e) {
+                      console.error('Daily send error:', e);
+                      processQueue();
+                    });
+                  }
+                }, 300);
+                // 文件已随首条消息发出，清空命令栏选择，避免下次重复附带
+                if (typeof selectedFiles !== 'undefined') {
+                  selectedFiles = [];
+                  if (typeof renderCmdFileTags === 'function') renderCmdFileTags();
+                  if (typeof renderSelectedFileTags === 'function') renderSelectedFileTags();
+                }
+              } else {
+                showCommandToast('✅ 已创建 Daily 对话', 'success');
+              }
+            } else {
+              showCommandToast(data.content || '无回复', 'info');
+            }
+          }
+        } else {
+          showCommandToast('⚠️ ' + (data.error || '请求失败'), 'error');
+        }
+      } catch (e) {
+        console.error('发送指令失败:', e);
+        showCommandToast('⚠️ 网络错误，请重试', 'error');
+      } finally {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = '发送';
+        input.value = '';
+        input.focus();
+      }
+    }
+
     /** 显示 Toast 通知 */
     function showCommandToast(msg, type) {
       // 移除已有 toast
@@ -7163,6 +7253,12 @@
       setTimeout(function() {
         if (toast.parentNode) toast.remove();
       }, 200);
+    }
+
+    function updateCommandHint() {
+      const hint = document.getElementById('cmdHint');
+      const knownPrefixes = ['@todo', '@done', '@data', '@news', '@recipe', '@schedule', '@wish', '@sum'];
+      if (hint) hint.textContent = knownPrefixes.join(' ');
     }
 
     /* ===== DF9: 拖拽上传区域 ===== */
@@ -7319,12 +7415,13 @@
         reminders: '⏰ 提醒 · 定时备忘',
         habits: '✅ 习惯打卡 · 每日坚持',
         stock: '📈 股票看板 · 行情K线指标',
+        quant: '📈 量化概览 · 策略回测模拟盘',
       };
       return summaries[card.id] || '卡片数据加载中...';
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos", "shares", "reminders", "habits", "stock"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos", "shares", "reminders", "habits", "stock", "quant"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -7677,6 +7774,19 @@
             html += '<li style="padding:2px 0">' + escapeHtml(li[lii].text || li[lii] || '') + '</li>';
           }
           html += '</ul>';
+          break;
+
+        case 'note':
+          if (sec.title) html += '<b style="display:block;margin:6px 0 2px;">' + escapeHtml(sec.title) + '</b>';
+          html += '<div style="background:var(--bg-card);border-radius:8px;padding:8px;font-size:13px;line-height:1.5;color:var(--text-secondary);">' + escapeHtml(sec.text || '') + '</div>';
+          break;
+
+        case 'link':
+          if (sec.title) html += '<b style="display:block;margin:6px 0 4px;">' + escapeHtml(sec.title) + '</b>';
+          if (sec.text) html += '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;">' + escapeHtml(sec.text) + '</div>';
+          if (sec.url) {
+            html += '<a href="' + escapeHtmlAttr(sec.url) + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;font-size:13px;font-weight:600;">' + escapeHtml(sec.label || '打开 →') + '</a>';
+          }
           break;
 
         case 'chart_tabs':

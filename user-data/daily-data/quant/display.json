@@ -1,0 +1,84 @@
+{
+  "summary": "📈 策略 0 · 持仓 0 · 模拟单 0 · 回测 3",
+  "sections": [
+    {
+      "type": "kv",
+      "title": "🔌 平台状态",
+      "pairs": [
+        {
+          "key": "QuantDinger",
+          "value": "🟢 在线"
+        },
+        {
+          "key": "策略",
+          "value": "0"
+        },
+        {
+          "key": "持仓",
+          "value": "0"
+        },
+        {
+          "key": "模拟单",
+          "value": "0"
+        },
+        {
+          "key": "回测任务",
+          "value": "3"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "🧪 最近回测/任务",
+      "header": [
+        {
+          "text": "任务"
+        },
+        {
+          "text": "状态"
+        }
+      ],
+      "rows": [
+        {
+          "cells": [
+            {
+              "text": "backtest #9105e0f18af2434e8b576028943cccd6"
+            },
+            {
+              "text": "succeeded"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "backtest #e313cc8315284b398b33ee13ecec66d3"
+            },
+            {
+              "text": "succeeded"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "text": "backtest #fc5d8dd927d34c8695471789894e2a15"
+            },
+            {
+              "text": "failed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "link",
+      "title": "🚀 完整平台",
+      "text": "打开 QuantDinger 完整量化平台（回测 / 策略 / K线 / 模拟盘）",
+      "url": "https://floating-reforms-char-cake.trycloudflare.com",
+      "label": "打开完整量化平台 →"
+    }
+  ],
+  "generated": "2026-06-09T19:04:40.621384+08:00",
+  "generated_date": "2026-06-09"
+}

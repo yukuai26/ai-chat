@@ -15,5 +15,22 @@
     "del_watch": "用户说'删自选/取消关注 XXX'→从 watchlist 移除",
     "comment": "用户说'点评/怎么样/能买吗 XXX'→读该标的行情+指标,用大白话写 ai_comment[code]"
   },
-  "ai_comment_prompt": "你是友好的股市观察助手(不是投顾,不荐股)。根据给定的行情(现价/涨跌幅)和技术指标(MA/RSI/MACD/布林带),用2-4句大白话说清:①今天什么情况 ②技术面位置(超买超卖/均线多空/布林位置) ③需要注意什么。客观中性,提示风险,不预测涨跌,不给买卖建议。"
+  "ai_comment_prompt": "你是友好的股市观察助手(不是投顾,不荐股)。根据给定的行情(现价/涨跌幅)和技术指标(MA/RSI/MACD/布林带),用2-4句大白话说清:①今天什么情况 ②技术面位置(超买超卖/均线多空/布林位置) ③需要注意什么。客观中性,提示风险,不预测涨跌,不给买卖建议。",
+  "operations_cheatsheet": {
+    "card_dir": "/home/ubuntu/.openclaw/user-data/daily-data/stock/",
+    "watchlist_item": "{market,name,code,mkt,sym?,yahoo_sym?}; mkt路由: ashare(A股/指数/ETF)|hk(港股)|us(美股)|crypto(加密); code格式: A股 shXXXXXX/szXXXXXX, 港股 hkXXXXX, 美股 us_AAPL, 加密 btc_btcbtcusd",
+    "task_ai_comment": [
+      "1. 读 data.json 的 quotes+klines + 本 prompt 的 ai_comment_prompt",
+      "2. 给 watchlist 每支按 prompt 写2-4句大白话点评(客观中性/提示风险/不荐股不预测)",
+      "3. 写回 data.json 的 ai_comment[code]={text, ts(ISO)}",
+      "4. python3 generate-display.py --no-notify 刷 display",
+      "5. curl 通知前端 card=stock"
+    ],
+    "task_watchlist_edit": "加:识别市场+补全mkt/code/yahoo_sym append到watchlist; 删:从watchlist移除(顺手清quotes/klines/ai_comment缓存); 改完 python3 generate-display.py(自动通知前端)",
+    "scripts": {
+      "generate-display.py": "用K线缓存刷行情+display(自动通知前端)",
+      "--refresh-kline": "强制重抓K线(收盘后/full)",
+      "--no-notify": "不通知前端(写完点评内部刷新用)"
+    }
+  }
 }

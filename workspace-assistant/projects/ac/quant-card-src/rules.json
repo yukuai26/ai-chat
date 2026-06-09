@@ -1,0 +1,24 @@
+{
+  "card_id": "quant",
+  "card_name": "量化概览",
+  "refresh": {
+    "note": "概览实时从 BFF 拉;无需高频 cron,可在用户查看/操作后跑一次刷新。"
+  },
+  "interaction_rules": [
+    {"trigger": "看量化/量化概览/刷新量化", "action": "跑 generate-display.py 重新拉 BFF 概览"},
+    {"trigger": "我的策略/持仓/回测结果", "action": "GET /v1/api/quant/strategies|portfolio|jobs 读回"},
+    {"trigger": "跑回测/回测XX", "action": "POST /v1/api/quant/backtests(走BFF,paper),回报"},
+    {"trigger": "打开量化平台/完整功能", "action": "返回 /v1/api/quant/url 的地址"}
+  ],
+  "display_rules": {
+    "summary": "策略N·持仓N·模拟单N·回测N(QD离线则提示)",
+    "sections": [
+      {"id": "status", "type": "kv", "title": "🔌 平台状态"},
+      {"id": "strategies", "type": "table", "title": "🧠 策略"},
+      {"id": "positions", "type": "table", "title": "💼 持仓(模拟)"},
+      {"id": "jobs", "type": "table", "title": "🧪 最近回测/任务"},
+      {"id": "link", "type": "link", "title": "🚀 完整平台", "note": "按钮跳 QD tunnel 地址(动态)"}
+    ]
+  },
+  "safety_redline": "只读+回测+模拟盘;实盘不开放(BFF层强制)。"
+}

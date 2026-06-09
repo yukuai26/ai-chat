@@ -84,6 +84,19 @@ def quant_health():
     except Exception as e:
         return jsonify({"ok": False, "error": f"QuantDinger 不可达: {e}", "token_configured": bool(_qd_token())}), 502
 
+@quant_bp.route("/v1/api/quant/url", methods=["GET"])
+def quant_url():
+    """返回 QuantDinger 完整网页的当前公网地址（tunnel 地址，由 qd-tunnel.sh 写入固定文件）。
+    供前端'打开完整量化平台'按钮使用，地址变了前端自动跟上。"""
+    url_file = os.environ.get("QD_TUNNEL_URL_FILE", "/home/ubuntu/quantdinger/qd_tunnel_url.txt")
+    url = ""
+    try:
+        if os.path.isfile(url_file):
+            url = open(url_file).read().strip()
+    except Exception:
+        pass
+    return jsonify({"ok": bool(url), "url": url})
+
 @quant_bp.route("/v1/api/quant/whoami", methods=["GET"])
 def quant_whoami():
     g = _no_token_guard()

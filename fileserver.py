@@ -1607,11 +1607,21 @@ DEFAULT_CARD_REGISTRY = {
             "api": "/v1/api/daily/cards/display/stock",
             "expandable": True,
             "refreshInterval": 900
+        },
+        {
+            "id": "quant",
+            "name": "📈 量化概览",
+            "icon": "📈",
+            "width": "normal",
+            "enabled": True,
+            "api": "/v1/api/daily/cards/display/quant",
+            "expandable": True,
+            "refreshInterval": 600
         }
     ],
     "layout": {
         "columns": 3,
-        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares", "reminders", "habits", "stock"],
+        "order": ["news", "todo", "data", "recipe", "wishes", "notes", "bookmarks", "photos", "shares", "reminders", "habits", "stock", "quant"],
         "gap": 16
     },
     "commandPrefixes": [

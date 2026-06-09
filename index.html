@@ -6964,7 +6964,7 @@
         }
 
         // 加载所有卡片（统一使用 display.json sections 渲染）
-        var allCardIds = ['news','todo','data','recipe','wishes','notes','bookmarks','photos','shares','reminders','habits','stock','summary'];
+        var allCardIds = ['news','todo','data','recipe','wishes','notes','bookmarks','photos','shares','reminders','habits','stock','quant','summary'];
         for (var ai = 0; ai < allCardIds.length; ai++) {
           var cid = allCardIds[ai];
           var cel = document.querySelector('[data-card-id="' + cid + '"]');
@@ -7415,12 +7415,13 @@
         reminders: '⏰ 提醒 · 定时备忘',
         habits: '✅ 习惯打卡 · 每日坚持',
         stock: '📈 股票看板 · 行情K线指标',
+        quant: '📈 量化概览 · 策略回测模拟盘',
       };
       return summaries[card.id] || '卡片数据加载中...';
     }
 
     /** 已实现的卡片 ID 列表（DF4-DF7 完成后逐项加入） */
-    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos", "shares", "reminders", "habits", "stock"];
+    const IMPLEMENTED_CARDS = ["news", "todo", "data", "recipe", "wishes", "summary", "notes", "bookmarks", "photos", "shares", "reminders", "habits", "stock", "quant"];
 
     /* ===== 拖拽排序 (DF6) ===== */
     let layoutEditing = false;
@@ -7773,6 +7774,19 @@
             html += '<li style="padding:2px 0">' + escapeHtml(li[lii].text || li[lii] || '') + '</li>';
           }
           html += '</ul>';
+          break;
+
+        case 'note':
+          if (sec.title) html += '<b style="display:block;margin:6px 0 2px;">' + escapeHtml(sec.title) + '</b>';
+          html += '<div style="background:var(--bg-card);border-radius:8px;padding:8px;font-size:13px;line-height:1.5;color:var(--text-secondary);">' + escapeHtml(sec.text || '') + '</div>';
+          break;
+
+        case 'link':
+          if (sec.title) html += '<b style="display:block;margin:6px 0 4px;">' + escapeHtml(sec.title) + '</b>';
+          if (sec.text) html += '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;">' + escapeHtml(sec.text) + '</div>';
+          if (sec.url) {
+            html += '<a href="' + escapeHtmlAttr(sec.url) + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;font-size:13px;font-weight:600;">' + escapeHtml(sec.label || '打开 →') + '</a>';
+          }
           break;
 
         case 'chart_tabs':

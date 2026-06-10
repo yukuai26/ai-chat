@@ -212,67 +212,67 @@
     "allergies": []
   },
   "today_recommendation": {
-    "date": "2026-06-09",
-    "weekday": "周二",
+    "date": "2026-06-10",
+    "weekday": "周三",
     "items": [
       {
-        "name": "川味口水鸡(微辣，去皮)",
+        "name": "土豆炖牛腩(只取牛腩少土豆)",
         "portion": "120g",
-        "calories": 175,
+        "calories": 190,
         "macros": {
-          "protein": "24g",
-          "carbs": "3g",
+          "protein": "22g",
+          "carbs": "6g",
+          "fat": "9g"
+        }
+      },
+      {
+        "name": "徽式珍味丸子",
+        "portion": "80g",
+        "calories": 150,
+        "macros": {
+          "protein": "14g",
+          "carbs": "6g",
           "fat": "8g"
         }
       },
       {
-        "name": "黑椒牛肉粒",
-        "portion": "100g",
-        "calories": 150,
-        "macros": {
-          "protein": "20g",
-          "carbs": "4g",
-          "fat": "6g"
-        }
-      },
-      {
-        "name": "清炒杭白菜",
+        "name": "清炒油麦菜",
         "portion": "150g",
-        "calories": 50,
+        "calories": 45,
         "macros": {
-          "protein": "3g",
-          "carbs": "5g",
+          "protein": "2g",
+          "carbs": "4g",
           "fat": "2g"
         }
       },
       {
-        "name": "干煸长豆角",
-        "portion": "100g",
-        "calories": 90,
+        "name": "手撕包菜",
+        "portion": "120g",
+        "calories": 60,
         "macros": {
-          "protein": "3g",
-          "carbs": "8g",
-          "fat": "5g"
+          "protein": "2g",
+          "carbs": "7g",
+          "fat": "3g"
         }
       },
       {
         "name": "五常大米",
-        "portion": "150g(熟)",
-        "calories": 175,
+        "portion": "120g(熟)",
+        "calories": 140,
         "macros": {
-          "protein": "4g",
-          "carbs": "39g",
+          "protein": "3g",
+          "carbs": "31g",
           "fat": "0g"
         }
       }
     ],
     "total": {
-      "calories": 640,
-      "protein": "54g",
-      "carbs": "59g",
-      "fat": "21g",
-      "veggies": "250g"
+      "calories": 585,
+      "protein": "43g",
+      "carbs": "54g",
+      "fat": "22g",
+      "veggies": "270g"
     },
-    "tip": "减脂期午餐：口水鸡去皮+黑椒牛肉粒双高蛋白打底（牛肉粒挑肉少汁），杭白菜补绿叶纤维，长豆角干煸偏油可少夹。主食五常大米控150g。避开芋艿蒸排骨、京酱肉丝等高油高碳，浇汁脆皮肉末豆腐油大慎选。四彩丸子绿豆汤偏甜不计正餐，想喝建议少糖半碗。"
+    "tip": "减脂期午餐：牛腩高蛋白打底（多挑瘦肉、土豆少夹避免双碳水），徽式丸子补蛋白控量。绿叶选清炒油麦菜+手撕包菜双素，纤维足。主食五常大米缩到120g。避开水煮肉片(中辣偏油)、菠萝咕噜肉(高糖油炸)、莴笋炒腊肉(腊肉高盐高脂)。红枣苹果银耳羹偏甜不计正餐，想喝半碗少糖。"
   }
 }

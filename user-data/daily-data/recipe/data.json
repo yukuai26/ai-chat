@@ -212,31 +212,31 @@
     "allergies": []
   },
   "today_recommendation": {
-    "date": "2026-06-10",
-    "weekday": "周三",
+    "date": "2026-06-11",
+    "weekday": "周四",
     "items": [
       {
-        "name": "土豆炖牛腩(只取牛腩少土豆)",
+        "name": "小炒黄牛肉(微辣,多挑瘦肉)",
         "portion": "120g",
-        "calories": 190,
+        "calories": 195,
         "macros": {
-          "protein": "22g",
-          "carbs": "6g",
+          "protein": "24g",
+          "carbs": "5g",
           "fat": "9g"
         }
       },
       {
-        "name": "徽式珍味丸子",
-        "portion": "80g",
-        "calories": 150,
+        "name": "椒香琵琶腿(去皮)",
+        "portion": "90g",
+        "calories": 140,
         "macros": {
-          "protein": "14g",
-          "carbs": "6g",
-          "fat": "8g"
+          "protein": "20g",
+          "carbs": "2g",
+          "fat": "6g"
         }
       },
       {
-        "name": "清炒油麦菜",
+        "name": "清炒有机上海青",
         "portion": "150g",
         "calories": 45,
         "macros": {
@@ -246,13 +246,13 @@
         }
       },
       {
-        "name": "手撕包菜",
+        "name": "茄子炒蛋(微辣,少油)",
         "portion": "120g",
-        "calories": 60,
+        "calories": 110,
         "macros": {
-          "protein": "2g",
-          "carbs": "7g",
-          "fat": "3g"
+          "protein": "6g",
+          "carbs": "8g",
+          "fat": "6g"
         }
       },
       {
@@ -267,12 +267,12 @@
       }
     ],
     "total": {
-      "calories": 585,
-      "protein": "43g",
-      "carbs": "54g",
-      "fat": "22g",
+      "calories": 630,
+      "protein": "55g",
+      "carbs": "50g",
+      "fat": "23g",
       "veggies": "270g"
     },
-    "tip": "减脂期午餐：牛腩高蛋白打底（多挑瘦肉、土豆少夹避免双碳水），徽式丸子补蛋白控量。绿叶选清炒油麦菜+手撕包菜双素，纤维足。主食五常大米缩到120g。避开水煮肉片(中辣偏油)、菠萝咕噜肉(高糖油炸)、莴笋炒腊肉(腊肉高盐高脂)。红枣苹果银耳羹偏甜不计正餐，想喝半碗少糖。"
+    "tip": "减脂期午餐：双高蛋白打底——小炒黄牛肉多挑瘦肉、琵琶腿去皮去油，蛋白冲到55g。绿叶选清炒上海青，茄子炒蛋记得少油（茄子吸油是大坑）。主食五常大米控120g。避开鳀鱼烧年糕(双碳水)、干锅狼牙土豆(油炸+微辣偏油)、毛豆烧鸡(同为鸡肉重复)。今早还没记早餐，午餐这份630kcal吃完按减脂2000kcal预算晚餐留约770kcal。"
   }
 }

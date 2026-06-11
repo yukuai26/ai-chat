@@ -95,13 +95,14 @@ baseline: ac-design-baseline-V1.0-ACTIVE.md (D 模块)
     {"title":"...", "type":"text",  "text":"..."},
     {"title":"...", "type":"kv",    "pairs":[{"key":"","value":""}]},
     {"title":"...", "type":"grid",  "items":[{"img":"","label":""}]},
-    {"title":"...", "type":"list",  "items":[{"text":"", "id":0, "done":false}]}
+    {"title":"...", "type":"list",  "items":[{"text":"", "id":0, "done":false, "url":""}]}
   ]
 }
 ```
 **5 种 section 类型**：`table`(表格) / `text`(纯文本) / `kv`(键值对) / `grid`(图片网格) / `list`(列表)。
 > 前端**不硬编码任何字段名**，只遍历 sections。加卡片新内容 = sections 加一项，前端零改动。
 > 交互元素（如 list 项的勾选框）：item 带 `id` + `done` 字段，前端渲染为可勾选，勾选回调走 §三 的统一交互端点。
+> **可点链接（2026-06-11 新增）**：list item 带可选 `url` 字段 → 前端渲染为 `<a target="_blank">` 可点跳转（新标签页）。news 卡片即用此机制。与 `done`/`id` 互不冲突。
 
 ---
 
@@ -170,4 +171,6 @@ baseline: ac-design-baseline-V1.0-ACTIVE.md (D 模块)
 | V1.0 | 2026-06-07 | 初版：确立卡片 4 文件标准、display sections 渲染契约、两种修改方式数据流、新建卡片流程；列现状待收齐项 T1-T4 |
 | V1.0 | 2026-06-07 | **todo 卡片按规范完整落地**(标准范例)：T2 完成、T3 钩子(_regenerate_display)+方案C(_maybe_refresh_timesensitive)实现。对应代码 commit `4d39498` |
 | V1.0 | 2026-06-07 | **data 健康卡片完成**：身体/摄入/运动三类+7日折线图(新增 chart_tabs section 类型,可切换体重/体脂/摄入/消耗)+稀疏数据处理+评级展示+卡片喵识图规则。新增前端 chart.js 渲染。commit `fdc5b1b` |
+| V1.0 | 2026-06-11 | **新增 `source_matrix` section 类型**：多源并排矩阵(每来源一列横向并排，列内 items 带 url 可点)。news 卡片"全部来源"区使用。前端 renderCardBody 加 case。 |
+| V1.0 | 2026-06-11 | **list item 增加可选 `url` 字段**：前端通用 list 渲染支持"带 url 渲染为可点链接(新标签页)"。配合 news 卡片落地(ac-news-card-design-V1.0)。前端 index.html renderCardBody 的 list case 增强。新增通用刷新端点 `/v1/api/daily/cards/display/<id>/refresh`(跑卡片目录 crawl.py)。 |
 | V1.0 | 2026-06-07 | **recipe 心跳恢复**：查清卡片 heartbeat.json 无调度器在跑(Build喵暂停后全停)。新建 2 个 OpenClaw cron(card-assistant)：工作日`0 11 * * 1-5`生成午餐推荐 + 周末`0 11 * * 6,0`检查催促。手动验证卡片喵能正确执行。卡片喵=Opus(非DeepSeek) |

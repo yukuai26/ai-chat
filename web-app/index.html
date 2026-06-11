@@ -4026,15 +4026,23 @@
       var isAuthApi = urlStr.includes('/v1/api/auth');
       if (!isAuthApi) {
         var headers = opts.headers || {};
-        var hasAuth = false;
+        var authVal = '';
         if (headers instanceof Headers) {
-          // Headers object: check has/get
-          try { hasAuth = headers.has('Authorization'); } catch(e) {}
+          try { authVal = headers.get('Authorization') || ''; } catch(e) {}
         } else {
-          hasAuth = !!headers['Authorization'] || !!headers.authorization;
+          authVal = headers['Authorization'] || headers.authorization || '';
         }
-        if (!hasAuth) {
-          opts.headers = Object.assign(opts.headers || {}, getAuthHeaders());
+        // 关键修复(2026-06-11): "空 Bearer"(如 #token 框为空发出的 'Bearer ')
+        // 视作无有效凭证，用 JWT 覆盖，避免发空 token 导致 401 被踢回登录页。
+        var hasValidAuth = !!authVal && authVal.trim() !== '' && authVal.trim().toLowerCase() !== 'bearer';
+        if (!hasValidAuth && authJwt) {
+          if (headers instanceof Headers) {
+            try { headers.set('Authorization', 'Bearer ' + authJwt); } catch(e) {}
+            opts.headers = headers;
+          } else {
+            try { delete headers['Authorization']; delete headers.authorization; } catch(e) {}
+            opts.headers = Object.assign(headers, getAuthHeaders());
+          }
         }
       }
       return origFetch(url, opts).then(function(r) {
@@ -6924,7 +6932,7 @@
     /** 从 API 加载卡片配置并渲染网格 */
     async function loadDashboard() {
       const grid = document.getElementById('dashboardGrid');
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) {
         grid.innerHTML = '<div class="dashboard-loading">⚠️ 请先连接 API Token</div>';
         return;
@@ -7046,7 +7054,7 @@
 
     /** 显示添加卡片弹窗 */
     async function showAddCardModal() {
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
 
       // 加载注册表（如果尚未加载）
@@ -7105,7 +7113,7 @@
 
     /** 添加选中卡片到面板 */
     async function addSelectedCard(cardId) {
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
 
       try {
@@ -7515,7 +7523,7 @@
 
     /** 保存布局排序到服务器 */
     async function saveLayoutOrder() {
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
 
       const order = dashboardCards.map(c => c.id);
@@ -7579,7 +7587,7 @@
         btn.textContent = '⏳ 刷新中...';
       }
 
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) {
         showCommandToast('⚠️ 请先连接 API Token', 'error');
         if (btn) { btn.disabled = false; btn.classList.remove('spinning'); btn.textContent = '🔄 刷新'; }
@@ -7666,9 +7674,13 @@
    * 卡片喵只需改 display.json / generate-display.py，前端不用动。
    */
   async function loadGenericCard(cardEl, cardId) {
+    // 止血(2026-06-11): 同卡 800ms 内不重复加载
+    var _lk = window._cardLoadLock || (window._cardLoadLock = {});
+    var _n = Date.now();
+    if (_lk['gen_'+cardId] && _n - _lk['gen_'+cardId] < 800) return;
+    _lk['gen_'+cardId] = _n;
     var tokenEl = document.getElementById('token');
-    if (!tokenEl) return;
-    var token = tokenEl.value;
+    var token = authJwt || (tokenEl ? tokenEl.value : '');
     var summaryEl = cardEl.querySelector('.card-summary');
     var bodyEl = cardEl.querySelector('.card-body');
 
@@ -7771,9 +7783,41 @@
           html += '<ul style="margin:4px 0;padding-left:18px">';
           var li = sec.items || [];
           for (var lii = 0; lii < li.length; lii++) {
-            html += '<li style="padding:2px 0">' + escapeHtml(li[lii].text || li[lii] || '') + '</li>';
+            var lit = li[lii];
+            var ltext = (lit && typeof lit === 'object') ? (lit.text || '') : (lit || '');
+            var lurl = (lit && typeof lit === 'object') ? (lit.url || '') : '';
+            // 增强(2026-06-11): item 带 url → 渲染为可点链接(新标签页跳原文)
+            if (lurl) {
+              html += '<li style="padding:2px 0"><a href="' + escapeHtmlAttr(lurl) + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none;">' + escapeHtml(ltext) + '</a></li>';
+            } else {
+              html += '<li style="padding:2px 0">' + escapeHtml(ltext) + '</li>';
+            }
           }
           html += '</ul>';
+          break;
+
+        case 'source_matrix':
+          // 形态①多源并排矩阵(2026-06-11)：每来源一列横向并排，列内新闻可点跳原文。横向滚动。
+          var mcols = sec.columns || [];
+          html += '<div class="news-matrix" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:4px 0 8px;">';
+          for (var mi = 0; mi < mcols.length; mi++) {
+            var mc = mcols[mi];
+            html += '<div class="news-matrix-col" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px;min-width:0;">';
+            html += '<div style="font-weight:600;font-size:13px;padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid var(--border);position:sticky;top:0;">' + escapeHtml(mc.source || '') + ' <span style="color:var(--text-tertiary);font-weight:400;font-size:11px;">(' + ((mc.items||[]).length) + ')</span></div>';
+            var mits = mc.items || [];
+            for (var mj = 0; mj < mits.length; mj++) {
+              var mit = mits[mj];
+              var murl = mit.url || '';
+              var mtext = escapeHtml(mit.text || '');
+              if (murl) {
+                html += '<div style="padding:4px 0;font-size:12.5px;line-height:1.45;border-bottom:1px dashed var(--border);"><a href="' + escapeHtmlAttr(murl) + '" target="_blank" rel="noopener noreferrer" style="color:var(--text-primary);text-decoration:none;">' + mtext + '</a></div>';
+              } else {
+                html += '<div style="padding:4px 0;font-size:12.5px;line-height:1.45;border-bottom:1px dashed var(--border);">' + mtext + '</div>';
+              }
+            }
+            html += '</div>';
+          }
+          html += '</div>';
           break;
 
         case 'note':
@@ -7971,8 +8015,13 @@
     /* ===== TodoCard V2: 左右两栏 + 三段 + done_date，读 display.columns ===== */
     let cachedTodoDisplay = null;
 
+    var _cardLoadLock = window._cardLoadLock || (window._cardLoadLock = {});
     async function loadTodoCard(cardEl) {
       if (!cardEl) return;
+      // 止血(2026-06-11): 同卡 800ms 内不重复加载，阻断请求风暴
+      var _now = Date.now();
+      if (_cardLoadLock['todo'] && _now - _cardLoadLock['todo'] < 800) return;
+      _cardLoadLock['todo'] = _now;
       const summary = cardEl.querySelector('.card-summary');
       const body = cardEl.querySelector('.card-body');
       if (!body) return;
@@ -8147,7 +8196,7 @@
       if (!value) { showCommandToast('⚠️ 请输入新值', 'error'); return; }
 
       const person = dataActivePerson;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) { closeDataEdit(); return; }
 
       try {
@@ -8197,7 +8246,7 @@
       const text = ta.value.trim();
       if (!text) { showCommandToast('⚠️ 请输入食谱文本', 'error'); return; }
 
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
 
       try {
@@ -8311,7 +8360,7 @@
 
 
     async function toggleHabit(id) {
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       const resp = await fetch('/v1/api/daily/habits/' + id + '/toggle', {
         method: 'POST', headers: { 'Authorization': 'Bearer ' + token }
       });
@@ -8325,7 +8374,7 @@
     async function addHabit() {
       const text = document.getElementById('habitTextInput').value.trim();
       if (!text) return;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       const resp = await fetch('/v1/api/daily/habits', {
         method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text })
@@ -8336,7 +8385,7 @@
 
     async function deleteHabit(id) {
       if (!confirm('删除这个习惯？')) return;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       await fetch('/v1/api/daily/habits/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }});
       cachedHabitsData = null;
       const c = document.querySelector('[data-card-id="habits"]');
@@ -8356,7 +8405,7 @@
       if (!text) return;
       const time = document.getElementById('reminderTimeInput').value;
       const type = document.getElementById('reminderTypeSelect').value;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       const body = { text: text, time: time, type: type };
       if (type === 'weekly') body.day = '周一';
       if (type === 'monthly') body.date = 1;
@@ -8369,7 +8418,7 @@
     }
 
     async function toggleReminder(id) {
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       const reminders = cachedRemindersData && cachedRemindersData.reminders || [];
       const found = reminders.find(function(r){return r.id===id;});
       if (!found) return;
@@ -8382,7 +8431,7 @@
 
     async function deleteReminder(id) {
       if (!confirm('删除这个提醒？')) return;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       await fetch('/v1/api/daily/reminders/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }});
       cachedRemindersData = null;
       const c = document.querySelector('[data-card-id="reminders"]');
@@ -8400,7 +8449,7 @@
       const text = document.getElementById('sharesTextInput').value.trim();
       if (!text) return;
       const mood = document.getElementById('sharesMoodSelect').value;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       const resp = await fetch('/v1/api/daily/cards/display/shares', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -8415,7 +8464,7 @@
 
     async function deleteShare(id) {
       if (!confirm('删除这条分享？')) return;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       await fetch('/v1/api/daily/shares/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }});
       cachedSharesData = null;
       const card = document.querySelector('[data-card-id="shares"]');
@@ -8432,7 +8481,7 @@
 
     async function switchPhotosTab(tab) {
       photosTab = tab;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
       try {
         const url = tab === 'all' ? '/v1/api/daily/photos' : '/v1/api/daily/photos?tab=' + encodeURIComponent(tab);
@@ -8453,7 +8502,7 @@
     async function uploadPhoto() {
       const input = document.getElementById('photosFileInput');
       if (!input || !input.files.length) return;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       const form = new FormData();
       form.append('file', input.files[0]);
       const resp = await fetch('/v1/api/daily/cards/display/photos', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: form });
@@ -8490,7 +8539,7 @@
     }
 
     async function togglePhotoLike(id) {
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
       const resp = await fetch('/v1/api/daily/cards/display/photos/' + id + '/like', {
         method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -8506,7 +8555,7 @@
     async function addPhotoComment(id) {
       const input = document.getElementById('photoCommentInput');
       if (!input || !input.value.trim()) return;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       const resp = await fetch('/v1/api/daily/cards/display/photos/' + id + '/comment', {
         method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ author: '管理员', text: input.value.trim() })
@@ -8529,7 +8578,7 @@
 
     async function filterBookmarks(tag) {
       if (tag !== null && tag !== undefined) bookmarksTagFilter = tag;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
       const resp = await fetch('/v1/api/daily/cards/display/bookmarks', {
         headers: { 'Authorization': 'Bearer ' + token }
@@ -8547,7 +8596,7 @@
     }
 
     async function toggleBookmarkRead(id) {
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
       await fetch('/v1/api/daily/bookmarks/' + id, {
         method: 'PUT',
@@ -8559,7 +8608,7 @@
 
     async function deleteBookmark(id) {
       if (!confirm('确定删除这个收藏？')) return;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
       await fetch('/v1/api/daily/bookmarks/' + id + '?person=admin', {
         method: 'DELETE',
@@ -8597,7 +8646,7 @@
     async function fetchBookmarkPreview(url) {
       const preview = document.getElementById('bookmarkFetchPreview');
       if (!preview || !url) return;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
       try {
         const resp = await fetch('/v1/api/daily/cards/display/bookmarks/fetch', {
@@ -8615,7 +8664,7 @@
     async function addBookmark() {
       const url = document.getElementById('bookmarkUrlInput').value.trim();
       if (!url) return;
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
       const resp = await fetch('/v1/api/daily/cards/display/bookmarks', {
         method: 'POST',
@@ -8655,7 +8704,7 @@
       if (!input) return;
       notesSearchTerm = input.value.trim();
 
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
 
       try {
@@ -8680,7 +8729,7 @@
       notesActivePerson = select.value;
       notesSearchTerm = '';
 
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
 
       try {
@@ -8704,7 +8753,7 @@
       if (!input || !input.value.trim()) return;
       const text = input.value.trim();
 
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
 
       try {
@@ -8740,7 +8789,7 @@
     async function deleteNotesItem(noteId) {
       if (!confirm('确定删除这条随手记？')) return;
 
-      const token = document.getElementById('token').value;
+      const token = authJwt || document.getElementById('token').value;
       if (!token) return;
 
       try {
@@ -9132,7 +9181,7 @@
           var grid = document.getElementById('dashboardGrid');
           if (grid) {
             try {
-              var token = document.getElementById('token').value;
+              var token = authJwt || document.getElementById('token').value;
               fetch('/v1/api/daily/cards/display/' + card, { headers: { 'Authorization': 'Bearer ' + token } })
                 .then(function(r) { return r.json(); })
                 .then(function(d) {

@@ -1,12 +1,42 @@
 {
   "card_name": "新闻",
-  "domain_knowledge": "每日自动爬取的新闻资讯。每天一个文件 YYYY-MM-DD.json，按分类组织。通常不需要手动修改。",
+  "data_schema": {
+    "description": "新闻卡片数据。爬虫(crawl.py)自动抓取写入，一般不手改。items=全量去重条目(带score)，by_source=按来源原始分组。",
+    "structure": {
+      "date": "YYYY-MM-DD",
+      "updated": "ISO 时间",
+      "total": "number 全量条数",
+      "weather": "杭州天气文本(可选, 如 🌦️ 多云 31°C)",
+      "items": [
+        {
+          "title": "string 标题",
+          "url": "string 原文链接",
+          "source": "string 来源名",
+          "source_count": "number 几个源报道了此事件(去重聚合)",
+          "channel": "经济财经|国内时事|国内热点|国际政治|综合 等",
+          "score": "number 综合排序分(热度+兴趣+偏好+时效)",
+          "hit_keywords": ["命中的兴趣关键词"]
+        }
+      ],
+      "by_source": {
+        "来源名": [{"title": "", "url": "", "channel": ""}]
+      }
+    }
+  },
+  "interest_keywords": {
+    "国际政治": ["美联储", "白宫", "拜登", "特朗普", "欧盟", "联合国", "制裁", "停火", "中东", "俄乌", "乌克兰", "俄罗斯", "北约", "关税", "以色列", "伊朗", "加沙", "选举", "外交"],
+    "国内政治": ["国务院", "发改委", "政策", "央行", "两会", "部署", "监管", "主席", "总理", "中央", "国资委", "部委"],
+    "杭州本地": ["杭州", "浙江", "西湖", "钱塘", "亚运", "余杭", "滨江", "天气"],
+    "经济财经": ["经济", "GDP", "A股", "股市", "降息", "加息", "通胀", "楼市", "房价", "黄金", "原油", "比特币", "财报", "美股", "汇率", "人民币", "出口", "消费"]
+  },
   "best_practices": [
-    "新闻卡片是只读的（爬虫自动更新），一般不要手动改"
+    "新闻卡片数据由 crawl.py 自动抓取(cron 08/12/18/22 + 手动刷新)，一般不手改 data.json。",
+    "调整关注方向：改 interest_keywords 即可，下次抓取自动重新打分置顶。",
+    "展示由 generate-display.py 生成：折叠态=Top要闻摘要，展开态=精选Top12 + 按来源分块全部，每条可点跳原文。",
+    "国外源走代理且失败跳过，不影响整卡。"
   ],
-  "user_preferences": [],
-  "examples": [],
-  "apply_rules_behavior": {
-    "summary_generation": "从 rules.json 的 summary_tpl 模板渲染"
-  }
+  "user_preferences": [
+    "优先关注：国际政治 / 国内政治 / 杭州本地(含天气) / 经济财经"
+  ],
+  "interaction_note": "用户对话可说'多关注XX/别推XX'→ 改 interest_keywords；'刷新新闻'→ 跑 crawl.py。"
 }

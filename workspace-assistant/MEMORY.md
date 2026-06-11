@@ -87,6 +87,19 @@ Phase 1-16 全部完成（文件浏览器、Dashboard、搜索、WebSocket、日
 - `projects/ac/ac-design-code-audit-V2.0-ACTIVE.md` — 设计↔代码审查（2026-06-07，零未完成TODO）
 - **铁律**：改代码必须改设计，改设计必须改代码（写在 baseline + SOUL.md + AGENTS.md）
 
+### 📰 新闻卡片（2026-06-11 完成）
+- 设计文档：`projects/ac/ac-news-card-design-V1.0-ACTIVE.md`
+- **遵循 card-spec 规范**：标准卡片目录 `user-data/daily-data/news/`（7 文件：data/display/prompt/rules/generate-display.py/sources.json/crawl.py）
+- **设计核心**：分层信息密度——折叠态 Top3 要闻+天气；展开态「🔥精选Top12」(跨源去重打分) +「📰按来源分块」(14源各一块全部条目)；**每条可点链接跳原文**
+- **crawl.py**：抓 14 源（国内直连+国际走代理`172.29.4.175:22222`失败兜底）→ 标题相似度去重聚合(source_count)→ 打分(多源报道+兴趣词命中+国际政治/财经默认加权+时效)。实测 181条/14源/0失败。B站403已禁用
+- **兴趣方向**(prompt.json.interest_keywords，可对话改)：国际政治/国内政治/杭州本地(含天气)/经济财经
+- **刷新**：系统 crontab `0 8,12,18,22` 跑 `cron-crawl.sh` + 前端手动刷新按钮
+- **前端增强**：`renderCardBody` 的 list case 支持 item.url→`<a target=_blank>`（写进 card-spec 规范，所有卡片受益）
+- **后端新增**：通用刷新端点 `/v1/api/daily/cards/display/<id>/refresh`（跑该卡 crawl.py）
+- commit `6434afa`（index.html+fileserver.py）已 push origin main
+- **2026-06-11 迭代**(commit `c7ff06c`/`06b30e9`)：①外文标题翻译(方案A: Google免费端点走代理+缓存trans_cache.json，译BBC/NYT/卫报/半岛/NHK/AP，留title_orig) ②"全部来源"区改 `source_matrix`(多源并排矩阵→后改响应式grid auto-fill自动多列不拖动，每条可点) ③精选Top12仍保留可点list ④折叠summary精简(头条1条+共N条+时间+气温) ⑤**天气提醒化**：wttr逐时/3天预报→「约X点下雨带伞」「明天高温/降温」等提醒，无需提醒只显现状，提醒进summary末尾+置顶块。card-spec 新增 source_matrix section 类型
+- 旧 `/v1/api/daily/news` + news_crawler.py 占位 = DEPRECATED；旧 2026-05-28.json 已归档到 _archive/
+
 ### fileserver 注意
 - 由 systemd 管（PID 会变），端口 5050。曾有游离进程占端口的坑，2026-06-07 已清，确保 systemd 接管
 

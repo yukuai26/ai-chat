@@ -1,0 +1,15 @@
+{
+  "interaction_rules": [
+    {"trigger": "刷新新闻 / @news 刷新", "action": "执行 crawl.py 重新抓取全部源并重建 display"},
+    {"trigger": "多关注XX / 别推XX / 加关键词", "action": "修改 prompt.json 的 interest_keywords 对应频道，下次抓取自动重打分置顶"},
+    {"trigger": "@news 查询", "action": "读 data.json 返回当前 items / by_source"}
+  ],
+  "display_rules": {
+    "summary": "🔥 今日要闻3条 + Top标题 ｜ HH:MM更新·共N条·杭州天气",
+    "sections": [
+      {"id": "select", "title": "🔥 精选要闻", "type": "list", "source": "items[:12]", "note": "跨源去重打分Top12，每条带url可点，多源报道标·N源", "show_when": "always"},
+      {"id": "by_source", "title": "📰 按来源(每源一块)", "type": "list*N", "source": "by_source", "note": "全部条目按频道顺序分块(财经→国内→综合→国际→本地)，每条带url可点", "show_when": "expand_only"},
+      {"id": "weather", "title": "🌦️ 杭州天气", "type": "kv", "source": "weather", "show_when": "has_data"}
+    ]
+  }
+}

@@ -604,3 +604,18 @@ if new_files:
 | V2.0 ACTIVE | 2026-06-07 | **B3-1 已修复**（commit 00a762d）：`<file>` XML 格式+防注入 |
 | V2.0 ACTIVE | 2026-06-07 | **C2-1 已对齐**：补 baseline C2 白名单设计（user-files）。全部差异闭环 |
 | V2.0 ACTIVE | 2026-06-07 | **D模块/卡片系统深化**：新增 ac-card-spec 规范；todo 卡片按规范重构(两栏三段+done_date+方案C+钩子) commit `4d39498`；其他卡片待逐张接入钩子(见 card-spec T3) |
+
+---
+
+## 🐛 2026-06-11 认证 Bug 修复（登录后立即被踢回登录页）
+
+| 编号 | 模块 | 类型 | 状态 | 说明 |
+|------|------|------|------|------|
+| AU-FIX-1 | 用户系统(AU14 拦截器) | 行为偏差 | ✅ 已修复 | 全局 fetch 拦截器对任意 401 即 `clearAuth`+`showLoginOnly`；而 Dashboard 卡片请求从 `#token` 框取 Gateway Token（网页登录用户该框为空）→ 发出空 `Bearer ` → 拦截器误判"已带 auth"不注入 JWT → 服务端 401 → 立即被踢回登录页 |
+
+**修复内容（index.html，commit `41bd17e`）：**
+1. **拦截器治本**：将"空 Bearer"识别为无有效凭证，自动用 JWT 覆盖注入（约 4021 行 `window.fetch` 包装）。
+2. **源头修正**：卡片相关请求取 token 由 `document.getElementById('token').value` 改为 `authJwt || ...`（含 `loadCardData` 共 29 处），凭证从源头带对，拦截器仅兜底。
+
+**未改动**：`connect()`（4538 行）连接 Gateway 时仍读 `#token` 输入框（该处确需 Gateway Token，非 JWT）。
+

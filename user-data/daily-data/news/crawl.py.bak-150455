@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""新闻卡片爬虫 — ac-news-card-design-V1.0
+抓 16 源(国内直连 + 国际走代理失败兜底) → 归一化 → 跨源去重聚合 → 兴趣/热度打分 → 写 data.json → 跑 generate-display.py
+"""
+import json, os, re, sys, time, urllib.request, urllib.error, ssl, subprocess
+from datetime import datetime
+from zoneinfo import ZoneInfo
+import xml.etree.ElementTree as ET
+
+CARD_DIR = os.path.dirname(os.path.abspath(__file__))
+TZ = ZoneInfo("Asia/Shanghai")
+NOW = datetime.now(TZ)
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
+SSL_CTX = ssl.create_default_context(); SSL_CTX.check_hostname=False; SSL_CTX.verify_mode=ssl.CERT_NONE
+
+def load_json(name, default):
+    p = os.path.join(CARD_DIR, name)
+    if os.path.isfile(p) and os.path.getsize(p) > 0:
+        try: return json.load(open(p, encoding="utf-8"))
+        except Exception: return default
+    return default
+
+def fetch(url, proxy=None, timeout=8):
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Referer": "https://finance.eastmoney.com/"})
+    if proxy:
+        op = urllib.request.build_opener(urllib.request.ProxyHandler({"http": proxy, "https": proxy}),
+                                         urllib.request.HTTPSHandler(context=SSL_CTX))
+    else:
+        op = urllib.request.build_opener(urllib.request.HTTPSHandler(context=SSL_CTX))
+    with op.open(req, timeout=timeout) as r:
+        return r.read().decode("utf-8", "ignore")
+
+# ---------- 各源解析器: 返回 [{title,url,summary}] ----------
+def p_sina_roll(txt):
+    d = json.loads(txt); out=[]
+    for it in d.get("result",{}).get("data",[]):
+        t=it.get("title","").strip(); u=it.get("url","").strip()
+        if t and u: out.append({"title":t,"url":u,"summary":it.get("intro","")})
+    return out
+
+def p_eastmoney(txt):
+    d=json.loads(txt); out=[]
+    for it in d.get("data",{}).get("list",[]):
+        t=(it.get("title") or it.get("Art_Title") or "").strip()
+        u=(it.get("url_w") or it.get("Art_Url") or "").strip()
+        if not u and it.get("code"): u="https://finance.eastmoney.com/a/%s.html"%it.get("code")
+        if t and u: out.append({"title":t,"url":u,"summary":it.get("summary","")})
+    return out
+
+def p_baidu_hot(txt):
+    d=json.loads(txt); out=[]
+    for card in d.get("data",{}).get("cards",[]):
+        for blk in card.get("content",[]):
+            # 百度榜单在嵌套 content[].content[]，也兼容平铺
+            rows = blk.get("content") if isinstance(blk.get("content"), list) else [blk]
+            for it in rows:
+                t=(it.get("word") or it.get("query") or "").strip(); u=it.get("url","").strip()
+                if t and u: out.append({"title":t,"url":u,"summary":it.get("desc","")})
+    return out
+
+def p_toutiao_hot(txt):
+    d=json.loads(txt); out=[]
+    for it in d.get("data",[]):
+        t=it.get("Title","").strip(); u=it.get("Url","").strip()
+        if t and u: out.append({"title":t,"url":u,"summary":""})
+    return out
+
+def p_zhihu_hot(txt):
+    d=json.loads(txt); out=[]
+    for it in d.get("data",[]):
+        tg=it.get("target",{}); t=(tg.get("title") or "").strip()
+        tid=tg.get("id"); u="https://www.zhihu.com/question/%s"%tid if tid else ""
+        if t and u: out.append({"title":t,"url":u,"summary":(tg.get("excerpt") or "")})
+    return out
+
+def p_bili_hot(txt):
+    d=json.loads(txt); out=[]
+    for it in d.get("data",{}).get("list",[]):
+        t=it.get("title","").strip(); u=it.get("short_link_v2") or ("https://www.bilibili.com/video/%s"%it.get("bvid",""))
+        if t and u: out.append({"title":t,"url":u,"summary":(it.get("desc") or "")[:80]})
+    return out
+
+def p_wttr(txt):
+    d=json.loads(txt); cc=(d.get("current_condition") or [{}])[0]
+    desc=""
+    try: desc=cc.get("lang_zh",[{}])[0].get("value") or cc.get("weatherDesc",[{}])[0].get("value","")
+    except Exception: desc=cc.get("weatherDesc",[{}])[0].get("value","")
+    temp=cc.get("temp_C",""); feels=cc.get("FeelsLikeC","")
+    return {"weather": "%s %s°C(体感%s°C)"%(desc, temp, feels)} if temp else {}
+
+def p_rss(txt):
+    out=[]
+    try:
+        txt=re.sub(r'<\?xml[^>]*\?>','',txt).strip()
+        root=ET.fromstring(txt)
+    except Exception:
+        # rdf/namespace 容错: 提取 item
+        items=re.findall(r'<item[ >].*?</item>', txt, re.S)
+        for raw in items:
+            mt=re.search(r'<title[^>]*>(.*?)</title>', raw, re.S)
+            ml=re.search(r'<link[^>]*>(.*?)</link>', raw, re.S)
+            if mt and ml:
+                t=re.sub(r'<!\[CDATA\[|\]\]>','',mt.group(1)).strip()
+                u=re.sub(r'<!\[CDATA\[|\]\]>','',ml.group(1)).strip()
+                if t and u: out.append({"title":t,"url":u,"summary":""})
+        return out
+    for item in root.iter():
+        tag=item.tag.split('}')[-1]
+        if tag in ("item","entry"):
+            t=u=""; 
+            for ch in item:
+                ct=ch.tag.split('}')[-1]
+                if ct=="title" and ch.text: t=ch.text.strip()
+                elif ct=="link":
+                    u=(ch.text or ch.get("href") or "").strip()
+            if t and u: out.append({"title":t,"url":u,"summary":""})
+    return out
+
+PARSERS={"sina_roll":p_sina_roll,"eastmoney":p_eastmoney,"baidu_hot":p_baidu_hot,
+         "toutiao_hot":p_toutiao_hot,"zhihu_hot":p_zhihu_hot,"bili_hot":p_bili_hot,
+         "rss":p_rss,"wttr":p_wttr}
+
+# ---------- 去重 + 打分 ----------
+def norm_title(t):
+    return re.sub(r'[\s\W_【】\[\]丨|：:，,。.、!！?？]+','', t).lower()
+
+def main():
+    cfg=load_json("sources.json",{}); prompt=load_json("prompt.json",{})
+    proxy=cfg.get("proxy"); timeout=cfg.get("timeout",8); limit=cfg.get("per_source_limit",15)
+    kw_map=prompt.get("interest_keywords",{})
+    all_kw=[(w,ch) for ch,ws in kw_map.items() for w in ws]
+
+    raw_items=[]; by_source={}; weather=""; ok_src=0; fail_src=[]
+    for s in cfg.get("sources",[]):
+        if not s.get("enabled"): continue
+        try:
+            txt=fetch(s["url"], proxy=(proxy if s["net"]=="proxy" else None), timeout=timeout)
+            parser=PARSERS.get(s["kind"])
+            if s["kind"]=="wttr":
+                w=parser(txt); weather=w.get("weather",""); ok_src+=1; continue
+            items=parser(txt)[:limit]
+            if items:
+                ok_src+=1
+                by_source[s["name"]]=[{"title":it["title"],"url":it["url"],"channel":s["channel"]} for it in items]
+                for it in items:
+                    raw_items.append({**it,"source":s["name"],"channel":s["channel"]})
+        except Exception as e:
+            fail_src.append("%s(%s)"%(s["name"], str(e)[:40]))
+    # 跨源去重聚合
+    merged={}
+    for it in raw_items:
+        k=norm_title(it["title"])[:40]
+        if not k: continue
+        if k in merged:
+            merged[k]["source_count"]+=1
+            if it["source"] not in merged[k]["_srcs"]: merged[k]["_srcs"].append(it["source"])
+        else:
+            merged[k]={"title":it["title"],"url":it["url"],"source":it["source"],
+                       "channel":it["channel"],"source_count":1,"_srcs":[it["source"]]}
+    # 打分
+    items=[]
+    for m in merged.values():
+        score=m["source_count"]*10.0
+        hits=[]; t=m["title"]
+        for w,ch in all_kw:
+            if w in t and w not in hits:
+                hits.append(w); score+=6.0
+        if m["channel"] in ("国际政治","经济财经"): score+=4.0
+        if m["channel"] in ("国内时事","国内政治"): score+=2.0
+        m["score"]=round(score,1); m["hit_keywords"]=hits
+        del m["_srcs"]
+        items.append(m)
+    items.sort(key=lambda x:(-x["score"], -x["source_count"]))
+
+    data={"date":NOW.strftime("%Y-%m-%d"),"updated":NOW.isoformat(),
+          "total":len(items),"weather":weather,"items":items,"by_source":by_source}
+    json.dump(data, open(os.path.join(CARD_DIR,"data.json"),"w"), ensure_ascii=False, indent=2)
+    print(json.dumps({"count":len(items),"sources":ok_src,"failed":fail_src,"date":data["date"]}, ensure_ascii=False))
+
+    # 跑 generate-display
+    if "--no-display" not in sys.argv:
+        gd=os.path.join(CARD_DIR,"generate-display.py")
+        if os.path.isfile(gd):
+            subprocess.run(["python3",gd], timeout=20)
+
+if __name__=="__main__":
+    main()

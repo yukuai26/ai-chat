@@ -52,6 +52,13 @@ def main():
     summary_parts = []
     for uid, uname in USERS:
         items = data.get(uid, []) or []
+        # 防御(2026-06-11): 兼容旧嵌套格式 {daily:[]} / 过滤非dict脏项, 避免崩溃引发刷新风暴
+        if isinstance(items, dict):
+            flat = []
+            for v in items.values():
+                if isinstance(v, list): flat.extend(v)
+            items = flat
+        items = [it for it in items if isinstance(it, dict)]
         sections, today_list, overdue_list = build_user_sections(items)
         # 摘要分母 = 当日 + 逾期未完成 的总数；分子 = 其中已完成
         active = today_list + overdue_list

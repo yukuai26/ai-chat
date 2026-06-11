@@ -1,0 +1,158 @@
+{
+  "_comment": "新闻源配置 — ac-news-card-design-V1.0. channel:频道; net:direct/proxy; kind:解析类型",
+  "proxy": "http://172.29.4.175:22222",
+  "timeout": 8,
+  "per_source_limit": 15,
+  "sources": [
+    {
+      "id": "sina_finance",
+      "name": "新浪财经",
+      "channel": "经济财经",
+      "net": "direct",
+      "kind": "sina_roll",
+      "url": "https://feed.mix.sina.com.cn/api/roll/get?pageid=155&lid=1686&num=20&page=1",
+      "enabled": true,
+      "translate": false
+    },
+    {
+      "id": "eastmoney",
+      "name": "东方财富",
+      "channel": "经济财经",
+      "net": "direct",
+      "kind": "eastmoney",
+      "url": "https://np-listapi.eastmoney.com/comm/web/getNewsByColumns?client=web&biz=web_news_col&column=350&order=1&needInteractData=0&page_index=1&page_size=20&req_trace=1",
+      "enabled": true,
+      "translate": false
+    },
+    {
+      "id": "sina_roll",
+      "name": "新浪要闻",
+      "channel": "国内时事",
+      "net": "direct",
+      "kind": "sina_roll",
+      "url": "https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2509&num=20&page=1",
+      "enabled": true,
+      "translate": false
+    },
+    {
+      "id": "baidu_hot",
+      "name": "百度热搜",
+      "channel": "国内热点",
+      "net": "direct",
+      "kind": "baidu_hot",
+      "url": "https://top.baidu.com/api/board?platform=wise&tab=realtime",
+      "enabled": true,
+      "translate": false
+    },
+    {
+      "id": "toutiao_hot",
+      "name": "头条热榜",
+      "channel": "国内热点",
+      "net": "direct",
+      "kind": "toutiao_hot",
+      "url": "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc",
+      "enabled": true,
+      "translate": false
+    },
+    {
+      "id": "zhihu_hot",
+      "name": "知乎热榜",
+      "channel": "国内热议",
+      "net": "direct",
+      "kind": "zhihu_hot",
+      "url": "https://api.zhihu.com/topstory/hot-list?limit=20",
+      "enabled": true,
+      "translate": false
+    },
+    {
+      "id": "bili_hot",
+      "name": "B站热门",
+      "channel": "综合",
+      "net": "direct",
+      "kind": "bili_hot",
+      "url": "https://api.bilibili.com/x/web-interface/popular?ps=15",
+      "enabled": false,
+      "translate": false
+    },
+    {
+      "id": "bbc_world",
+      "name": "BBC World",
+      "channel": "国际政治",
+      "net": "proxy",
+      "kind": "rss",
+      "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "enabled": true,
+      "translate": true
+    },
+    {
+      "id": "nyt_world",
+      "name": "NYT World",
+      "channel": "国际政治",
+      "net": "proxy",
+      "kind": "rss",
+      "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+      "enabled": true,
+      "translate": true
+    },
+    {
+      "id": "guardian_world",
+      "name": "卫报 World",
+      "channel": "国际政治",
+      "net": "proxy",
+      "kind": "rss",
+      "url": "https://www.theguardian.com/world/rss",
+      "enabled": true,
+      "translate": true
+    },
+    {
+      "id": "aljazeera",
+      "name": "半岛",
+      "channel": "国际政治",
+      "net": "proxy",
+      "kind": "rss",
+      "url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "enabled": true,
+      "translate": true
+    },
+    {
+      "id": "nhk",
+      "name": "NHK 日本",
+      "channel": "国际",
+      "net": "proxy",
+      "kind": "rss",
+      "url": "https://www3.nhk.or.jp/rss/news/cat0.xml",
+      "enabled": true,
+      "translate": true
+    },
+    {
+      "id": "ap",
+      "name": "美联社 AP",
+      "channel": "国际政治",
+      "net": "proxy",
+      "kind": "rss",
+      "url": "https://feedx.net/rss/ap.xml",
+      "enabled": true,
+      "translate": true
+    },
+    {
+      "id": "dw_chinese",
+      "name": "德国之声中文",
+      "channel": "国际政治",
+      "net": "proxy",
+      "kind": "rss",
+      "url": "https://rss.dw.com/rdf/rss-chi-all",
+      "enabled": true,
+      "translate": false
+    },
+    {
+      "id": "hangzhou_weather",
+      "name": "杭州天气",
+      "channel": "杭州本地",
+      "net": "direct",
+      "kind": "wttr",
+      "url": "https://wttr.in/Hangzhou?format=j1",
+      "enabled": true,
+      "translate": false
+    }
+  ]
+}

@@ -1823,8 +1823,13 @@ def _regenerate_display(card_id: str):
     if not os.path.isfile(script):
         return False
     try:
-        _subprocess.run(["python3", script, "--no-notify"], timeout=15,
+        _r = _subprocess.run(["python3", script, "--no-notify"], timeout=15,
                         capture_output=True, cwd=os.path.join(DAILY_DATA_DIR, card_id))
+        # 加固(2026-06-11): 脚本失败则不广播。否则崩溃脚本+time_sensitive会引发
+        # card_changed 风暴(前端收到就重载→再触发重建→再崩→再广播, 无限循环)。
+        if _r.returncode != 0:
+            logger.warning(f"_regenerate_display({card_id}) 脚本失败(rc={_r.returncode}), 跳过广播: {(_r.stderr or b'')[:200]}")
+            return False
         # 统一在这里广播(脚本带 --no-notify 避免重复)
         try:
             _broadcast({"event": "card_changed", "by": "system", "card": card_id})

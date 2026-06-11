@@ -7674,6 +7674,11 @@
    * 卡片喵只需改 display.json / generate-display.py，前端不用动。
    */
   async function loadGenericCard(cardEl, cardId) {
+    // 止血(2026-06-11): 同卡 800ms 内不重复加载
+    var _lk = window._cardLoadLock || (window._cardLoadLock = {});
+    var _n = Date.now();
+    if (_lk['gen_'+cardId] && _n - _lk['gen_'+cardId] < 800) return;
+    _lk['gen_'+cardId] = _n;
     var tokenEl = document.getElementById('token');
     var token = authJwt || (tokenEl ? tokenEl.value : '');
     var summaryEl = cardEl.querySelector('.card-summary');
@@ -7986,8 +7991,13 @@
     /* ===== TodoCard V2: 左右两栏 + 三段 + done_date，读 display.columns ===== */
     let cachedTodoDisplay = null;
 
+    var _cardLoadLock = window._cardLoadLock || (window._cardLoadLock = {});
     async function loadTodoCard(cardEl) {
       if (!cardEl) return;
+      // 止血(2026-06-11): 同卡 800ms 内不重复加载，阻断请求风暴
+      var _now = Date.now();
+      if (_cardLoadLock['todo'] && _now - _cardLoadLock['todo'] < 800) return;
+      _cardLoadLock['todo'] = _now;
       const summary = cardEl.querySelector('.card-summary');
       const body = cardEl.querySelector('.card-body');
       if (!body) return;

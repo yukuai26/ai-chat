@@ -2305,6 +2305,38 @@ def get_card_display(card_id):
     return jsonify({"ok": True, "card_id": card_id, "display": display})
 
 
+@app.route("/v1/api/daily/cards/display/<card_id>/refresh", methods=["POST"])
+@require_token
+def refresh_card(card_id):
+    """POST /v1/api/daily/cards/display/<card_id>/refresh - 通用卡片刷新。
+    若卡片目录下存在 crawl.py(爬虫型卡片如 news)，执行之 → 重抓+重建 display。
+    crawl.py 末尾会自跑 generate-display.py 并通知前端。
+    """
+    safe_id = "".join(c for c in (card_id or "") if c.isalnum() or c in "_-")
+    crawl_path = os.path.join(DAILY_DATA_DIR, safe_id, "crawl.py")
+    if not os.path.isfile(crawl_path):
+        return jsonify({"ok": False, "error": "该卡片不支持刷新(无 crawl.py)"}), 404
+    try:
+        result = subprocess.run(["python3", crawl_path, "--no-notify"],
+                                capture_output=True, text=True, timeout=120)
+        out = {}
+        for line in (result.stdout or "").strip().splitlines()[::-1]:
+            line = line.strip()
+            if line.startswith("{"):
+                try: out = json.loads(line); break
+                except Exception: pass
+        if result.returncode != 0:
+            logger.error(f"卡片 {safe_id} 刷新失败: {result.stderr[:200]}")
+            return jsonify({"ok": False, "error": "刷新失败", "detail": result.stderr[:200]}), 500
+        # 刷新后主动重建 display + 通知
+        _regenerate_display(safe_id)
+        return jsonify({"ok": True, "count": out.get("count", 0),
+                        "sources": out.get("sources", 0), "failed": out.get("failed", [])})
+    except subprocess.TimeoutExpired:
+        return jsonify({"ok": False, "error": "刷新超时"}), 500
+    except Exception as e:
+        logger.error(f"卡片 {safe_id} 刷新异常: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 # ---- API: display.json 更新通知 ----

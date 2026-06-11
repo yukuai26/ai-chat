@@ -7778,7 +7778,15 @@
           html += '<ul style="margin:4px 0;padding-left:18px">';
           var li = sec.items || [];
           for (var lii = 0; lii < li.length; lii++) {
-            html += '<li style="padding:2px 0">' + escapeHtml(li[lii].text || li[lii] || '') + '</li>';
+            var lit = li[lii];
+            var ltext = (lit && typeof lit === 'object') ? (lit.text || '') : (lit || '');
+            var lurl = (lit && typeof lit === 'object') ? (lit.url || '') : '';
+            // 增强(2026-06-11): item 带 url → 渲染为可点链接(新标签页跳原文)
+            if (lurl) {
+              html += '<li style="padding:2px 0"><a href="' + escapeHtmlAttr(lurl) + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none;">' + escapeHtml(ltext) + '</a></li>';
+            } else {
+              html += '<li style="padding:2px 0">' + escapeHtml(ltext) + '</li>';
+            }
           }
           html += '</ul>';
           break;

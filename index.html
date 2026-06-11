@@ -7796,6 +7796,30 @@
           html += '</ul>';
           break;
 
+        case 'source_matrix':
+          // 形态①多源并排矩阵(2026-06-11)：每来源一列横向并排，列内新闻可点跳原文。横向滚动。
+          var mcols = sec.columns || [];
+          html += '<div class="news-matrix" style="display:flex;gap:10px;overflow-x:auto;padding:4px 0 8px;">';
+          for (var mi = 0; mi < mcols.length; mi++) {
+            var mc = mcols[mi];
+            html += '<div class="news-matrix-col" style="flex:0 0 220px;min-width:220px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px;">';
+            html += '<div style="font-weight:600;font-size:13px;padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid var(--border);position:sticky;top:0;">' + escapeHtml(mc.source || '') + ' <span style="color:var(--text-tertiary);font-weight:400;font-size:11px;">(' + ((mc.items||[]).length) + ')</span></div>';
+            var mits = mc.items || [];
+            for (var mj = 0; mj < mits.length; mj++) {
+              var mit = mits[mj];
+              var murl = mit.url || '';
+              var mtext = escapeHtml(mit.text || '');
+              if (murl) {
+                html += '<div style="padding:4px 0;font-size:12.5px;line-height:1.45;border-bottom:1px dashed var(--border);"><a href="' + escapeHtmlAttr(murl) + '" target="_blank" rel="noopener noreferrer" style="color:var(--text-primary);text-decoration:none;">' + mtext + '</a></div>';
+              } else {
+                html += '<div style="padding:4px 0;font-size:12.5px;line-height:1.45;border-bottom:1px dashed var(--border);">' + mtext + '</div>';
+              }
+            }
+            html += '</div>';
+          }
+          html += '</div>';
+          break;
+
         case 'note':
           if (sec.title) html += '<b style="display:block;margin:6px 0 2px;">' + escapeHtml(sec.title) + '</b>';
           html += '<div style="background:var(--bg-card);border-radius:8px;padding:8px;font-size:13px;line-height:1.5;color:var(--text-secondary);">' + escapeHtml(sec.text || '') + '</div>';

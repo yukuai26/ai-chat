@@ -212,33 +212,43 @@
     "allergies": []
   },
   "today_recommendation": {
-    "date": "2026-06-11",
-    "weekday": "周四",
+    "date": "2026-06-12",
+    "weekday": "周五",
     "items": [
       {
-        "name": "小炒黄牛肉(微辣,多挑瘦肉)",
+        "name": "豆花牛肉(多挑牛肉,少喝红油)",
         "portion": "120g",
-        "calories": 195,
+        "calories": 185,
         "macros": {
-          "protein": "24g",
-          "carbs": "5g",
+          "protein": "23g",
+          "carbs": "4g",
           "fat": "9g"
         }
       },
       {
-        "name": "椒香琵琶腿(去皮)",
-        "portion": "90g",
-        "calories": 140,
+        "name": "玉子蒸蛋",
+        "portion": "100g",
+        "calories": 95,
         "macros": {
-          "protein": "20g",
+          "protein": "9g",
           "carbs": "2g",
           "fat": "6g"
         }
       },
       {
-        "name": "清炒有机上海青",
+        "name": "蚝油生菜",
         "portion": "150g",
-        "calories": 45,
+        "calories": 50,
+        "macros": {
+          "protein": "2g",
+          "carbs": "5g",
+          "fat": "2g"
+        }
+      },
+      {
+        "name": "清炒娃娃菜",
+        "portion": "120g",
+        "calories": 40,
         "macros": {
           "protein": "2g",
           "carbs": "4g",
@@ -246,33 +256,33 @@
         }
       },
       {
-        "name": "茄子炒蛋(微辣,少油)",
-        "portion": "120g",
-        "calories": 110,
+        "name": "五常大米",
+        "portion": "150g(熟)",
+        "calories": 175,
         "macros": {
-          "protein": "6g",
-          "carbs": "8g",
-          "fat": "6g"
+          "protein": "4g",
+          "carbs": "38g",
+          "fat": "0g"
         }
       },
       {
-        "name": "五常大米",
-        "portion": "120g(熟)",
-        "calories": 140,
+        "name": "裙带排骨汤(只喝汤少吃排骨)",
+        "portion": "1碗",
+        "calories": 60,
         "macros": {
-          "protein": "3g",
-          "carbs": "31g",
-          "fat": "0g"
+          "protein": "5g",
+          "carbs": "2g",
+          "fat": "3g"
         }
       }
     ],
     "total": {
-      "calories": 630,
-      "protein": "55g",
-      "carbs": "50g",
-      "fat": "23g",
+      "calories": 605,
+      "protein": "45g",
+      "carbs": "55g",
+      "fat": "22g",
       "veggies": "270g"
     },
-    "tip": "减脂期午餐：双高蛋白打底——小炒黄牛肉多挑瘦肉、琵琶腿去皮去油，蛋白冲到55g。绿叶选清炒上海青，茄子炒蛋记得少油（茄子吸油是大坑）。主食五常大米控120g。避开鳀鱼烧年糕(双碳水)、干锅狼牙土豆(油炸+微辣偏油)、毛豆烧鸡(同为鸡肉重复)。今早还没记早餐，午餐这份630kcal吃完按减脂2000kcal预算晚餐留约770kcal。"
+    "tip": "减脂期午餐：豆花牛肉挑瘦肉、少喝那层红油打底蛋白，配玉子蒸蛋再补优质蛋白，两样合计32g。绿叶双拼蚝油生菜+清炒娃娃菜共270g管饱。主食五常大米150g，裙带排骨汤暖胃只喝汤。避开蒜香孜然仔排(高油高热)、冒烤鸭(微辣偏油)、手工黄凉皮(精制碳水易超)、毛豆肉片烧干张丝(油重)。今早暂无早餐记录，这份605kcal吃完按减脂2000kcal预算晚餐还有约800kcal空间。"
   }
 }

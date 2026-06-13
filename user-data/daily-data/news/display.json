@@ -1,18 +1,15 @@
 {
-  "summary": "🔥 共180条 ｜ 伊朗战争实时更新：特朗普再次声称协议已接近，…  (22:00·🌦️杭州霾28°C)  📉 明天降温至20°C(最低18°C)，添衣",
+  "summary": "🔥 共179条 ｜ 官方媒体称，以色列对黎巴嫩进行空袭，伊朗声称…  (22:00·🌦️杭州多云21°C)  📈 明天升温至29°C",
   "sections": [
     {
       "title": "🌦️ 杭州天气提醒",
       "type": "list",
       "items": [
         {
-          "text": "📉 明天降温至20°C(最低18°C)，添衣"
+          "text": "📈 明天升温至29°C"
         },
         {
-          "text": "☔ 明天有雨(概率71%)"
-        },
-        {
-          "text": "当前：霾28°C"
+          "text": "当前：多云21°C"
         }
       ]
     },
@@ -21,52 +18,52 @@
       "type": "list",
       "items": [
         {
-          "text": "伊朗战争实时更新：特朗普再次声称协议已接近，中东局势紧张平静 〔NYT World〕",
-          "url": "https://www.nytimes.com/live/2026/06/12/world/iran-war-trump-us-israel"
+          "text": "官方媒体称，以色列对黎巴嫩进行空袭，伊朗声称与美国即将达成协议 〔BBC World〕",
+          "url": "https://www.bbc.com/news/articles/c39y02x98k8o?at_medium=RSS&at_campaign=rss"
         },
         {
-          "text": "特朗普声称伊朗战争谈判取得突破后，亚洲股市飙升，油价下跌 〔美联社 AP〕",
-          "url": "https://apnews.com/article/stocks-markets-ai-iran-oil-rates-47f9fecd934706362104cd92514122fe"
+          "text": "俄罗斯拥有丰富的弹道导弹。乌克兰缺乏阻止他们的方法。 〔NYT World〕",
+          "url": "https://www.nytimes.com/2026/06/13/world/europe/ukraine-russia-patriot-interceptors.html"
         },
         {
-          "text": "央行：前五个月社会融资规模增量累计为17.48万亿元 人民币贷款增加9.11万亿元 〔东方财富〕",
-          "url": "https://finance.eastmoney.com/a/202606123769962278.html"
+          "text": "乌克兰无人机袭击俄罗斯南部造成1人死亡并引发海运码头火灾 〔美联社 AP〕",
+          "url": "https://apnews.com/article/russia-ukraine-war-drone-attack-a2189d216731d92cbe74c873e1e6c04e"
         },
         {
-          "text": "抖音生活服务文旅生态大会落地杭州 2026“心动目的地”战略激发文旅消费新活力 〔东方财富〕",
-          "url": "https://finance.eastmoney.com/a/202606123770118417.html"
+          "text": "欧盟将启动乌克兰和摩尔多瓦首轮入盟谈判 〔德国之声中文〕",
+          "url": "https://www.dw.com/zh/欧盟将启动乌克兰和摩尔多瓦首轮入盟谈判/a-77537180?maca=chi-rss-chi-all-1127-rdf"
         },
         {
-          "text": "特朗普声称即将达成结束伊朗战争的协议后，德黑兰表示“没有任何敲定” 〔BBC World〕",
-          "url": "https://www.bbc.com/news/articles/c78y6w78828o?at_medium=RSS&at_campaign=rss"
+          "text": "最新放假通知：下周连休3天！ 〔新浪财经·2源〕",
+          "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichssh9287715.shtml"
         },
         {
-          "text": "乌克兰收复领土，加倍攻击俄罗斯后勤设施 〔半岛〕",
-          "url": "https://www.aljazeera.com/news/2026/6/12/ukraine-reclaims-territory-in-may-as-it-doubles-strikes-on-russian-logistic?traffic_source=rss"
+          "text": "上海试点收购存量二手房 扩容保障性租赁住房供给 〔东方财富·2源〕",
+          "url": "https://finance.eastmoney.com/a/202606133770610192.html"
         },
         {
-          "text": "网警披露未履行个人信息保护义务案 〔百度热搜·2源〕",
-          "url": "https://m.baidu.com/s?word=%E7%BD%91%E8%AD%A6%E6%8A%AB%E9%9C%B2%E6%9C%AA%E5%B1%A5%E8%A1%8C%E4%B8%AA%E4%BA%BA%E4%BF%A1%E6%81%AF%E4%BF%9D%E6%8A%A4%E4%B9%89%E5%8A%A1%E6%A1%88&sa=fyb_news"
+          "text": "朝鲜外交部反对韩国和欧盟发表不承认朝鲜为核武器国家的联合声明 〔NHK 日本〕",
+          "url": "http://www3.nhk.or.jp/news/html/20260613/k10015149421000.html"
         },
         {
-          "text": "网传“2026高考答案”系谣言 〔百度热搜·2源〕",
-          "url": "https://m.baidu.com/s?word=%E7%BD%91%E4%BC%A0%E2%80%9C2026%E9%AB%98%E8%80%83%E7%AD%94%E6%A1%88%E2%80%9D%E7%B3%BB%E8%B0%A3%E8%A8%80&sa=fyb_news"
+          "text": "大爷入戏太深上台暴打日军演员 〔百度热搜·2源〕",
+          "url": "https://m.baidu.com/s?word=%E5%A4%A7%E7%88%B7%E5%85%A5%E6%88%8F%E5%A4%AA%E6%B7%B1%E4%B8%8A%E5%8F%B0%E6%9A%B4%E6%89%93%E6%97%A5%E5%86%9B%E6%BC%94%E5%91%98&sa=fyb_news"
         },
         {
-          "text": "首都经济贸易大学新增2个本科专业 〔新浪财经〕",
-          "url": "https://finance.sina.com.cn/tjhz/2026-06-12/doc-iniceimm0179116.shtml"
+          "text": "主播说联播 | 织密“六张网”，锻造中国经济硬核底座 〔新浪财经〕",
+          "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichssn8057426.shtml"
         },
         {
-          "text": "6000亿元！央行将等量续作6个月期买断式逆回购 〔东方财富〕",
-          "url": "https://finance.eastmoney.com/a/202606123770151354.html"
+          "text": "央行：前5个月社融规模增量达17.48万亿，贷款增加9.11万亿元 〔东方财富〕",
+          "url": "https://finance.eastmoney.com/a/202606133770612124.html"
         },
         {
-          "text": "市场监管总局（国家认监委）发布两项管理体系认证规则 〔东方财富〕",
-          "url": "https://finance.eastmoney.com/a/202606123770150141.html"
+          "text": "A股投资者，突破2.5亿！2025年月均新开户数超百万 〔东方财富〕",
+          "url": "https://finance.eastmoney.com/a/202606133770607084.html"
         },
         {
-          "text": "市场监管总局发布两项管理体系认证新规 9月1日起实施 〔东方财富〕",
-          "url": "https://finance.eastmoney.com/a/202606123770150092.html"
+          "text": "【财闻联播】张雪机车，再夺第一！A股果链龙头，最新布局曝光 〔东方财富〕",
+          "url": "https://finance.eastmoney.com/a/202606133770605327.html"
         }
       ]
     },
@@ -79,64 +76,64 @@
           "channel": "经济财经",
           "items": [
             {
-              "text": "包粽子、送温情！粽叶裹满邻里暖意",
-              "url": "https://finance.sina.com.cn/jjxw/2026-06-12/doc-iniceimi3405022.shtml"
+              "text": "拉萨德阳村：一枚鸡蛋背后的乡村振兴路",
+              "url": "https://finance.sina.com.cn/jjxw/2026-06-13/doc-inichssn8057604.shtml"
             },
             {
-              "text": "山东曲阜：文物修复师修复孔府档案",
-              "url": "https://finance.sina.com.cn/roll/2026-06-12/doc-iniceimq8909878.shtml"
+              "text": "第十二届上交会交出亮眼成绩单：意向成交项目数首次突破600项！",
+              "url": "https://finance.sina.com.cn/jjxw/2026-06-13/doc-inichssm1280326.shtml"
             },
             {
-              "text": "每万人65件高价值专利！上海这场通报会释放知识产权强信号",
-              "url": "https://finance.sina.com.cn/jjxw/2026-06-12/doc-iniceimm0179807.shtml"
+              "text": "主播说联播 | 织密“六张网”，锻造中国经济硬核底座",
+              "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichssn8057426.shtml"
             },
             {
-              "text": "新思想引领新征程丨多措并举稳就业 千方百计惠民生",
-              "url": "https://finance.sina.com.cn/jjxw/2026-06-12/doc-iniceimq8909655.shtml"
+              "text": "“民族文化+免签红利+交通便捷”让中老跨境休闲游热度持续高涨",
+              "url": "https://finance.sina.com.cn/jjxw/2026-06-13/doc-inichssn8057631.shtml"
             },
             {
-              "text": "首都经济贸易大学新增2个本科专业",
-              "url": "https://finance.sina.com.cn/tjhz/2026-06-12/doc-iniceimm0179116.shtml"
+              "text": "黑龙江女子回乡考编排名第一却被别人递补，多次维权后岗位被取消，当地：系审核人员失误导致，已立案调查",
+              "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichssm1279313.shtml"
             },
             {
-              "text": "北京美人人拍《获奖者说》｜拿了3300块奖金！这位70岁大爷的拍照故事，绝了 ！",
-              "url": "https://finance.sina.com.cn/wm/2026-06-12/doc-iniceimm0176202.shtml"
+              "text": "朱燕勇、刘文正拟任镇江市级机关正职",
+              "url": "https://finance.sina.com.cn/jjxw/2026-06-13/doc-inichnki2639848.shtml"
             },
             {
-              "text": "秦岭答卷丨陕西汉中：守护绿水青山 激活生态富民新动能",
-              "url": "https://finance.sina.com.cn/jjxw/2026-06-12/doc-iniceimm0176052.shtml"
+              "text": "央视《新闻联播》关注贵州乡村产业振兴",
+              "url": "https://finance.sina.com.cn/jjxw/2026-06-13/doc-inichnkk9414673.shtml"
             },
             {
-              "text": "聘任258名校外导师！云南工商学院举办高质量发展雇主大会",
-              "url": "https://finance.sina.com.cn/tjhz/2026-06-12/doc-iniceimi3403058.shtml"
+              "text": "最新放假通知：下周连休3天！",
+              "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichssh9287715.shtml"
             },
             {
-              "text": "二十年小区污水漫溢，无业委会，物业力量薄弱……新桥镇以党建引领推动蝶变",
-              "url": "https://finance.sina.com.cn/jjxw/2026-06-12/doc-iniceimp2121692.shtml"
+              "text": "最新放假通知：下周连休3天！",
+              "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichnkk9415554.shtml"
             },
             {
-              "text": "上交会上，1900平方米的青海馆有棵“生命树”，藏着1.7亿元的双向奔赴",
-              "url": "https://finance.sina.com.cn/jjxw/2026-06-12/doc-iniceimm0169731.shtml"
+              "text": "开放时间有调整！江西两大场馆发布公告",
+              "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichnkq8185790.shtml"
             },
             {
-              "text": "填补国内技术空白，松江企业推出国内首款卫星终端动态星历一体化测试方案",
-              "url": "https://finance.sina.com.cn/jjxw/2026-06-12/doc-iniceimi3393466.shtml"
+              "text": "福建石狮一企业员工违规进入污水池清理鱼鳞发生中毒窒息事故，致1死3伤！罚款52万元，多人被处理",
+              "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichnkq8186183.shtml"
             },
             {
-              "text": "涉嫌严重违纪违法，重庆市农业投资集团有限公司原党委书记、董事长何勇被查！曾任重庆市九龙坡区委常委等职",
-              "url": "https://finance.sina.com.cn/wm/2026-06-12/doc-iniceimq8911735.shtml"
+              "text": "最新放假通知：连休3天，不调休！",
+              "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichnkp1404305.shtml"
             },
             {
-              "text": "四川省人民政府发布最新人事信息，涉厅级领导职务",
-              "url": "https://finance.sina.com.cn/jjxw/2026-06-12/doc-iniceimi3403910.shtml"
+              "text": "5小时缩短至2小时！陕西这条高铁有新进展！",
+              "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichssf2509673.shtml"
             },
             {
-              "text": "【南华新闻】张永走访慰问离退休老干部",
-              "url": "https://finance.sina.com.cn/wm/2026-06-12/doc-iniceimp2131018.shtml"
+              "text": "河南省委书记：针对郑州新密市一纸厂3名员工在制浆池清淤时窒息死亡事件，要深刻汲取教训，做好善后工作，严肃追责",
+              "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichnkq8179441.shtml"
             },
             {
-              "text": "才让太跨省份履新西藏自治区党委常委、统战部部长",
-              "url": "https://finance.sina.com.cn/jjxw/2026-06-12/doc-iniceimm0162689.shtml"
+              "text": "上交会闭幕 意向成交项目数突破600项",
+              "url": "https://finance.sina.com.cn/roll/2026-06-13/doc-inichnki2635943.shtml"
             }
           ]
         },
@@ -145,64 +142,64 @@
           "channel": "经济财经",
           "items": [
             {
-              "text": "四大成果落地，中国印尼跨境金融合作再升级",
-              "url": "https://finance.eastmoney.com/a/202606123770184423.html"
+              "text": "高端船用钢赛道爆发 国产船用钢材订单排到2028年",
+              "url": "https://finance.eastmoney.com/a/202606133770612831.html"
             },
             {
-              "text": "嘉兴年产超10亿只粽子",
-              "url": "https://finance.eastmoney.com/a/202606123770169710.html"
+              "text": "央行：前5个月社融规模增量达17.48万亿，贷款增加9.11万亿元",
+              "url": "https://finance.eastmoney.com/a/202606133770612124.html"
             },
             {
-              "text": "央行：前五个月社会融资规模增量累计为17.48万亿元 人民币贷款增加9.11万亿元",
-              "url": "https://finance.eastmoney.com/a/202606123769962278.html"
+              "text": "上海试点收购存量二手房 扩容保障性租赁住房供给",
+              "url": "https://finance.eastmoney.com/a/202606133770610192.html"
             },
             {
-              "text": "上海股权投资基金募资额两年高增 科创领域获投1346.3亿元居全国首位",
-              "url": "https://finance.eastmoney.com/a/202606123770158888.html"
+              "text": "上海试点收购存量二手房 扩容保障性租赁住房供给",
+              "url": "https://finance.eastmoney.com/a/202606133770610976.html"
             },
             {
-              "text": "【财闻联播】证监会：同意长鑫科技IPO注册！恒生港美科技指数将纳入SpaceX",
-              "url": "https://finance.eastmoney.com/a/202606123770151675.html"
+              "text": "A股投资者，突破2.5亿！2025年月均新开户数超百万",
+              "url": "https://finance.eastmoney.com/a/202606133770607084.html"
             },
             {
-              "text": "6000亿元！央行将等量续作6个月期买断式逆回购",
-              "url": "https://finance.eastmoney.com/a/202606123770151354.html"
+              "text": "六部门，联合印发！",
+              "url": "https://finance.eastmoney.com/a/202606133770606988.html"
             },
             {
-              "text": "市场监管总局（国家认监委）发布两项管理体系认证规则",
-              "url": "https://finance.eastmoney.com/a/202606123770150141.html"
+              "text": "【财闻联播】张雪机车，再夺第一！A股果链龙头，最新布局曝光",
+              "url": "https://finance.eastmoney.com/a/202606133770605327.html"
             },
             {
-              "text": "市场监管总局发布两项管理体系认证新规 9月1日起实施",
-              "url": "https://finance.eastmoney.com/a/202606123770150092.html"
+              "text": "11部门发文！事关新能源重卡",
+              "url": "https://finance.eastmoney.com/a/202606133770606088.html"
             },
             {
-              "text": "6月12日东方财富财经晚报（附新闻联播）",
-              "url": "https://finance.eastmoney.com/a/202606123770136737.html"
+              "text": "张雪机车，第六冠！",
+              "url": "https://finance.eastmoney.com/a/202606133770605983.html"
             },
             {
-              "text": "中国银行董事长葛海蛟会见韩国国民年金公团理事长金成柱",
-              "url": "https://finance.eastmoney.com/a/202606123770138322.html"
+              "text": "北京“冷涡蓝”刷屏，背后藏着一个气候真相",
+              "url": "https://finance.eastmoney.com/a/202606133770607869.html"
             },
             {
-              "text": "南博会首日商贸合同金额超100亿元",
-              "url": "https://finance.eastmoney.com/a/202606123770138874.html"
+              "text": "“张雪机车”艾米利亚罗马涅站首回合夺得冠军",
+              "url": "https://finance.eastmoney.com/a/202606133770603912.html"
             },
             {
-              "text": "央行发布最新金融数据",
-              "url": "https://finance.eastmoney.com/a/202606123770140047.html"
+              "text": "【下周财经日历】6月15日-6月21日",
+              "url": "https://finance.eastmoney.com/a/202606133770602258.html"
             },
             {
-              "text": "降至20万元！央行调整个人认购大额存单起点",
-              "url": "https://finance.eastmoney.com/a/202606123770151890.html"
+              "text": "6月13日周六《新闻联播》要闻16条",
+              "url": "https://finance.eastmoney.com/a/202606133770601137.html"
             },
             {
-              "text": "云南省省长王予波会见老挝副总理兼财政部部长山迪帕·丰威汉",
-              "url": "https://finance.eastmoney.com/a/202606123770150822.html"
+              "text": "全国高校首批“先投后股”试点落地广州，11个创业项目入选",
+              "url": "https://finance.eastmoney.com/a/202606133770601988.html"
             },
             {
-              "text": "抖音生活服务文旅生态大会落地杭州 2026“心动目的地”战略激发文旅消费新活力",
-              "url": "https://finance.eastmoney.com/a/202606123770118417.html"
+              "text": "十项促进两岸交流合作的政策措施对接签约会在厦门举行",
+              "url": "https://finance.eastmoney.com/a/202606133770601236.html"
             }
           ]
         },
@@ -211,64 +208,64 @@
           "channel": "国内时事",
           "items": [
             {
-              "text": "加拿大防务企业49North推出全球程序设计新版，全面适配最新监管标准",
-              "url": "https://finance.sina.com.cn/stock/usstock/c/2026-06-12/doc-iniceimm0183516.shtml"
+              "text": "仁芯科技金栎：呼吁芯片行业统一标准，一次验证、多家认可",
+              "url": "https://finance.sina.com.cn/hy/hyjz/2026-06-13/doc-inichnki2606942.shtml"
             },
             {
-              "text": "反无人机需求激增，防务技术行业从防御转向主动出击",
-              "url": "https://finance.sina.com.cn/stock/usstock/c/2026-06-12/doc-iniceimq8912398.shtml"
+              "text": "副总管基金一年亏超25%，申万菱信宣布增聘基金经理",
+              "url": "https://finance.sina.com.cn/money/fund/jjyj/2026-06-13/doc-inichnkq8149187.shtml"
             },
             {
-              "text": "施扬获批担任法巴天星保险副总兼董秘",
-              "url": "https://finance.sina.com.cn/jryx/hm/2026-06-12/doc-iniceimi3405994.shtml"
+              "text": "中电科胡文：车规芯片国产化必须从“事后替代”转向“前期共创”",
+              "url": "https://finance.sina.com.cn/hy/hyjz/2026-06-13/doc-inichnkq8147229.shtml"
             },
             {
-              "text": "SpaceX股票预示首日开盘价将比IPO发行价高出29%",
-              "url": "https://finance.sina.com.cn/stock/usstock/c/2026-06-12/doc-iniceimq8911675.shtml"
+              "text": "关于再融资，上交所最新提示",
+              "url": "https://finance.sina.com.cn/wm/2026-06-13/doc-inichnki2604728.shtml"
             },
             {
-              "text": "49North获美国空军合同续签，延续超25年合作关系",
-              "url": "https://finance.sina.com.cn/stock/usstock/c/2026-06-12/doc-iniceimq8908926.shtml"
+              "text": "黑芝麻智能邓堃：芯片公司必须在车规、功能安全、柔性产能上多做文章",
+              "url": "https://finance.sina.com.cn/hy/hyjz/2026-06-13/doc-inichnki2600715.shtml"
             },
             {
-              "text": "散户蜂拥争抢SpaceX新股，即便不少人认为其估值“离谱至极”",
-              "url": "https://finance.sina.com.cn/stock/usstock/c/2026-06-12/doc-iniceimm0177293.shtml"
+              "text": "神经元信息薛百华：未来汽车通讯或将“一条总线干掉所有线缆”",
+              "url": "https://finance.sina.com.cn/hy/hyjz/2026-06-13/doc-inichnkk9372122.shtml"
             },
             {
-              "text": "债券通“南向通”正式向险资开闸，多家已完成首笔交易",
-              "url": "https://finance.sina.com.cn/roll/2026-06-12/doc-iniceimm0178885.shtml"
+              "text": "年投诉超5000宗！韩泰、锦湖原厂轮胎用了2年多就开裂，涉大众、小米、特斯拉等十余款车型",
+              "url": "https://finance.sina.com.cn/chanjing/gsnews/2026-06-13/doc-inichnki2600891.shtml"
             },
             {
-              "text": "7500亿资管巨头高管变动，叶明升任总裁",
-              "url": "https://finance.sina.com.cn/stock/relnews/cn/2026-06-12/doc-iniceimi3404346.shtml"
+              "text": "阿维塔王辉谈辅助驾驶：各车企应集体加强用户培训机制",
+              "url": "https://finance.sina.com.cn/hy/hyjz/2026-06-13/doc-inichhar1492136.shtml"
             },
             {
-              "text": "五三银行完成历史性转板，正式登陆纽交所",
-              "url": "https://finance.sina.com.cn/stock/usstock/c/2026-06-12/doc-iniceimi3399110.shtml"
+              "text": "猛士万良渝：价格战正反噬消费者信心，行业平均利润率已降至3.4%",
+              "url": "https://finance.sina.com.cn/hy/hyjz/2026-06-13/doc-inichhas8268462.shtml"
             },
             {
-              "text": "从抗癌药到电力基础设施：纳指成份股LIXTE Bio跨界转型剑指AI电力市场",
-              "url": "https://finance.sina.com.cn/stock/usstock/c/2026-06-12/doc-iniceimp2125732.shtml"
+              "text": "地平线余凯：主机厂自研是产业规律，供应商要做“偏房丫鬟”等召唤",
+              "url": "https://finance.sina.com.cn/hy/hyjz/2026-06-13/doc-inichham2713284.shtml"
             },
             {
-              "text": "无需参与IPO申购，也能布局SpaceX股票",
-              "url": "https://finance.sina.com.cn/stock/usstock/c/2026-06-12/doc-iniceimi3396912.shtml"
+              "text": "蓝月亮两年亏超10亿港元，高管涨薪千万至4797万港元，累计分红已超累计净利润",
+              "url": "https://finance.sina.com.cn/stock/s/2026-06-13/doc-inichhar1475874.shtml"
             },
             {
-              "text": "小米汽车：家用充电机械臂预计 2026 年第四季度上市销售",
-              "url": "https://finance.sina.com.cn/tech/digi/2026-06-12/doc-iniceimm0182372.shtml"
+              "text": "瑞银专家电话会：厄尔尼诺现象已“正式成立”且可能“非常强烈”",
+              "url": "https://finance.sina.com.cn/roll/2026-06-13/doc-inichhas8256568.shtml"
             },
             {
-              "text": "A股大反攻！“牛市旗手”再发力，中银证券、财达证券涨停，券商ETF华宝单日吸金超4亿",
-              "url": "https://finance.sina.com.cn/stock/relnews/cn/2026-06-12/doc-iniceimq8905191.shtml"
+              "text": "理想汽车刘立国：下一个十年不是配置之争，而是生命之争",
+              "url": "https://finance.sina.com.cn/hy/hyjz/2026-06-13/doc-inichhan9481153.shtml"
             },
             {
-              "text": "视频 | 马斯克转发巴伦预测Space X估值 “可达30万亿美元”，马斯克：“将成为银河系最大的公司”",
-              "url": "https://finance.sina.com.cn/stock/roll/2026-06-12/doc-iniceimm0170557.shtml"
+              "text": "小鹏汽车余鹏：物联AI从底盘开始",
+              "url": "https://finance.sina.com.cn/hy/hyjz/2026-06-13/doc-inichhas8242455.shtml"
             },
             {
-              "text": "太平养老：免去王干的总经理职务，由林喆担任临时负责人",
-              "url": "https://finance.sina.com.cn/jryx/insurance/2026-06-12/doc-iniceimp2121502.shtml"
+              "text": "小米汽车宋钢：制造是“产品和品牌之外的第三动力”",
+              "url": "https://finance.sina.com.cn/hy/hyjz/2026-06-13/doc-inichhas8237943.shtml"
             }
           ]
         },
@@ -277,64 +274,64 @@
           "channel": "国内热点",
           "items": [
             {
-              "text": "总书记朝鲜行的“重要里程碑意义”",
-              "url": "https://m.baidu.com/s?word=%E6%80%BB%E4%B9%A6%E8%AE%B0%E6%9C%9D%E9%B2%9C%E8%A1%8C%E7%9A%84%E2%80%9C%E9%87%8D%E8%A6%81%E9%87%8C%E7%A8%8B%E7%A2%91%E6%84%8F%E4%B9%89%E2%80%9D&sa=fyb_news"
+              "text": "跟着总书记一起感受非遗魅力",
+              "url": "https://m.baidu.com/s?word=%E8%B7%9F%E7%9D%80%E6%80%BB%E4%B9%A6%E8%AE%B0%E4%B8%80%E8%B5%B7%E6%84%9F%E5%8F%97%E9%9D%9E%E9%81%97%E9%AD%85%E5%8A%9B&sa=fyb_news"
             },
             {
-              "text": "被抢中国球迷：墨西哥警察来了先要钱",
-              "url": "https://m.baidu.com/s?word=%E8%A2%AB%E6%8A%A2%E4%B8%AD%E5%9B%BD%E7%90%83%E8%BF%B7%EF%BC%9A%E5%A2%A8%E8%A5%BF%E5%93%A5%E8%AD%A6%E5%AF%9F%E6%9D%A5%E4%BA%86%E5%85%88%E8%A6%81%E9%92%B1&sa=fyb_news"
+              "text": "张雪机车拿下第六冠",
+              "url": "https://m.baidu.com/s?word=%E5%BC%A0%E9%9B%AA%E6%9C%BA%E8%BD%A6%E6%8B%BF%E4%B8%8B%E7%AC%AC%E5%85%AD%E5%86%A0&sa=fyb_news"
             },
             {
-              "text": "世界杯在中国的收视率爆了",
-              "url": "https://m.baidu.com/s?word=%E4%B8%96%E7%95%8C%E6%9D%AF%E5%9C%A8%E4%B8%AD%E5%9B%BD%E7%9A%84%E6%94%B6%E8%A7%86%E7%8E%87%E7%88%86%E4%BA%86&sa=fyb_news"
+              "text": "人民币可以在印尼直接花了",
+              "url": "https://m.baidu.com/s?word=%E4%BA%BA%E6%B0%91%E5%B8%81%E5%8F%AF%E4%BB%A5%E5%9C%A8%E5%8D%B0%E5%B0%BC%E7%9B%B4%E6%8E%A5%E8%8A%B1%E4%BA%86&sa=fyb_news"
             },
             {
-              "text": "中国农机驶向全球",
-              "url": "https://m.baidu.com/s?word=%E4%B8%AD%E5%9B%BD%E5%86%9C%E6%9C%BA%E9%A9%B6%E5%90%91%E5%85%A8%E7%90%83&sa=fyb_news"
+              "text": "走出实验室 机器人如何“上岗”",
+              "url": "https://m.baidu.com/s?word=%E8%B5%B0%E5%87%BA%E5%AE%9E%E9%AA%8C%E5%AE%A4+%E6%9C%BA%E5%99%A8%E4%BA%BA%E5%A6%82%E4%BD%95%E2%80%9C%E4%B8%8A%E5%B2%97%E2%80%9D&sa=fyb_news"
             },
             {
-              "text": "原来世界杯也假唱",
-              "url": "https://m.baidu.com/s?word=%E5%8E%9F%E6%9D%A5%E4%B8%96%E7%95%8C%E6%9D%AF%E4%B9%9F%E5%81%87%E5%94%B1&sa=fyb_news"
+              "text": "世界杯赛事发朋友圈或构成侵权",
+              "url": "https://m.baidu.com/s?word=%E4%B8%96%E7%95%8C%E6%9D%AF%E8%B5%9B%E4%BA%8B%E5%8F%91%E6%9C%8B%E5%8F%8B%E5%9C%88%E6%88%96%E6%9E%84%E6%88%90%E4%BE%B5%E6%9D%83&sa=fyb_news"
             },
             {
-              "text": "一觉醒来20万没了 只因开了这个权限",
-              "url": "https://m.baidu.com/s?word=%E4%B8%80%E8%A7%89%E9%86%92%E6%9D%A520%E4%B8%87%E6%B2%A1%E4%BA%86+%E5%8F%AA%E5%9B%A0%E5%BC%80%E4%BA%86%E8%BF%99%E4%B8%AA%E6%9D%83%E9%99%90&sa=fyb_news"
+              "text": "13岁学生体检误诊艾滋被劝退",
+              "url": "https://m.baidu.com/s?word=13%E5%B2%81%E5%AD%A6%E7%94%9F%E4%BD%93%E6%A3%80%E8%AF%AF%E8%AF%8A%E8%89%BE%E6%BB%8B%E8%A2%AB%E5%8A%9D%E9%80%80&sa=fyb_news"
             },
             {
-              "text": "网警披露未履行个人信息保护义务案",
-              "url": "https://m.baidu.com/s?word=%E7%BD%91%E8%AD%A6%E6%8A%AB%E9%9C%B2%E6%9C%AA%E5%B1%A5%E8%A1%8C%E4%B8%AA%E4%BA%BA%E4%BF%A1%E6%81%AF%E4%BF%9D%E6%8A%A4%E4%B9%89%E5%8A%A1%E6%A1%88&sa=fyb_news"
+              "text": "“机器人伴侣”来了 10天预售3800台",
+              "url": "https://m.baidu.com/s?word=%E2%80%9C%E6%9C%BA%E5%99%A8%E4%BA%BA%E4%BC%B4%E4%BE%A3%E2%80%9D%E6%9D%A5%E4%BA%86+10%E5%A4%A9%E9%A2%84%E5%94%AE3800%E5%8F%B0&sa=fyb_news"
             },
             {
-              "text": "世界杯加拿大对阵波黑前瞻",
-              "url": "https://m.baidu.com/s?word=%E4%B8%96%E7%95%8C%E6%9D%AF%E5%8A%A0%E6%8B%BF%E5%A4%A7%E5%AF%B9%E9%98%B5%E6%B3%A2%E9%BB%91%E5%89%8D%E7%9E%BB&sa=fyb_news"
+              "text": "水均益：美国举办的世界杯是战争杯",
+              "url": "https://m.baidu.com/s?word=%E6%B0%B4%E5%9D%87%E7%9B%8A%EF%BC%9A%E7%BE%8E%E5%9B%BD%E4%B8%BE%E5%8A%9E%E7%9A%84%E4%B8%96%E7%95%8C%E6%9D%AF%E6%98%AF%E6%88%98%E4%BA%89%E6%9D%AF&sa=fyb_news"
             },
             {
-              "text": "央视曝光“套路养生馆”",
-              "url": "https://m.baidu.com/s?word=%E5%A4%AE%E8%A7%86%E6%9B%9D%E5%85%89%E2%80%9C%E5%A5%97%E8%B7%AF%E5%85%BB%E7%94%9F%E9%A6%86%E2%80%9D&sa=fyb_news"
+              "text": "黑豹乐队前主唱张克芃去世 年仅54岁",
+              "url": "https://m.baidu.com/s?word=%E9%BB%91%E8%B1%B9%E4%B9%90%E9%98%9F%E5%89%8D%E4%B8%BB%E5%94%B1%E5%BC%A0%E5%85%8B%E8%8A%83%E5%8E%BB%E4%B8%96+%E5%B9%B4%E4%BB%8554%E5%B2%81&sa=fyb_news"
             },
             {
-              "text": "熊孩子掰坏迈巴赫车标 车主：无妨",
-              "url": "https://m.baidu.com/s?word=%E7%86%8A%E5%AD%A9%E5%AD%90%E6%8E%B0%E5%9D%8F%E8%BF%88%E5%B7%B4%E8%B5%AB%E8%BD%A6%E6%A0%87+%E8%BD%A6%E4%B8%BB%EF%BC%9A%E6%97%A0%E5%A6%A8&sa=fyb_news"
+              "text": "突然确诊癌症 小伙惊了：一直有体检",
+              "url": "https://m.baidu.com/s?word=%E7%AA%81%E7%84%B6%E7%A1%AE%E8%AF%8A%E7%99%8C%E7%97%87+%E5%B0%8F%E4%BC%99%E6%83%8A%E4%BA%86%EF%BC%9A%E4%B8%80%E7%9B%B4%E6%9C%89%E4%BD%93%E6%A3%80&sa=fyb_news"
             },
             {
-              "text": "世界杯第一批“受害者”已出现",
-              "url": "https://m.baidu.com/s?word=%E4%B8%96%E7%95%8C%E6%9D%AF%E7%AC%AC%E4%B8%80%E6%89%B9%E2%80%9C%E5%8F%97%E5%AE%B3%E8%80%85%E2%80%9D%E5%B7%B2%E5%87%BA%E7%8E%B0&sa=fyb_news"
+              "text": "装修工走错楼层将303当403拆成毛坯",
+              "url": "https://m.baidu.com/s?word=%E8%A3%85%E4%BF%AE%E5%B7%A5%E8%B5%B0%E9%94%99%E6%A5%BC%E5%B1%82%E5%B0%86303%E5%BD%93403%E6%8B%86%E6%88%90%E6%AF%9B%E5%9D%AF&sa=fyb_news"
             },
             {
-              "text": "网传“2026高考答案”系谣言",
-              "url": "https://m.baidu.com/s?word=%E7%BD%91%E4%BC%A0%E2%80%9C2026%E9%AB%98%E8%80%83%E7%AD%94%E6%A1%88%E2%80%9D%E7%B3%BB%E8%B0%A3%E8%A8%80&sa=fyb_news"
+              "text": "网传南通“有桥掉下来了”不实",
+              "url": "https://m.baidu.com/s?word=%E7%BD%91%E4%BC%A0%E5%8D%97%E9%80%9A%E2%80%9C%E6%9C%89%E6%A1%A5%E6%8E%89%E4%B8%8B%E6%9D%A5%E4%BA%86%E2%80%9D%E4%B8%8D%E5%AE%9E&sa=fyb_news"
             },
             {
-              "text": "老人入住精神病院7年后查出梅毒",
-              "url": "https://m.baidu.com/s?word=%E8%80%81%E4%BA%BA%E5%85%A5%E4%BD%8F%E7%B2%BE%E7%A5%9E%E7%97%85%E9%99%A27%E5%B9%B4%E5%90%8E%E6%9F%A5%E5%87%BA%E6%A2%85%E6%AF%92&sa=fyb_news"
+              "text": "大爷入戏太深上台暴打日军演员",
+              "url": "https://m.baidu.com/s?word=%E5%A4%A7%E7%88%B7%E5%85%A5%E6%88%8F%E5%A4%AA%E6%B7%B1%E4%B8%8A%E5%8F%B0%E6%9A%B4%E6%89%93%E6%97%A5%E5%86%9B%E6%BC%94%E5%91%98&sa=fyb_news"
             },
             {
-              "text": "大疆与影石24小时商战",
-              "url": "https://m.baidu.com/s?word=%E5%A4%A7%E7%96%86%E4%B8%8E%E5%BD%B1%E7%9F%B324%E5%B0%8F%E6%97%B6%E5%95%86%E6%88%98&sa=fyb_news"
+              "text": "刘德华拥抱后“黑脸”？黄日华回应",
+              "url": "https://m.baidu.com/s?word=%E5%88%98%E5%BE%B7%E5%8D%8E%E6%8B%A5%E6%8A%B1%E5%90%8E%E2%80%9C%E9%BB%91%E8%84%B8%E2%80%9D%EF%BC%9F%E9%BB%84%E6%97%A5%E5%8D%8E%E5%9B%9E%E5%BA%94&sa=fyb_news"
             },
             {
-              "text": "有人晒高颜值天空 也有人吐槽冷麻了",
-              "url": "https://m.baidu.com/s?word=%E6%9C%89%E4%BA%BA%E6%99%92%E9%AB%98%E9%A2%9C%E5%80%BC%E5%A4%A9%E7%A9%BA+%E4%B9%9F%E6%9C%89%E4%BA%BA%E5%90%90%E6%A7%BD%E5%86%B7%E9%BA%BB%E4%BA%86&sa=fyb_news"
+              "text": "北京雨后出现双彩虹",
+              "url": "https://m.baidu.com/s?word=%E5%8C%97%E4%BA%AC%E9%9B%A8%E5%90%8E%E5%87%BA%E7%8E%B0%E5%8F%8C%E5%BD%A9%E8%99%B9&sa=fyb_news"
             }
           ]
         },
@@ -343,64 +340,64 @@
           "channel": "国内热点",
           "items": [
             {
-              "text": "伊朗发布“头骨世界杯”海报",
-              "url": "https://www.toutiao.com/trending/7650111233802731539/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%224%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650111233802731539%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E4%BC%8A%E6%9C%97%E5%8F%91%E5%B8%83%E2%80%9C%E5%A4%B4%E9%AA%A8%E4%B8%96%E7%95%8C%E6%9D%AF%E2%80%9D%E6%B5%B7%E6%8A%A5%22%7D&rank=&style_id=40132&topic_id=7650111233802731539"
+              "text": "极限反超！张雪机车夺第6冠",
+              "url": "https://www.toutiao.com/trending/7649741880432476211/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%222%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227649741880432476211%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E6%9E%81%E9%99%90%E5%8F%8D%E8%B6%85%EF%BC%81%E5%BC%A0%E9%9B%AA%E6%9C%BA%E8%BD%A6%E5%A4%BA%E7%AC%AC6%E5%86%A0%22%7D&rank=&style_id=40132&topic_id=7649741880432476211"
             },
             {
-              "text": "湖北一村60余人患癌 调查结果公布",
-              "url": "https://www.toutiao.com/article/7650438814791402019"
+              "text": "黑豹乐队前主唱张克芃去世",
+              "url": "https://www.toutiao.com/trending/7650534513701031430/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%222%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650534513701031430%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E9%BB%91%E8%B1%B9%E4%B9%90%E9%98%9F%E5%89%8D%E4%B8%BB%E5%94%B1%E5%BC%A0%E5%85%8B%E8%8A%83%E5%8E%BB%E4%B8%96%22%7D&rank=&style_id=40132&topic_id=7650534513701031430"
             },
             {
-              "text": "外贸稳定增长 产业优势凸显",
-              "url": "https://www.toutiao.com/article/7650442961435542079"
+              "text": "“新基建”点燃发展新引擎",
+              "url": "https://www.toutiao.com/article/7650747280424845862"
             },
             {
-              "text": "日本车企被困在电动化孤岛",
-              "url": "https://www.toutiao.com/trending/7650457146483736582/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%220%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650457146483736582%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E6%97%A5%E6%9C%AC%E8%BD%A6%E4%BC%81%E8%A2%AB%E5%9B%B0%E5%9C%A8%E7%94%B5%E5%8A%A8%E5%8C%96%E5%AD%A4%E5%B2%9B%22%7D&rank=&style_id=40132&topic_id=7650457146483736582"
+              "text": "考编第一却被别人递补？官方介入",
+              "url": "https://www.toutiao.com/trending/7650818385496342569/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%221%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650818385496342569%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E8%80%83%E7%BC%96%E7%AC%AC%E4%B8%80%E5%8D%B4%E8%A2%AB%E5%88%AB%E4%BA%BA%E9%80%92%E8%A1%A5%EF%BC%9F%E5%AE%98%E6%96%B9%E4%BB%8B%E5%85%A5%22%7D&rank=&style_id=40132&topic_id=7650818385496342569"
             },
             {
-              "text": "华为发布鸿蒙7操作系统",
-              "url": "https://www.toutiao.com/trending/7650113709931593734/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%223%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650113709931593734%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E5%8D%8E%E4%B8%BA%E5%8F%91%E5%B8%83%E9%B8%BF%E8%92%997%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%22%7D&rank=&style_id=40132&topic_id=7650113709931593734"
+              "text": "于东来称满分100给员工打10分",
+              "url": "https://www.toutiao.com/trending/7650427536291302931/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%221%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650427536291302931%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E4%BA%8E%E4%B8%9C%E6%9D%A5%E7%A7%B0%E6%BB%A1%E5%88%86100%E7%BB%99%E5%91%98%E5%B7%A5%E6%89%9310%E5%88%86%22%7D&rank=&style_id=40132&topic_id=7650427536291302931"
             },
             {
-              "text": "网警披露未履行个人信息保护义务案",
-              "url": "https://www.toutiao.com/article/7649365188697522738"
+              "text": "张雪透露通过夺冠销量翻了3倍",
+              "url": "https://www.toutiao.com/trending/7650354945145651242/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%226%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650354945145651242%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E5%BC%A0%E9%9B%AA%E9%80%8F%E9%9C%B2%E9%80%9A%E8%BF%87%E5%A4%BA%E5%86%A0%E9%94%80%E9%87%8F%E7%BF%BB%E4%BA%863%E5%80%8D%22%7D&rank=&style_id=40132&topic_id=7650354945145651242"
             },
             {
-              "text": "演员陈敏儿去世 曾出演《男儿本色》",
-              "url": "https://www.toutiao.com/trending/7650421761469087771/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%222%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650421761469087771%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E6%BC%94%E5%91%98%E9%99%88%E6%95%8F%E5%84%BF%E5%8E%BB%E4%B8%96+%E6%9B%BE%E5%87%BA%E6%BC%94%E3%80%8A%E7%94%B7%E5%84%BF%E6%9C%AC%E8%89%B2%E3%80%8B%22%7D&rank=&style_id=40132&topic_id=7650421761469087771"
+              "text": "刘銮雄看《给阿嬷的情书》直言感动",
+              "url": "https://www.toutiao.com/trending/7650665355760762921/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%226%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650665355760762921%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E5%88%98%E9%8A%AE%E9%9B%84%E7%9C%8B%E3%80%8A%E7%BB%99%E9%98%BF%E5%AC%B7%E7%9A%84%E6%83%85%E4%B9%A6%E3%80%8B%E7%9B%B4%E8%A8%80%E6%84%9F%E5%8A%A8%22%7D&rank=&style_id=40132&topic_id=7650665355760762921"
             },
             {
-              "text": "SpaceX在纳斯达克敲钟上市",
-              "url": "https://www.toutiao.com/trending/7650503566548979250/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%222%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650503566548979250%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22SpaceX%E5%9C%A8%E7%BA%B3%E6%96%AF%E8%BE%BE%E5%85%8B%E6%95%B2%E9%92%9F%E4%B8%8A%E5%B8%82%22%7D&rank=&style_id=40132&topic_id=7650503566548979250"
+              "text": "大爷入戏太深上台暴打日军演员",
+              "url": "https://www.toutiao.com/trending/7650832620758093339/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%222%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650832620758093339%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E5%A4%A7%E7%88%B7%E5%85%A5%E6%88%8F%E5%A4%AA%E6%B7%B1%E4%B8%8A%E5%8F%B0%E6%9A%B4%E6%89%93%E6%97%A5%E5%86%9B%E6%BC%94%E5%91%98%22%7D&rank=&style_id=40132&topic_id=7650832620758093339"
             },
             {
-              "text": "余承东：防诈骗买鸿蒙",
-              "url": "https://www.toutiao.com/trending/7650414983611875378/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%223%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650414983611875378%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E4%BD%99%E6%89%BF%E4%B8%9C%EF%BC%9A%E9%98%B2%E8%AF%88%E9%AA%97%E4%B9%B0%E9%B8%BF%E8%92%99%22%7D&rank=&style_id=40132&topic_id=7650414983611875378"
+              "text": "投资772亿工程开工仪式不到15分钟",
+              "url": "https://www.toutiao.com/trending/7650146869192146985/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%222%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650146869192146985%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E6%8A%95%E8%B5%84772%E4%BA%BF%E5%B7%A5%E7%A8%8B%E5%BC%80%E5%B7%A5%E4%BB%AA%E5%BC%8F%E4%B8%8D%E5%88%B015%E5%88%86%E9%92%9F%22%7D&rank=&style_id=40132&topic_id=7650146869192146985"
             },
             {
-              "text": "武契奇计划辞职",
-              "url": "https://www.toutiao.com/trending/7649981663602101801/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%221%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227649981663602101801%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E6%AD%A6%E5%A5%91%E5%A5%87%E8%AE%A1%E5%88%92%E8%BE%9E%E8%81%8C%22%7D&rank=&style_id=40132&topic_id=7649981663602101801"
+              "text": "男子携10万元现金提前还车贷遭拒",
+              "url": "https://www.toutiao.com/trending/7650449194557833266/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%228%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650449194557833266%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E7%94%B7%E5%AD%90%E6%90%BA10%E4%B8%87%E5%85%83%E7%8E%B0%E9%87%91%E6%8F%90%E5%89%8D%E8%BF%98%E8%BD%A6%E8%B4%B7%E9%81%AD%E6%8B%92%22%7D&rank=&style_id=40132&topic_id=7650449194557833266"
             },
             {
-              "text": "佟丽娅林依轮杭州热舞",
-              "url": "https://www.toutiao.com/trending/7650409363695419402/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%220%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650409363695419402%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E4%BD%9F%E4%B8%BD%E5%A8%85%E6%9E%97%E4%BE%9D%E8%BD%AE%E6%9D%AD%E5%B7%9E%E7%83%AD%E8%88%9E%22%7D&rank=&style_id=40132&topic_id=7650409363695419402"
+              "text": "四川多地烈士陵园办公室招聘系谣言",
+              "url": "https://www.toutiao.com/trending/7650720118226173993/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%226%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650720118226173993%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E5%9B%9B%E5%B7%9D%E5%A4%9A%E5%9C%B0%E7%83%88%E5%A3%AB%E9%99%B5%E5%9B%AD%E5%8A%9E%E5%85%AC%E5%AE%A4%E6%8B%9B%E8%81%98%E7%B3%BB%E8%B0%A3%E8%A8%80%22%7D&rank=&style_id=40132&topic_id=7650720118226173993"
             },
             {
-              "text": "网传“2026高考答案”系谣言",
-              "url": "https://www.toutiao.com/trending/7650360928193560618/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%222%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650360928193560618%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E7%BD%91%E4%BC%A0%E2%80%9C2026%E9%AB%98%E8%80%83%E7%AD%94%E6%A1%88%E2%80%9D%E7%B3%BB%E8%B0%A3%E8%A8%80%22%7D&rank=&style_id=40132&topic_id=7650360928193560618"
+              "text": "黄日华回应主动拥抱刘德华",
+              "url": "https://www.toutiao.com/trending/7650346057301803062/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%226%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650346057301803062%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E9%BB%84%E6%97%A5%E5%8D%8E%E5%9B%9E%E5%BA%94%E4%B8%BB%E5%8A%A8%E6%8B%A5%E6%8A%B1%E5%88%98%E5%BE%B7%E5%8D%8E%22%7D&rank=&style_id=40132&topic_id=7650346057301803062"
             },
             {
-              "text": "中石化比亚迪闪充站正式落地",
-              "url": "https://www.toutiao.com/trending/7650081293895516179/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%220%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650081293895516179%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E4%B8%AD%E7%9F%B3%E5%8C%96%E6%AF%94%E4%BA%9A%E8%BF%AA%E9%97%AA%E5%85%85%E7%AB%99%E6%AD%A3%E5%BC%8F%E8%90%BD%E5%9C%B0%22%7D&rank=&style_id=40132&topic_id=7650081293895516179"
+              "text": "金胞呼吁台湾主动对接大陆发展机遇",
+              "url": "https://www.toutiao.com/trending/7650459638055911462/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%220%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650459638055911462%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E9%87%91%E8%83%9E%E5%91%BC%E5%90%81%E5%8F%B0%E6%B9%BE%E4%B8%BB%E5%8A%A8%E5%AF%B9%E6%8E%A5%E5%A4%A7%E9%99%86%E5%8F%91%E5%B1%95%E6%9C%BA%E9%81%87%22%7D&rank=&style_id=40132&topic_id=7650459638055911462"
             },
             {
-              "text": "日本炸鸡店一锅油用了66年",
-              "url": "https://www.toutiao.com/trending/7650041794684043307/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%228%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650041794684043307%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E6%97%A5%E6%9C%AC%E7%82%B8%E9%B8%A1%E5%BA%97%E4%B8%80%E9%94%85%E6%B2%B9%E7%94%A8%E4%BA%8666%E5%B9%B4%22%7D&rank=&style_id=40132&topic_id=7650041794684043307"
+              "text": "杨恩又：终于和苗哥有眼神戏了",
+              "url": "https://www.toutiao.com/trending/7650746954847436850/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%226%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650746954847436850%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E6%9D%A8%E6%81%A9%E5%8F%88%EF%BC%9A%E7%BB%88%E4%BA%8E%E5%92%8C%E8%8B%97%E5%93%A5%E6%9C%89%E7%9C%BC%E7%A5%9E%E6%88%8F%E4%BA%86%22%7D&rank=&style_id=40132&topic_id=7650746954847436850"
             },
             {
-              "text": "每月3000雇夫妻看管祖宅遭鸠占鹊巢",
-              "url": "https://www.toutiao.com/trending/7649767499948359716/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%228%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227649767499948359716%22%2C%22hot_board_impr_id%22%3A%22202606122200019F02060B798C106D1972%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E6%AF%8F%E6%9C%883000%E9%9B%87%E5%A4%AB%E5%A6%BB%E7%9C%8B%E7%AE%A1%E7%A5%96%E5%AE%85%E9%81%AD%E9%B8%A0%E5%8D%A0%E9%B9%8A%E5%B7%A2%22%7D&rank=&style_id=40132&topic_id=7649767499948359716"
+              "text": "女子在医院旁卖盒饭从6元降到免费",
+              "url": "https://www.toutiao.com/trending/7650031987008405546/?category_name=topic_innerflow&event_type=hot_board&log_pb=%7B%22category_name%22%3A%22topic_innerflow%22%2C%22cluster_type%22%3A%228%22%2C%22enter_from%22%3A%22click_category%22%2C%22entrance_hotspot%22%3A%22outside%22%2C%22event_type%22%3A%22hot_board%22%2C%22hot_board_cluster_id%22%3A%227650031987008405546%22%2C%22hot_board_impr_id%22%3A%222026061322000269C90E5299DB64F1ED4D%22%2C%22jump_page%22%3A%22hot_board_page%22%2C%22location%22%3A%22news_hot_card%22%2C%22page_location%22%3A%22hot_board_page%22%2C%22source%22%3A%22trending_tab%22%2C%22style_id%22%3A%2240132%22%2C%22title%22%3A%22%E5%A5%B3%E5%AD%90%E5%9C%A8%E5%8C%BB%E9%99%A2%E6%97%81%E5%8D%96%E7%9B%92%E9%A5%AD%E4%BB%8E6%E5%85%83%E9%99%8D%E5%88%B0%E5%85%8D%E8%B4%B9%22%7D&rank=&style_id=40132&topic_id=7650031987008405546"
             }
           ]
         },
@@ -409,64 +406,64 @@
           "channel": "国内热议",
           "items": [
             {
-              "text": "海南一实习医生给患者拔牙致人死亡，与牙科诊所一起赔偿 37 万元并被判 1 年半，如何从法律角度解读？",
-              "url": "https://www.zhihu.com/question/2046242091890630877"
+              "text": "如何评价Claude Fable 5全球暂停访问？",
+              "url": "https://www.zhihu.com/question/2049072203191342205"
             },
             {
-              "text": "如何看看待独库公路隧道撞死羊交警判司机全责？",
-              "url": "https://www.zhihu.com/question/2047784073440006189"
+              "text": "日本炸鸡店称一锅油反复用 66 年，从食品安全和健康角度看，这种做法存在哪些潜在风险？",
+              "url": "https://www.zhihu.com/question/2048692040377033581"
             },
             {
-              "text": "28 岁硕士女为规律作息重考大专，这反映了当下年轻人怎样的心态？",
-              "url": "https://www.zhihu.com/question/2047763831703745071"
+              "text": "WSBK艾米莉亚罗马涅站，张雪机车获得第一回合的冠军，如何评价德比斯和张雪机车的表现？",
+              "url": "https://www.zhihu.com/question/2049229235466810282"
             },
             {
-              "text": "跟领导坐一辆车下乡，连司机共三人，领导问我「听说办公室主任人缘不好，你有听说吗？」，我该怎么回答？",
-              "url": "https://www.zhihu.com/question/1918426062053966645"
+              "text": "Lisa 世界杯歌曲因充斥炫富歌词和性感舞蹈被批低俗，50 万韩国网友请愿「换人」，如何看待此事？",
+              "url": "https://www.zhihu.com/question/2043273255205832365"
             },
             {
-              "text": "NBA总决赛G4尼克斯107:106马刺，福克斯最后一球该不该攻？",
-              "url": "https://www.zhihu.com/question/2048493109978346821"
+              "text": "路虎揽胜极光 L 售价跌破 18 万，曾落地近 90 万，这说明了什么？",
+              "url": "https://www.zhihu.com/question/2048499018230149377"
             },
             {
-              "text": "美以袭击伊朗进入第 105 天，当前局势如何？有哪些值得关注的信息？",
-              "url": "https://www.zhihu.com/question/2048669431962625669"
+              "text": "吕秀才穷酸还自负，为啥郭芙蓉一个千金小姐能看上他？",
+              "url": "https://www.zhihu.com/question/2047372994247496254"
             },
             {
-              "text": "对于即将发布的GLM-5.2，你抱有什么期待？",
-              "url": "https://www.zhihu.com/question/2047588334327837644"
+              "text": "2026 年世界杯美国开幕式有哪些亮点？你最喜欢哪个节目？",
+              "url": "https://www.zhihu.com/question/2048828016579404278"
             },
             {
-              "text": "虚竹的老婆到底长什么样？",
-              "url": "https://www.zhihu.com/question/22764059"
+              "text": "网传一大厂裁员后 bug 无人修复，靠虚假招聘骗修复方案，如何看待这一操作？",
+              "url": "https://www.zhihu.com/question/2047628590754133157"
             },
             {
-              "text": "如何评价2026年美加墨世界杯强制引入的“补水时间”规则，这会带来哪些影响？",
-              "url": "https://www.zhihu.com/question/2048685274335654848"
+              "text": "加油站会在什么时候大批量的倒闭？",
+              "url": "https://www.zhihu.com/question/2030910414037458949"
             },
             {
-              "text": "演员白鹿方回应近期争议六连辟谣，否认学历番位造假，起诉编剧蒙淇淇，哪些信息值得关注？",
-              "url": "https://www.zhihu.com/question/2048745117683378086"
+              "text": "为什么很多人认为周杰伦和罗大佑是一个级别的?",
+              "url": "https://www.zhihu.com/question/639501629"
             },
             {
-              "text": "我们真的需要又一个DeepSeek V5吗？",
-              "url": "https://www.zhihu.com/question/2031303606524186735"
+              "text": "为什么谢娜开演唱会这么多人骂？同样的岳云鹏就没有？",
+              "url": "https://www.zhihu.com/question/2047118369313273085"
             },
             {
-              "text": "SpaceX 最快 6 月12 日上市，目标估值定为 1.75 万亿美元，有哪些信息值得关注？",
-              "url": "https://www.zhihu.com/question/2045481749346346764"
+              "text": "为何今年世界杯的热度不如往年？",
+              "url": "https://www.zhihu.com/question/2046542801115129093"
             },
             {
-              "text": "于东来回应「员工不值这么多钱」称没有降薪政策，此前他称高薪让人认知偏差，善良也不能急功近利，如何解读？",
-              "url": "https://www.zhihu.com/question/2048513446925357542"
+              "text": "英格兰队大量训练装备在美国被盗，凯恩、贝林厄姆等人球鞋失踪，为啥会出现这种情况？对球队备战影响有多大？",
+              "url": "https://www.zhihu.com/question/2049101471308669244"
             },
             {
-              "text": "冯小刚新片《抓特务》空降式定档 6 月 19 日端午上映，雷佳音、胡歌主演，对此你有何期待？",
-              "url": "https://www.zhihu.com/question/2048721290450526756"
+              "text": "日本流行音乐(J-POP)有何特点？",
+              "url": "https://www.zhihu.com/question/22534249"
             },
             {
-              "text": "新能源二手车越来越「香」了，交易量走高，保值率提升，为何会出现这一变化？是短期回暖还是长期趋势？",
-              "url": "https://www.zhihu.com/question/2047600648644816926"
+              "text": "普京宣布俄罗斯版「星链」要来了，称技术性能不逊于美国星链，在某些方面更胜一筹，俄版星链性能究竟如何？",
+              "url": "https://www.zhihu.com/question/2049121142619599290"
             }
           ]
         },
@@ -475,64 +472,64 @@
           "channel": "国际政治",
           "items": [
             {
-              "text": "印度航空坠机调查最新进展透露了一些细节",
+              "text": "官方媒体称，以色列对黎巴嫩进行空袭，伊朗声称与美国即将达成协议",
+              "url": "https://www.bbc.com/news/articles/c39y02x98k8o?at_medium=RSS&at_campaign=rss"
+            },
+            {
+              "text": "瑞士将对人口限制在1000万的计划进行投票",
+              "url": "https://www.bbc.com/news/articles/cx23kz7e76po?at_medium=RSS&at_campaign=rss"
+            },
+            {
+              "text": "一见钟情的澳大利亚明星没有被告知伴侣有毒品和暴力犯罪记录",
+              "url": "https://www.bbc.com/news/articles/clypy0ndvjlo?at_medium=RSS&at_campaign=rss"
+            },
+            {
+              "text": "埃隆·马斯克 (Elon Musk) 成为全球首位万亿富翁，SpaceX 首次上市股价飙升",
+              "url": "https://www.bbc.com/news/articles/c4gypy3wwl7o?at_medium=RSS&at_campaign=rss"
+            },
+            {
+              "text": "国际足联称球迷在大厅而不是座位上",
+              "url": "https://www.bbc.com/sport/football/articles/c14y0dp6vrdo?at_medium=RSS&at_campaign=rss"
+            },
+            {
+              "text": "特朗普称美国在空袭中击毙了委内瑞拉特伦·德·阿拉瓜帮派头目",
+              "url": "https://www.bbc.com/news/articles/cp36z37knlko?at_medium=RSS&at_campaign=rss"
+            },
+            {
+              "text": "Anthropic 因美国政府安全担忧暂停新的人工智能工具",
+              "url": "https://www.bbc.com/news/articles/c932g3v3e13o?at_medium=RSS&at_campaign=rss"
+            },
+            {
+              "text": "美国司法部批准华纳兄弟以 1110 亿美元出售给派拉蒙",
+              "url": "https://www.bbc.com/news/articles/cjwgled9jxwo?at_medium=RSS&at_campaign=rss"
+            },
+            {
+              "text": "金领导向“艺术界巨人”大卫·霍克尼致敬",
+              "url": "https://www.bbc.com/news/articles/cvgjxdr27z4o?at_medium=RSS&at_campaign=rss"
+            },
+            {
+              "text": "法国小镇埋葬被害儿童，警方失职引发质疑",
+              "url": "https://www.bbc.com/news/articles/cy9rq21dqego?at_medium=RSS&at_campaign=rss"
+            },
+            {
+              "text": "官员称印度航空致命事故调查需要更多时间",
               "url": "https://www.bbc.com/news/articles/cnv93899vzqo?at_medium=RSS&at_campaign=rss"
-            },
-            {
-              "text": "特朗普声称即将达成结束伊朗战争的协议后，德黑兰表示“没有任何敲定”",
-              "url": "https://www.bbc.com/news/articles/c78y6w78828o?at_medium=RSS&at_campaign=rss"
-            },
-            {
-              "text": "泰国公主Bajrakitiyabha在昏迷三年多后去世",
-              "url": "https://www.bbc.com/news/articles/cvgzzndx780o?at_medium=RSS&at_campaign=rss"
             },
             {
               "text": "南非队在世界杯失利后遭到非洲球迷的嘲笑",
               "url": "https://www.bbc.com/news/articles/cm2jewrxvmjo?at_medium=RSS&at_campaign=rss"
             },
             {
-              "text": "为什么经济因素让这届世界杯成为史上最疯狂的世界杯",
-              "url": "https://www.bbc.com/news/articles/cpv32417nlwo?at_medium=RSS&at_campaign=rss"
+              "text": "肯尼亚埃博拉检疫中心抗议两天后，母亲发现失踪儿子的尸体",
+              "url": "https://www.bbc.com/news/articles/crlw3w84w30o?at_medium=RSS&at_campaign=rss"
             },
             {
-              "text": "“他们摧毁了未来”：巴勒斯坦人对以色列在东耶路撒冷的拆除行为感到愤怒",
-              "url": "https://www.bbc.com/news/articles/cewpwjr9rj4o?at_medium=RSS&at_campaign=rss"
+              "text": "价值 120 万欧元珠宝的发现促使对西班牙前首相展开新调查",
+              "url": "https://www.bbc.com/news/articles/cjeg9p1xqdwo?at_medium=RSS&at_campaign=rss"
             },
             {
-              "text": "随着反移民情绪高涨，尼日利亚从南非撤离公民",
-              "url": "https://www.bbc.com/news/articles/cq512vgyzl9o?at_medium=RSS&at_campaign=rss"
-            },
-            {
-              "text": "阿尔坦在失去世界杯裁判后将担任欧洲超级杯裁判",
-              "url": "https://www.bbc.com/sport/football/articles/c2kyx0l0499o?at_medium=RSS&at_campaign=rss"
-            },
-            {
-              "text": "教皇利奥访问加那利群岛强调移民的危险旅程",
-              "url": "https://www.bbc.com/news/articles/cn59w6p3vd0o?at_medium=RSS&at_campaign=rss"
-            },
-            {
-              "text": "尼克斯队球迷疯狂，纽约队实现 NBA 总决赛历史上最大的逆转",
-              "url": "https://www.bbc.com/news/articles/cr47lyzr4q9o?at_medium=RSS&at_campaign=rss"
-            },
-            {
-              "text": "奥利维亚·罗德里戈 (Olivia Rodrigo) 唱着关于心碎的歌，但她已经选择了婚礼歌曲",
-              "url": "https://www.bbc.com/news/articles/cly83elvz70o?at_medium=RSS&at_campaign=rss"
-            },
-            {
-              "text": "研究称四天的极端降雨导致世界上 7% 的稀有猩猩死亡",
-              "url": "https://www.bbc.com/news/articles/ce8jde20v83o?at_medium=RSS&at_campaign=rss"
-            },
-            {
-              "text": "泰国曼谷圣地爆炸案两名男子被泰国法院判处死刑",
-              "url": "https://www.bbc.com/news/articles/ckg8v51g9lno?at_medium=RSS&at_campaign=rss"
-            },
-            {
-              "text": "法国歌手帕特里克·布鲁埃尔因强奸罪接受正式调查",
-              "url": "https://www.bbc.com/news/articles/c3ey8d3jwglo?at_medium=RSS&at_campaign=rss"
-            },
-            {
-              "text": "印度航空171号航班坠毁原因引发激烈争论",
-              "url": "https://www.bbc.com/news/articles/cwyk9exxp2qo?at_medium=RSS&at_campaign=rss"
+              "text": "大卫霍克尼描绘了一个“和平的同性恋天堂”，当时同性恋是一种犯罪",
+              "url": "https://www.bbc.com/news/articles/cpq393dz535o?at_medium=RSS&at_campaign=rss"
             }
           ]
         },
@@ -541,64 +538,64 @@
           "channel": "国际政治",
           "items": [
             {
-              "text": "伊朗战争实时更新：特朗普再次声称协议已接近，中东局势紧张平静",
-              "url": "https://www.nytimes.com/live/2026/06/12/world/iran-war-trump-us-israel"
+              "text": "协议看似接近，美国面临着更愿意承受压力的伊朗",
+              "url": "https://www.nytimes.com/2026/06/13/world/middleeast/iran-united-states-israel-lebanon.html"
             },
             {
-              "text": "伊朗和世界陷入和平与战争之间的危险边缘",
-              "url": "https://www.nytimes.com/2026/06/12/world/middleeast/iran-war-limbo.html"
+              "text": "俄罗斯拥有丰富的弹道导弹。乌克兰缺乏阻止他们的方法。",
+              "url": "https://www.nytimes.com/2026/06/13/world/europe/ukraine-russia-patriot-interceptors.html"
             },
             {
-              "text": "墨西哥城的世界杯门票价格对于大多数球迷来说太贵了",
-              "url": "https://www.nytimes.com/2026/06/12/us/world-cup-tickets-expensive-mexico.html"
+              "text": "在加拿大银幕奖上，电影业走出了好莱坞的阴影",
+              "url": "https://www.nytimes.com/2026/06/13/world/canada/canadian-screen-awards-heated-rivalry-toronto.html"
             },
             {
-              "text": "带上孩子去烧烤：乌克兰无人机比赛的一天",
-              "url": "https://www.nytimes.com/2026/06/12/world/europe/ukraine-drone-races.html"
+              "text": "伊朗战争实时更新：调解员表示和平协议可能在 24 小时内敲定",
+              "url": "https://www.nytimes.com/live/2026/06/13/world/iran-war-trump-us-israel"
+            },
+            {
+              "text": "美国和委内瑞拉称特伦德阿拉瓜领导人在联合袭击中丧生",
+              "url": "https://www.nytimes.com/2026/06/13/world/americas/tren-de-aragua-leader-killed-us-venezuela.html"
+            },
+            {
+              "text": "缅甸一个遭受地雷蹂躏的家庭",
+              "url": "https://www.nytimes.com/2026/06/13/world/asia/family-ravaged-by-land-mines-myanmar.html"
+            },
+            {
+              "text": "巴西人重拾世界杯仪式为国家队加油",
+              "url": "https://www.nytimes.com/2026/06/13/world/americas/world-cup-brazil-street-art.html"
+            },
+            {
+              "text": "瑞士是否应该将人口限制在 1000 万以内？选民将做出决定。",
+              "url": "https://www.nytimes.com/2026/06/13/world/europe/switzerland-population-referendum-10-million.html"
+            },
+            {
+              "text": "关于埃博拉疫情需要了解什么",
+              "url": "https://www.nytimes.com/2026/05/17/world/africa/what-to-know-ebola-africa.html"
             },
             {
               "text": "据说美国计划将向欧洲提供北约三分之一的战斗机",
               "url": "https://www.nytimes.com/2026/06/12/world/europe/us-nato-cuts-drawdown-jets.html"
             },
             {
-              "text": "无人机飞越朝鲜上空是韩国前总统戒严计划的一部分",
-              "url": "https://www.nytimes.com/2026/06/11/world/asia/north-korea-drones-martial-law.html"
+              "text": "伊朗和世界陷入和平与战争之间的危险边缘",
+              "url": "https://www.nytimes.com/2026/06/12/world/middleeast/iran-war-limbo.html"
             },
             {
-              "text": "遍布全球的儿童艺术收藏可能会失去家园",
-              "url": "https://www.nytimes.com/2026/06/12/world/europe/oslo-childrens-art-museum-norway.html"
+              "text": "贝尔法斯特刺伤事件后的反移民骚乱使城市陷入边缘",
+              "url": "https://www.nytimes.com/2026/06/12/world/europe/belfast-stabbing-riots-anti-immigrant.html"
             },
             {
-              "text": "“普希金行动”：巴黎审判聚焦善本抢劫案",
-              "url": "https://www.nytimes.com/2026/06/12/world/europe/russian-book-theft-trial-paris.html"
+              "text": "带上孩子去烧烤：乌克兰无人机比赛的一天",
+              "url": "https://www.nytimes.com/2026/06/12/world/europe/ukraine-drone-races.html"
             },
             {
-              "text": "英国国防部长辞职，对斯塔默造成打击",
-              "url": "https://www.nytimes.com/2026/06/11/world/europe/uk-defense-secretary-resigns-healey-starmer.html"
+              "text": "这是最新的。",
+              "url": "https://www.nytimes.com/live/2026/06/13/world/iran-war-trump-us-israel/heres-the-latest"
             },
             {
-              "text": "这也是墨西哥和加拿大的世界杯。不要指望团结。",
-              "url": "https://www.nytimes.com/2026/06/11/world/americas/world-cup-fractured-north-america.html"
-            },
-            {
-              "text": "律师称，逃离伊朗的妇女将被驱逐到中非共和国",
-              "url": "https://www.nytimes.com/2026/06/11/world/africa/deportations-central-african-republic-migrants-iran-women.html"
-            },
-            {
-              "text": "美国阻止总部位于佛罗里达州的先锋能源公司向古巴供应燃料的交易",
-              "url": "https://www.nytimes.com/2026/06/11/world/americas/us-cuba-trump-energy-fuel.html"
-            },
-            {
-              "text": "联合国表示，巴基斯坦边境空袭造成 13 名阿富汗平民死亡",
-              "url": "https://www.nytimes.com/2026/06/11/world/asia/afghanistan-pakistan-airstrikes-civilians.html"
-            },
-            {
-              "text": "乌克兰战争的持续时间比第一次世界大战还长",
-              "url": "https://www.nytimes.com/2026/06/11/world/europe/ukraine-russia-world-war-i.html"
-            },
-            {
-              "text": "日本反击特朗普的动漫帖子",
-              "url": "https://www.nytimes.com/2026/06/12/world/asia/trump-anime-manga-japan-memes.html"
+              "text": "未竟的事业",
+              "url": "https://www.nytimes.com/2026/06/13/briefing/unfinished-business.html"
             }
           ]
         },
@@ -627,7 +624,15 @@
               "url": "https://www.theguardian.com/world/2026/jun/08/bandits-in-north-west-nigeria-abduct-villagers-they-invited-to-discuss-peace-talks"
             },
             {
-              "text": "伊朗成为第一支在交战国参加世界杯的球队",
+              "text": "特朗普称委内瑞拉特伦德阿拉瓜团伙头目在美国袭击中丧生",
+              "url": "https://www.theguardian.com/us-news/2026/jun/12/trump-venezuela-tren-de-aragua-leader-killed"
+            },
+            {
+              "text": "加拿大警方调查多伦多警察死亡是否与全球恐怖袭击有关",
+              "url": "https://www.theguardian.com/world/2026/jun/12/canada-police-investigate-toronto-police-death-global-terror-attacks"
+            },
+            {
+              "text": "意识形态拉锯战：伊朗队在美国世界杯面临的压力",
               "url": "https://www.theguardian.com/world/2026/jun/12/iran-first-play-war-world-cup-fifa"
             },
             {
@@ -639,12 +644,12 @@
               "url": "https://www.theguardian.com/technology/2026/jun/11/canada-mother-chatgpt-daughter-suicide-lawsuit"
             },
             {
-              "text": "多伦多警察在调查美国领事馆袭击事件时被枪杀",
-              "url": "https://www.theguardian.com/world/2026/jun/11/toronto-police-shot-us-consulate-attack"
+              "text": "哀悼者在曼谷街头排队悼念泰国芭公主",
+              "url": "https://www.theguardian.com/world/2026/jun/13/bangkok-thailand-princess-bha-royal-funeral-procession-mourners"
             },
             {
-              "text": "古巴希望世界杯能暂时摆脱美国的武力威胁，但也要做好最坏的打算",
-              "url": "https://www.theguardian.com/world/2026/jun/11/cuba-world-cup-respite-us-intervention"
+              "text": "Jessie J凯旋归来，利润丰厚的中国市场成为焦点",
+              "url": "https://www.theguardian.com/world/2026/jun/13/jessie-j-lucrative-chinese-market-westlife-charli-xcx"
             },
             {
               "text": "中国以“间谍活动”罪名在会议上逮捕美国学者",
@@ -657,14 +662,6 @@
             {
               "text": "泰国公主 Bajrakitiyabha 在昏迷多年后去世，享年 47 岁",
               "url": "https://www.theguardian.com/world/2026/jun/12/thailand-princess-bajrakitiyabha-dies-aged-47"
-            },
-            {
-              "text": "泰国法院因 2015 年曼谷爆炸案判处两名维吾尔族男子死刑",
-              "url": "https://www.theguardian.com/world/2026/jun/11/thai-court-sentences-uyghur-men-to-death-2015-bangkok-bombing"
-            },
-            {
-              "text": "研究发现，印度尼西亚四天的极端降雨导致世界上 7% 的稀有类人猿死亡",
-              "url": "https://www.theguardian.com/world/2026/jun/10/rainfall-landslides-climate-crisis-tapanuli-orangutan-indonesia-extreme-weather"
             }
           ]
         },
@@ -673,64 +670,64 @@
           "channel": "国际政治",
           "items": [
             {
-              "text": "乌克兰收复领土，加倍攻击俄罗斯后勤设施",
-              "url": "https://www.aljazeera.com/news/2026/6/12/ukraine-reclaims-territory-in-may-as-it-doubles-strikes-on-russian-logistic?traffic_source=rss"
+              "text": "球迷透露他们花了多少钱购买世界杯门票",
+              "url": "https://www.aljazeera.com/video/newsfeed/2026/6/13/fans-reveal-how-much-they-paid-for-world-cup-tickets?traffic_source=rss"
             },
             {
-              "text": "Indonesian students protest gov’t policies amid economic strain",
-              "url": "https://www.aljazeera.com/news/2026/6/12/indonesian-students-protest-govt-policies-amid-economic-strain?traffic_source=rss"
+              "text": "美伊结束战争的协议“很多事情仍然可能出错”",
+              "url": "https://www.aljazeera.com/video/quotable/2026/6/13/lots-of-things-can-still-go-wrong-with-us-iran-deal-to-end-the-war?traffic_source=rss"
             },
             {
-              "text": "视频：人工智能模型预测世界杯结果",
-              "url": "https://www.aljazeera.com/video/newsfeed/2026/6/12/video-ai-models-predict-world-cup-results?traffic_source=rss"
+              "text": "伊朗宣布已故最高领袖哈梅内伊的葬礼和埋葬日期",
+              "url": "https://www.aljazeera.com/news/2026/6/13/iran-announces-funeral-burial-dates-for-late-supreme-leader-khamenei?traffic_source=rss"
             },
             {
-              "text": "美国演员杰里·宋飞 (Jerry Seinfeld) 表示巴勒斯坦“不存在”，引发强烈反对",
-              "url": "https://www.aljazeera.com/video/newsfeed/2026/6/12/backlash-after-us-actor-jerry-seinfeld-says-palestine-doesnt?traffic_source=rss"
+              "text": "印度阿萨姆邦军机坠毁 造成人员伤亡",
+              "url": "https://www.aljazeera.com/video/newsfeed/2026/6/13/deadly-military-plane-crash-in-indias-assam?traffic_source=rss"
             },
             {
-              "text": "伊朗和美国真的接近达成突破性“协议”吗？",
-              "url": "https://www.aljazeera.com/features/2026/6/12/are-iran-us-really-close-to-a-breakthrough-deal?traffic_source=rss"
+              "text": "足球：为什么印度在这项世界上最受欢迎的运动上举步维艰？",
+              "url": "https://www.aljazeera.com/video/101-east/2026/6/13/football-why-is-india-struggling-to-play-the-worlds-most-popular-sport?traffic_source=rss"
             },
             {
-              "text": "伦敦市长猛烈抨击鼓吹非法以色列定居点土地销售的活动",
-              "url": "https://www.aljazeera.com/news/2026/6/12/london-mayor-slams-event-touting-illegal-israeli-settlement-land-sales?traffic_source=rss"
+              "text": "运输机在阿萨姆邦坠毁，五名印度空军人员丧生",
+              "url": "https://www.aljazeera.com/news/2026/6/13/five-indian-air-force-staff-killed-as-transport-plane-crashes-in-assam?traffic_source=rss"
             },
             {
-              "text": "英国著名艺术家大卫·霍克尼去世，享年 88 岁",
-              "url": "https://www.aljazeera.com/news/2026/6/12/renowned-british-artist-david-hockney-dies-aged-88?traffic_source=rss"
+              "text": "刚果民主共和国反政府抗议爆发暴力事件",
+              "url": "https://www.aljazeera.com/video/newsfeed/2026/6/13/violence-erupts-at-anti-government-protest-in-dr-congo?traffic_source=rss"
             },
             {
-              "text": "泰国公主Bajrakitiyabha在昏迷多年后去世",
-              "url": "https://www.aljazeera.com/video/newsfeed/2026/6/12/thai-princess-bajrakitiyabha-dies-after-years-in-coma?traffic_source=rss"
+              "text": "卡塔尔 vs 瑞士：世界杯小组赛 – 前瞻、球队新闻、阵容",
+              "url": "https://www.aljazeera.com/sports/2026/6/13/qatar-vs-switzerland-world-cup-group-match-preview-team-news-lineups?traffic_source=rss"
             },
             {
-              "text": "以色列极端正统派征兵抗议中暴力升级",
-              "url": "https://www.aljazeera.com/news/2026/6/12/violence-escalates-in-israel-amid-ultra-orthodox-military-draft-protests?traffic_source=rss"
+              "text": "也门“蜘蛛侠”在攀登火山口时身亡",
+              "url": "https://www.aljazeera.com/video/newsfeed/2026/6/13/yemens-spider-man-dies-while-scaling-volcanic-crater?traffic_source=rss"
             },
             {
-              "text": "以色列空袭和炮击黎巴嫩南部，造成一人受伤",
-              "url": "https://www.aljazeera.com/news/2026/6/12/one-injured-as-israel-hits-southern-lebanon-with-air-raids-artillery?traffic_source=rss"
+              "text": "尽管被纳入潜在的和平协议，但以色列仍袭击黎巴嫩",
+              "url": "https://www.aljazeera.com/video/newsfeed/2026/6/13/israel-attacks-lebanon-despite-being-included-in-potential-peace-deal?traffic_source=rss"
             },
             {
-              "text": "印度航空空难造成 260 人死亡一年后：我们知道发生了什么吗？",
-              "url": "https://www.aljazeera.com/news/2026/6/12/a-year-after-air-india-crash-killed-260-do-we-know-what-happened?traffic_source=rss"
+              "text": "美国边境直接穿过世界杯",
+              "url": "https://www.aljazeera.com/opinions/2026/6/13/the-us-border-runs-straight-through-the-world-cup?traffic_source=rss"
             },
             {
-              "text": "法德喷气式飞机计划坠毁：欧洲能否结束对美国安全的依赖？",
-              "url": "https://www.aljazeera.com/features/2026/6/12/france-germany-jet-plans-crash-can-europe-ever-end-us-security-reliance?traffic_source=rss"
+              "text": "美国命令 Anthropic 禁用所有外国人的人工智能模型",
+              "url": "https://www.aljazeera.com/news/2026/6/13/us-orders-anthropic-to-disable-ai-models-for-all-foreign-nationals?traffic_source=rss"
             },
             {
-              "text": "总统称尼日利亚去年击毙了13,000多名“恐怖分子”",
-              "url": "https://www.aljazeera.com/news/2026/6/12/nigeria-killed-more-than-13000-terrorists-in-past-year-president-says?traffic_source=rss"
+              "text": "尼克斯第 5 场迎战马刺，53 年来首个 NBA 冠军指日可待",
+              "url": "https://www.aljazeera.com/sports/2026/6/13/knicks-vs-spurs-game-5-nba-finals-2026-title-53-years?traffic_source=rss"
             },
             {
-              "text": "骚乱、暴力、仇恨：反移民骚乱给贝尔法斯特带来危险",
-              "url": "https://www.aljazeera.com/news/2026/6/12/riots-violence-hate-anti-immigrant-unrest-spells-danger-in-belfast?traffic_source=rss"
+              "text": "“抗议种族灭绝的权利”被否认：苏格兰巴勒斯坦行动支持者",
+              "url": "https://www.aljazeera.com/news/2026/6/13/right-to-protest-genocide-denied-scotlands-palestine-action-supporters?traffic_source=rss"
             },
             {
-              "text": "新西兰伟大的凯恩威廉姆森从国际板球比赛退役",
-              "url": "https://www.aljazeera.com/sports/2026/6/12/new-zealand-great-kane-williamson-retires-from-international-cricket?traffic_source=rss"
+              "text": "伊朗战争第 106 天：美国和伊朗表示达成协议，但黎巴嫩战斗仍在继续",
+              "url": "https://www.aljazeera.com/news/2026/6/13/iran-war-day-106-us-and-iran-say-deal-close-but-lebanon-fighting-continues?traffic_source=rss"
             }
           ]
         },
@@ -739,44 +736,44 @@
           "channel": "国际政治",
           "items": [
             {
-              "text": "教宗告诉加那利群岛的移民贩子：停止、悔改，否则将面临上帝的愤怒",
-              "url": "https://apnews.com/article/spain-pope-migration-trafficking-c57eb42a62a602b6fec69633bae9db94"
+              "text": "乌克兰无人机袭击俄罗斯南部造成1人死亡并引发海运码头火灾",
+              "url": "https://apnews.com/article/russia-ukraine-war-drone-attack-a2189d216731d92cbe74c873e1e6c04e"
             },
             {
-              "text": "强风暴袭击伊利诺伊州和印第安纳州后，官员们正在搜寻龙卷风受损地区",
-              "url": "https://apnews.com/article/severe-weather-tornadoes-indiana-illinois-chicago-midwest-c07fd694ea18dacbc80ea91ee7c24c4a"
+              "text": "我们对结束伊朗战争的可能协议了解多少",
+              "url": "https://apnews.com/article/iran-war-us-pakistan-ceasefire-what-to-know-949710df39e3f1033cbb6beda3955814"
             },
             {
-              "text": "因泳池场景而闻名的艺术家大卫霍克尼去世，享年 88 岁",
-              "url": "https://apnews.com/article/david-hockney-artist-death-79ddb3813406f21a8859d3b22e653852"
+              "text": "美联社曾在那里：1975 年法国城堡峰会为未来的七国集团富裕国家俱乐部播下了种子",
+              "url": "https://apnews.com/article/g7-summit-ap-was-there-ford-26d5b71d571157117b3f5519024192d2"
             },
             {
-              "text": "随着不明飞行物成为主流，外星生命的存在对宗教意味着什么还没有定论",
-              "url": "https://apnews.com/article/ufo-religion-aliens-demons-disclosure-day-500c2280dbdbcedfa09f3d2aa298f338"
+              "text": "留着浓密头发和大胡子的长期《今日秀》影评人吉恩·沙利特 (Gene Shalit) 去世，享年 100 岁",
+              "url": "https://apnews.com/article/gene-shalit-dies-b8ed6f4b7054e530e5fba9a808902cca"
             },
             {
-              "text": "埃隆·马斯克（Elon Musk）可能凭借 SpaceX 的 IPO 成为世界上第一位万亿富翁",
-              "url": "https://apnews.com/article/musk-spacex-tesla-ipo-trillionaire-billionaire-worth-rockets-7723f82b6063a9a17c194e25982cd66d"
+              "text": "美国人如何庆祝二百周年——用烟花、自由列车和法拉",
+              "url": "https://apnews.com/article/bicentennial-200-years-america-250-3645e76b264e0978a05717da44a23644"
             },
             {
-              "text": "曾经遭受停电困扰的波多黎各人也遭遇严重缺水",
-              "url": "https://apnews.com/article/puerto-rico-water-shortages-san-juan-5a43ac98dd068452541fe256a034158a"
+              "text": "Anthropic 表示，已将其最新的人工智能模型下线，以遵守新的出口管制",
+              "url": "https://apnews.com/article/anthropic-artificial-intelligence-trump-fable-mythos-d9cc7df5c02e93837d0f0bfb24d5cfd2"
             },
             {
-              "text": "美联社-NORC 民意调查显示，特朗普失去了独立人士的支持",
-              "url": "https://apnews.com/article/poll-independents-trump-approval-c44ab6c775fba86de739353217108673"
+              "text": "特朗普的名字仍然出现在肯尼迪中心，不过官员们表示它将在中午之前消失",
+              "url": "https://apnews.com/article/trump-name-removal-kennedy-center-5a32c569d72c333e9d65c76b4224b617"
             },
             {
-              "text": "菲律宾南部发生强烈地震时，灾难演习有助于避免更多人死亡",
-              "url": "https://apnews.com/article/philippines-earthquake-disaster-drills-67839c36befc5c73bc9ef93acef98792"
+              "text": "美联社独家报道：无国界医生组织报告发现乍得工作人员存在虐待和剥削案件",
+              "url": "https://apnews.com/article/chad-sudan-civil-war-sexual-abuse-refugees-036f69088cd3a96cb3c970ddbfd00696"
             },
             {
-              "text": "肯尼迪中心董事会寻求在周五截止日期前暂停命令删除特朗普名字的裁决",
-              "url": "https://apnews.com/article/trump-kennedy-center-building-name-lawsuit-renovations-c9c0c4f2ab6bc481478b1c25cb37e15f"
+              "text": "特朗普称美国在委内瑞拉的帮助下军事打击杀死了特伦·德·阿拉瓜帮派头目",
+              "url": "https://apnews.com/article/trump-tren-de-aragua-gang-venezuela-344db66dfac87df7ca93d57ea77cd520"
             },
             {
-              "text": "特朗普声称伊朗战争谈判取得突破后，亚洲股市飙升，油价下跌",
-              "url": "https://apnews.com/article/stocks-markets-ai-iran-oil-rates-47f9fecd934706362104cd92514122fe"
+              "text": "联邦调查局搜查俄亥俄州支持选民登记工作的组织办公室",
+              "url": "https://apnews.com/article/fbi-ohio-voter-registration-investigation-4b241d64db0478c6a5852aa20d3e138f"
             }
           ]
         },
@@ -784,6 +781,46 @@
           "source": "德国之声中文",
           "channel": "国际政治",
           "items": [
+            {
+              "text": "德语媒体：中国或可远程瘫痪德国基础设施",
+              "url": "https://www.dw.com/zh/德语媒体：中国或可远程瘫痪德国基础设施/a-77537207?maca=chi-rss-chi-all-1127-rdf"
+            },
+            {
+              "text": "欧盟将启动乌克兰和摩尔多瓦首轮入盟谈判",
+              "url": "https://www.dw.com/zh/欧盟将启动乌克兰和摩尔多瓦首轮入盟谈判/a-77537180?maca=chi-rss-chi-all-1127-rdf"
+            },
+            {
+              "text": "美伊表示和平协议临近 霍尔木兹炮火仍在持续",
+              "url": "https://www.dw.com/zh/美伊表示和平协议临近-霍尔木兹炮火仍在持续/a-77537071?maca=chi-rss-chi-all-1127-rdf"
+            },
+            {
+              "text": "王沪宁：两岸一家亲 陆委会：欺骗手法",
+              "url": "https://www.dw.com/zh/王沪宁：两岸一家亲-陆委会：欺骗手法/a-77535755?maca=chi-rss-chi-all-1127-rdf"
+            },
+            {
+              "text": "歐盟庇護新制上路 加速難民審查",
+              "url": "https://www.dw.com/zh/歐盟庇護新制上路-加速難民審查/a-77536903?maca=chi-rss-chi-all-1127-rdf"
+            },
+            {
+              "text": "委内瑞拉黑帮团伙\"阿拉瓜列车\"头目被击毙",
+              "url": "https://www.dw.com/zh/委内瑞拉黑帮团伙-阿拉瓜列车-头目被击毙/a-77536256?maca=chi-rss-chi-all-1127-rdf"
+            },
+            {
+              "text": "美国批准派拉蒙收购华纳兄弟探索",
+              "url": "https://www.dw.com/zh/美国批准派拉蒙收购华纳兄弟探索/a-77535733?maca=chi-rss-chi-all-1127-rdf"
+            },
+            {
+              "text": "市长认罪充当中国代理人 华裔社区忧心忡忡",
+              "url": "https://www.dw.com/zh/市长认罪充当中国代理人-华裔社区忧心忡忡/a-77477451?maca=chi-rss-chi-all-1127-rdf"
+            },
+            {
+              "text": "SpaceX上市助推中国商业航天领域雄心 技术鸿沟尚须跨越",
+              "url": "https://www.dw.com/zh/spacex上市助推中国商业航天领域雄心-技术鸿沟尚须跨越/a-77528491?maca=chi-rss-chi-all-1127-rdf"
+            },
+            {
+              "text": "德语媒体：对台湾的危险依赖",
+              "url": "https://www.dw.com/zh/德语媒体：对台湾的危险依赖/a-77527767?maca=chi-rss-chi-all-1127-rdf"
+            },
             {
               "text": "索马里兰在台开设新办事处 称有权自主选择对外关系",
               "url": "https://www.dw.com/zh/索马里兰在台开设新办事处-称有权自主选择对外关系/a-77525808?maca=chi-rss-chi-all-1127-rdf"
@@ -803,46 +840,6 @@
             {
               "text": "“向朝鲜投放无人机案”：尹锡悦再获刑30年",
               "url": "https://www.dw.com/zh/向朝鲜投放无人机案-：尹锡悦再获刑30年/a-77519547?maca=chi-rss-chi-all-1127-rdf"
-            },
-            {
-              "text": "瑞士将公投为人口“封顶” 力阻移民涌入",
-              "url": "https://www.dw.com/zh/瑞士将公投为人口-封顶-力阻移民涌入/a-77488423?maca=chi-rss-chi-all-1127-rdf"
-            },
-            {
-              "text": "在德国骂政治人物，警察会来敲门吗？",
-              "url": "https://www.dw.com/zh/在德国骂政治人物，警察会来敲门吗？/a-77518392?maca=chi-rss-chi-all-1127-rdf"
-            },
-            {
-              "text": "遭中國制裁 菲防長：面對中國惡行仍將捍衛國家",
-              "url": "https://www.dw.com/zh/遭中國制裁-菲防長：面對中國惡行仍將捍衛國家/a-77507052?maca=chi-rss-chi-all-1127-rdf"
-            },
-            {
-              "text": "揚言重擊伊朗後取消空襲 川普稱最快週末簽和平協議",
-              "url": "https://www.dw.com/zh/揚言重擊伊朗後取消空襲-川普稱最快週末簽和平協議/a-77516215?maca=chi-rss-chi-all-1127-rdf"
-            },
-            {
-              "text": "马克龙呼吁协调解决贸易失衡 中方与会",
-              "url": "https://www.dw.com/zh/马克龙呼吁协调解决贸易失衡-中方与会/a-77509349?maca=chi-rss-chi-all-1127-rdf"
-            },
-            {
-              "text": "德语媒体：中国——更好的超级大国？",
-              "url": "https://www.dw.com/zh/德语媒体：中国-更好的超级大国？/a-77507698?maca=chi-rss-chi-all-1127-rdf"
-            },
-            {
-              "text": "FBI查获13个网站 被控征募美国人为中国提供情报",
-              "url": "https://www.dw.com/zh/fbi查获13个网站-被控征募美国人为中国提供情报/a-77502213?maca=chi-rss-chi-all-1127-rdf"
-            },
-            {
-              "text": "押注AI又怕大裁员惹麻烦 中国企业悄然削减职位",
-              "url": "https://www.dw.com/zh/押注ai又怕大裁员惹麻烦-中国企业悄然削减职位/a-77501566?maca=chi-rss-chi-all-1127-rdf"
-            },
-            {
-              "text": "曼谷四面佛爆炸案宣判 北京：“中方支持泰方严惩凶手”",
-              "url": "https://www.dw.com/zh/曼谷四面佛爆炸案宣判-北京：-中方支持泰方严惩凶手/a-77501299?maca=chi-rss-chi-all-1127-rdf"
-            },
-            {
-              "text": "伊朗稱徹底封閉霍爾木茲海峽 美軍否認",
-              "url": "https://www.dw.com/zh/伊朗稱徹底封閉霍爾木茲海峽-美軍否認/a-77498294?maca=chi-rss-chi-all-1127-rdf"
             }
           ]
         },
@@ -851,38 +848,38 @@
           "channel": "国际",
           "items": [
             {
-              "text": "关东地区冰雹；小心洪水； 13日大气层持续不稳定",
-              "url": "http://www3.nhk.or.jp/news/html/20260612/k10015148331000.html"
+              "text": "双方均提到美伊备忘录“可能在未来几天内签署”",
+              "url": "http://www3.nhk.or.jp/news/html/20260613/k10015148801000.html"
             },
             {
-              "text": "H3火箭成功发射，将六颗小卫星送入JAXA轨道",
-              "url": "http://www3.nhk.or.jp/news/html/20260612/k10015148131000.html"
+              "text": "兵库县西宫市住宅区附近连续出现熊目击事件",
+              "url": "http://www3.nhk.or.jp/news/html/20260613/k10015149241000.html"
             },
             {
-              "text": "美媒报道备忘录内容：伊朗“无法得出最终结论”",
-              "url": "http://www3.nhk.or.jp/news/html/20260612/k10015147941000.html"
+              "text": "Anthropic 根据美国政府命令暂停提供最新人工智能模型",
+              "url": "http://www3.nhk.or.jp/news/html/20260613/k10015149041000.html"
             },
             {
-              "text": "在东京站地下租用的场地期待与日本队的足球世界杯比赛",
-              "url": "http://www3.nhk.or.jp/news/html/20260612/k10015148641000.html"
+              "text": "[视频]水户出现大冰雹状白色颗粒",
+              "url": "http://www3.nhk.or.jp/news/html/20260613/k10015149371000.html"
             },
             {
-              "text": "演员中村玉男去世，享年 86 岁，活跃于电影和综艺节目",
-              "url": "http://www3.nhk.or.jp/news/html/20260612/k10015148421000.html"
+              "text": "高市首相启程出席G7峰会等“与G7合作，带头解决问题”",
+              "url": "http://www3.nhk.or.jp/news/html/20260613/k10015149091000.html"
             },
             {
-              "text": "国土交通省首次提出设置厕所以改善女厕所排队情况的指导方针",
-              "url": "http://www3.nhk.or.jp/news/html/20260612/k10015148861000.html"
+              "text": "朝鲜外交部反对韩国和欧盟发表不承认朝鲜为核武器国家的联合声明",
+              "url": "http://www3.nhk.or.jp/news/html/20260613/k10015149421000.html"
             },
             {
-              "text": "日本田径锦标赛开幕式男子100米资格赛桐生佳秀以10.09秒晋级半决赛",
-              "url": "http://www3.nhk.or.jp/news/html/20260612/k10015148691000.html"
+              "text": "世界杯足球赛：巴洛贡梅开二度，美国队击败巴拉圭队",
+              "url": "http://www3.nhk.or.jp/news/html/20260613/k10015149101000.html"
             }
           ]
         }
       ]
     }
   ],
-  "generated": "2026-06-12T22:00:33.848491+08:00",
-  "total": 180
+  "generated": "2026-06-13T22:00:22.257539+08:00",
+  "total": 179
 }

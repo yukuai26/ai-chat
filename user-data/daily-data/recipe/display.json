@@ -1,88 +1,10 @@
 {
-  "summary": "🥗 周五 推荐: 豆花牛肉(多挑牛肉,少喝红油)120g(185kcal) + 玉子蒸蛋100g(95kcal) + 蚝油生菜150g(50kcal) + 清炒娃娃菜120g(40kcal) + 五常大米150g(熟)(175kcal) + 裙带排骨汤(只喝汤少吃排骨)1碗(60kcal) = 605kcal | 已摄入 yukuai26 暂无 gugugu 暂无",
+  "summary": "🥗 今日(周六): 今天食谱还没收到 | 已摄入 yukuai26 暂无 gugugu 暂无",
   "sections": [
     {
-      "title": "🍽️ 今日食谱 (周五)",
-      "type": "table",
-      "rows": [
-        {
-          "cells": [
-            {
-              "text": "主荤菜",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "豆花牛肉、冒烤鸭(微辣)、蒜香孜然仔排、玉子蒸蛋"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "素菜",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "蒜苔炒肉、毛豆肉片烧干张丝、清炒娃娃菜、蚝油生菜"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "主食",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "五常大米、手工黄凉皮"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "小吃",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "椰汁黄金糕"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "五谷杂粮",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "贝贝南瓜、临安小香薯"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "汤粥",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "裙带排骨汤"
-            }
-          ]
-        },
-        {
-          "cells": [
-            {
-              "text": "小菜",
-              "style": "color:var(--text-secondary);width:60px"
-            },
-            {
-              "text": "五香榨菜丝、秘制辣椒酱"
-            }
-          ]
-        }
-      ]
+      "title": "🍽️ 今日食谱 (周六)",
+      "type": "text",
+      "text": "今天食谱还没收到 🕐"
     },
     {
       "title": "🥗 午餐推荐配比",
@@ -207,5 +129,5 @@
       "text": "暂无摄入记录，记录饮食后可获得营养建议 📝"
     }
   ],
-  "updated": "2026-06-12T11:01:11.820264+08:00"
+  "updated": "2026-06-13T11:00:17.208982+08:00"
 }

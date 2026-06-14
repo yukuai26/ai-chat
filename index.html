@@ -3643,10 +3643,9 @@
     }
 
     /* ==================== 学习 Tab (Phase 学习) ==================== */
-    /* 学习Tab: active时用block铺满主区+滚动, 让 .learn-wrap 的 margin:0 auto 正常水平居中
-       (覆盖 .tab-content.active 的 display:flex, 否则 flex 子项 margin:auto 居中表现异常) */
-    #tab-learn.tab-content.active { display: block; }
-    #tab-learn { overflow-y: auto; padding: 0; width: 100%; }
+    /* 学习Tab: 对齐 #tab-daily 的布局模式(保持 flex:1 列向 + 内层滚动区),
+       内容用 max-width + margin:auto 水平居中, 铺满中间主区域 */
+    #tab-learn { flex: 1; min-height: 0; overflow-y: auto; background: var(--bg); flex-direction: column; padding: 0; }
     .learn-wrap { max-width: 880px; margin: 0 auto; padding: 20px 24px 60px; width: 100%; box-sizing: border-box; }
     .learn-loading { color: var(--text-secondary); padding: 40px; text-align: center; }
     .learn-crumbs { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 18px; flex-wrap: wrap; }
@@ -3722,7 +3721,7 @@
     .is-mobile .learn-wrap { padding: 16px 14px 60px; }
 
   </style>
-<!-- v=1779903797 -->
+<!-- v=1781441682 -->
 </head>
 <body class="logged-out">
 <style id="loginHider">

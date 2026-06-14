@@ -5517,6 +5517,102 @@ def calendar_event_item(event_id):
 
 
 
+
+
+# ==================== 学习中心 / 金融课程 (Phase 学习Tab) ====================
+# 进度单一信息源：projects/edu/edu-progress.json（机器版）
+# 课程正文 markdown 走 /v1/api/edu/lesson 读取（限 edu 目录）
+EDU_PROGRESS_PATH = "/home/ubuntu/.openclaw/workspace-assistant/projects/edu/edu-progress.json"
+EDU_DIR = "/home/ubuntu/.openclaw/workspace-assistant/projects/edu"
+
+
+def _load_edu_progress():
+    try:
+        with open(EDU_PROGRESS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"subjects": []}
+    except Exception as e:
+        logger.warning(f"edu-progress.json read fail: {e}")
+        return {"subjects": []}
+
+
+def _save_edu_progress(data):
+    import datetime as _dt
+    data.setdefault("_meta", {})["updated"] = _dt.date.today().isoformat()
+    tmp = EDU_PROGRESS_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, EDU_PROGRESS_PATH)
+
+
+def _edu_compute_stats(subject):
+    total = 0
+    learned = 0
+    for m in subject.get("modules", []):
+        for ls in m.get("lessons", []):
+            total += 1
+            if ls.get("status") == "learned":
+                learned += 1
+    pct = round(learned / total * 100) if total else 0
+    return {"total": total, "learned": learned, "pct": pct}
+
+
+@app.route("/v1/api/edu/progress", methods=["GET"])
+@require_token
+def get_edu_progress():
+    data = _load_edu_progress()
+    for s in data.get("subjects", []):
+        s["stats"] = _edu_compute_stats(s)
+    return jsonify(data)
+
+
+@app.route("/v1/api/edu/progress", methods=["PUT"])
+@require_token
+def put_edu_progress():
+    body = request.get_json(silent=True) or {}
+    sid = body.get("subject_id")
+    lid = body.get("lesson_id")
+    status = body.get("status")
+    if not (sid and lid and status):
+        return error_response("need subject_id, lesson_id, status", 400)
+    if status not in ("todo", "learning", "learned", "review"):
+        return error_response("invalid status", 400)
+    data = _load_edu_progress()
+    found = False
+    import datetime as _dt
+    for s in data.get("subjects", []):
+        if s.get("id") != sid:
+            continue
+        for m in s.get("modules", []):
+            for ls in m.get("lessons", []):
+                if ls.get("id") == lid:
+                    ls["status"] = status
+                    if status == "learned":
+                        ls["date"] = _dt.date.today().isoformat()
+                    found = True
+    if not found:
+        return error_response("lesson not found", 404)
+    _save_edu_progress(data)
+    for s in data.get("subjects", []):
+        s["stats"] = _edu_compute_stats(s)
+    return jsonify({"ok": True, "data": data})
+
+
+@app.route("/v1/api/edu/lesson", methods=["GET"])
+@require_token
+def get_edu_lesson():
+    fname = request.args.get("file", "")
+    if not fname or "/" in fname or ".." in fname or not fname.endswith(".md"):
+        return error_response("invalid file", 400)
+    target = os.path.join(EDU_DIR, fname)
+    if not os.path.isfile(target):
+        return error_response("lesson file not found", 404)
+    with open(target, "r", encoding="utf-8") as f:
+        content = f.read()
+    return jsonify({"ok": True, "file": fname, "content": content})
+
+
 # ---- WebSocket 实时同步 (Phase 13) ----
 
 # {username: [ws1, ws2, ...]}

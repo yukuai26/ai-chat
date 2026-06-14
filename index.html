@@ -3642,6 +3642,82 @@
       font-family: monospace; margin: 0 2px;
     }
 
+    /* ==================== 学习 Tab (Phase 学习) ==================== */
+    #tab-learn { overflow-y: auto; padding: 0; }
+    .learn-wrap { max-width: 880px; margin: 0 auto; padding: 20px 24px 60px; width: 100%; box-sizing: border-box; }
+    .learn-loading { color: var(--text-secondary); padding: 40px; text-align: center; }
+    .learn-crumbs { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 18px; flex-wrap: wrap; }
+    .learn-crumb { color: var(--accent, #3b82f6); cursor: pointer; }
+    .learn-crumb:hover { text-decoration: underline; }
+    .learn-crumb.current { color: var(--text-secondary); cursor: default; text-decoration: none; }
+    .learn-crumb-sep { color: var(--text-secondary); }
+
+    /* 学科卡片（索引页） */
+    .subj-card { display: flex; align-items: center; gap: 16px; padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-card); cursor: pointer; transition: all .15s; }
+    .subj-card:hover { border-color: var(--accent, #3b82f6); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+    .subj-icon { font-size: 40px; line-height: 1; }
+    .subj-info { flex: 1; min-width: 0; }
+    .subj-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .subj-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+    .subj-prog-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .prog-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+    .prog-fill { height: 100%; background: linear-gradient(90deg,#3b82f6,#06b6d4); border-radius: 4px; transition: width .4s; }
+    .prog-text { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+
+    /* 目录页 */
+    .learn-head { margin-bottom: 20px; }
+    .learn-head h2 { margin: 0 0 6px; font-size: 22px; }
+    .learn-head .sub { font-size: 13px; color: var(--text-secondary); }
+    .mod-block { margin-bottom: 14px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-card); }
+    .mod-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; user-select: none; }
+    .mod-head:hover { background: var(--bg-hover, rgba(0,0,0,.03)); }
+    .mod-id { font-size: 12px; font-weight: 700; color: #fff; background: #3b82f6; border-radius: 6px; padding: 2px 8px; }
+    .mod-title { font-weight: 600; flex: 1; }
+    .mod-sub { font-size: 12px; color: var(--text-secondary); }
+    .mod-count { font-size: 12px; color: var(--text-secondary); }
+    .mod-caret { transition: transform .2s; color: var(--text-secondary); }
+    .mod-block.open .mod-caret { transform: rotate(90deg); }
+    .mod-lessons { display: none; border-top: 1px solid var(--border); }
+    .mod-block.open .mod-lessons { display: block; }
+    .lesson-row { display: flex; align-items: center; gap: 12px; padding: 11px 16px 11px 20px; cursor: pointer; border-top: 1px solid var(--border); }
+    .lesson-row:first-child { border-top: none; }
+    .lesson-row:hover { background: var(--bg-hover, rgba(59,130,246,.06)); }
+    .lesson-row.locked { cursor: default; opacity: .55; }
+    .lesson-badge { font-size: 15px; width: 22px; text-align: center; flex-shrink: 0; }
+    .lesson-id { font-size: 12px; color: var(--text-secondary); font-family: monospace; width: 30px; flex-shrink: 0; }
+    .lesson-title { flex: 1; font-size: 14px; }
+    .lesson-tag { font-size: 11px; padding: 1px 7px; border-radius: 10px; }
+    .tag-learned { background: rgba(34,197,94,.15); color: #16a34a; }
+    .tag-learning { background: rgba(234,179,8,.18); color: #ca8a04; }
+    .tag-review { background: rgba(168,85,247,.15); color: #9333ea; }
+    .tag-todo { background: var(--border); color: var(--text-secondary); }
+
+    /* 侧边今日拆解入口 */
+    .decoder-entry { margin-top: 22px; padding: 16px; border: 1px dashed var(--border); border-radius: 12px; cursor: pointer; }
+    .decoder-entry:hover { border-color: var(--accent,#3b82f6); }
+    .decoder-entry .t { font-weight: 600; margin-bottom: 4px; }
+    .decoder-entry .d { font-size: 12px; color: var(--text-secondary); }
+
+    /* 正文页 */
+    .lesson-view-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .lesson-view-head .back { cursor: pointer; color: var(--accent,#3b82f6); font-size: 13px; }
+    .lesson-actions { margin: 28px 0 10px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-learn { padding: 9px 18px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-card); cursor: pointer; font-size: 14px; }
+    .btn-learn.primary { background: #16a34a; color: #fff; border-color: #16a34a; }
+    .btn-learn:hover { filter: brightness(1.05); }
+    .learn-md { line-height: 1.7; }
+    .learn-md h1 { font-size: 24px; margin: 18px 0 12px; }
+    .learn-md h2 { font-size: 19px; margin: 22px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .learn-md h3 { font-size: 16px; margin: 18px 0 8px; }
+    .learn-md table { border-collapse: collapse; margin: 12px 0; width: 100%; font-size: 13px; }
+    .learn-md th, .learn-md td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; }
+    .learn-md th { background: var(--bg-hover, rgba(0,0,0,.03)); }
+    .learn-md code { background: var(--bg-hover, rgba(0,0,0,.06)); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    .learn-md pre { background: var(--bg-hover, rgba(0,0,0,.05)); padding: 12px; border-radius: 8px; overflow-x: auto; }
+    .learn-md blockquote { border-left: 3px solid var(--accent,#3b82f6); margin: 12px 0; padding: 4px 14px; color: var(--text-secondary); }
+    .is-mobile #tab-learn { padding-bottom: 56px; }
+    .is-mobile .learn-wrap { padding: 16px 14px 60px; }
+
   </style>
 <!-- v=1779903797 -->
 </head>
@@ -3724,6 +3800,7 @@
       <button class="tab-btn" data-tab="daily" onclick="switchTab('daily')">Daily</button>
       <button class="tab-btn" data-tab="search" onclick="switchTab('search')">🔍 Search</button>
       <button class="tab-btn" data-tab="calendar" onclick="switchTab('calendar')">📅 日历</button>
+      <button class="tab-btn" data-tab="learn" onclick="switchTab('learn')">📚 学习</button>
     </div>
     <div class="tab-content active" id="tab-chat">
       <div class="messages" id="messages">
@@ -3855,6 +3932,20 @@
           <div class="cal-detail-footer">
             <button class="cal-add-event-btn" id="calAddEventBtn" onclick="openCalendarEventModal()" disabled>+ 添加事件</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 学习 Tab ==================== -->
+    <div class="tab-content" id="tab-learn">
+      <div class="learn-wrap">
+        <!-- 面包屑 -->
+        <div class="learn-crumbs" id="learnCrumbs">
+          <span class="learn-crumb active" onclick="learnGoHome()">📚 学习</span>
+        </div>
+        <!-- 视图容器 -->
+        <div class="learn-view" id="learnView">
+          <div class="learn-loading">加载中…</div>
         </div>
       </div>
     </div>
@@ -4296,7 +4387,190 @@
       if (tabName === 'daily' && typeof loadDashboard === 'function') {
         setTimeout(function() { loadDashboard(); }, 200);
       }
+      // 学习 Tab：加载学科索引
+      if (tabName === 'learn' && typeof learnInit === 'function') {
+        setTimeout(function() { learnInit(); }, 60);
+      }
     }
+
+    /* ==================== 学习 Tab (Phase 学习) ==================== */
+    var _eduData = null;          // 进度数据缓存
+    var _eduLoaded = false;
+
+    function learnEsc(s){ return (typeof escapeHtml==='function')? escapeHtml(String(s==null?'':s)) : String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+
+    async function learnInit(force){
+      if (_eduLoaded && !force) { return; }
+      var view = document.getElementById('learnView');
+      try {
+        var r = await authFetch('/v1/api/edu/progress');
+        var d = await r.json();
+        _eduData = d; _eduLoaded = true;
+        learnGoHome();
+      } catch(e){
+        if (view) view.innerHTML = '<div class="learn-loading">加载失败：'+learnEsc(e.message||e)+'</div>';
+      }
+    }
+
+    function learnSetCrumbs(parts){
+      var c = document.getElementById('learnCrumbs');
+      if (!c) return;
+      var html = '';
+      parts.forEach(function(p, i){
+        if (i>0) html += '<span class="learn-crumb-sep">›</span>';
+        if (p.onclick) html += '<span class="learn-crumb" onclick="'+p.onclick+'">'+learnEsc(p.label)+'</span>';
+        else html += '<span class="learn-crumb current">'+learnEsc(p.label)+'</span>';
+      });
+      c.innerHTML = html;
+    }
+
+    // 视图1：学科索引
+    function learnGoHome(){
+      learnSetCrumbs([{label:'📚 学习'}]);
+      var view = document.getElementById('learnView');
+      if (!_eduData || !_eduData.subjects || !_eduData.subjects.length){
+        view.innerHTML = '<div class="learn-loading">暂无课程</div>'; return;
+      }
+      var html = '';
+      _eduData.subjects.forEach(function(s){
+        var st = s.stats || {learned:0,total:0,pct:0};
+        html += '<div class="subj-card" onclick="learnOpenSubject(\''+learnEsc(s.id)+'\')">'
+          + '<div class="subj-icon">'+learnEsc(s.icon||'📘')+'</div>'
+          + '<div class="subj-info">'
+          + '<div class="subj-name">'+learnEsc(s.name)+'</div>'
+          + '<div class="subj-desc">'+learnEsc(s.desc||'')+'</div>'
+          + '<div class="subj-prog-row"><div class="prog-bar"><div class="prog-fill" style="width:'+st.pct+'%"></div></div>'
+          + '<div class="prog-text">'+st.learned+'/'+st.total+' 节 · '+st.pct+'%</div></div>'
+          + '</div></div>';
+      });
+      view.innerHTML = html;
+    }
+
+    function _findSubject(sid){ return (_eduData.subjects||[]).find(function(s){return s.id===sid;}); }
+
+    // 视图2：课程目录
+    function learnOpenSubject(sid){
+      var s = _findSubject(sid);
+      if (!s) return;
+      learnSetCrumbs([{label:'📚 学习', onclick:'learnGoHome()'},{label:s.name}]);
+      var st = s.stats || {learned:0,total:0,pct:0};
+      var html = '<div class="learn-head"><h2>'+learnEsc(s.icon||'')+' '+learnEsc(s.name)+'</h2>'
+        + '<div class="sub">'+learnEsc(s.desc||'')+'</div>'
+        + '<div class="subj-prog-row" style="margin-top:12px;"><div class="prog-bar"><div class="prog-fill" style="width:'+st.pct+'%"></div></div>'
+        + '<div class="prog-text">'+st.learned+'/'+st.total+' 节 · '+st.pct+'%</div></div></div>';
+
+      (s.modules||[]).forEach(function(m, mi){
+        var lc = (m.lessons||[]).length;
+        var ld = (m.lessons||[]).filter(function(l){return l.status==='learned';}).length;
+        var open = (ld < lc && ld >= 0 && mi===_firstUnfinishedModuleIdx(s)) ? ' open' : '';
+        html += '<div class="mod-block'+open+'" id="mod-'+learnEsc(sid)+'-'+learnEsc(m.id)+'">'
+          + '<div class="mod-head" onclick="learnToggleMod(this)">'
+          + '<span class="mod-caret">▶</span>'
+          + '<span class="mod-id">'+learnEsc(m.id)+'</span>'
+          + '<span class="mod-title">'+learnEsc(m.title)+'</span>'
+          + '<span class="mod-count">'+ld+'/'+lc+'</span></div>'
+          + '<div class="mod-lessons">';
+        (m.lessons||[]).forEach(function(l){
+          var hasFile = !!l.file;
+          var badge = {learned:'✅',learning:'🟡',review:'🔄',todo:'⬜'}[l.status]||'⬜';
+          var tag = {learned:['tag-learned','已学'],learning:['tag-learning','进行中'],review:['tag-review','需复习'],todo:['tag-todo','未学']}[l.status]||['tag-todo','未学'];
+          var cls = 'lesson-row' + (hasFile?'':' locked');
+          var click = hasFile ? ('onclick="learnOpenLesson(\''+learnEsc(sid)+'\',\''+learnEsc(l.id)+'\')"') : 'title="课程正文即将上线"';
+          html += '<div class="'+cls+'" '+click+'>'
+            + '<span class="lesson-badge">'+badge+'</span>'
+            + '<span class="lesson-id">'+learnEsc(l.id)+'</span>'
+            + '<span class="lesson-title">'+learnEsc(l.title)+'</span>'
+            + '<span class="lesson-tag '+tag[0]+'">'+tag[1]+'</span></div>';
+        });
+        html += '</div></div>';
+      });
+
+      // 今日拆解入口
+      html += '<div class="decoder-entry" onclick="learnOpenDecoder()">'
+        + '<div class="t">📰 每日财经时事拆解</div>'
+        + '<div class="d">结合真实新闻的中美财经解读，每天 19:00 更新 · 点击查看拆解日志</div></div>';
+
+      document.getElementById('learnView').innerHTML = html;
+    }
+
+    function _firstUnfinishedModuleIdx(s){
+      var mods = s.modules||[];
+      for (var i=0;i<mods.length;i++){
+        var ls=mods[i].lessons||[];
+        if (ls.some(function(l){return l.status!=='learned';})) return i;
+      }
+      return 0;
+    }
+
+    function learnToggleMod(headEl){
+      var blk = headEl.closest('.mod-block');
+      if (blk) blk.classList.toggle('open');
+    }
+
+    // 视图3：课程正文
+    async function learnOpenLesson(sid, lid){
+      var s = _findSubject(sid); if(!s) return;
+      var lesson=null, mod=null;
+      (s.modules||[]).forEach(function(m){ (m.lessons||[]).forEach(function(l){ if(l.id===lid){lesson=l;mod=m;} }); });
+      if (!lesson || !lesson.file) return;
+      learnSetCrumbs([{label:'📚 学习',onclick:'learnGoHome()'},{label:s.name,onclick:'learnOpenSubject(\''+learnEsc(sid)+'\')'},{label:lesson.id+' '+lesson.title}]);
+      var view = document.getElementById('learnView');
+      view.innerHTML = '<div class="learn-loading">加载课程正文…</div>';
+      try {
+        var r = await authFetch('/v1/api/edu/lesson?file='+encodeURIComponent(lesson.file));
+        var d = await r.json();
+        if (!d.ok) throw new Error(d.message||'读取失败');
+        var content = d.content || '';
+        // 截取该节的正文（用 anchor 定位）；anchor 不存在则显示全文
+        if (lesson.anchor && content.indexOf(lesson.anchor) >= 0){
+          var startIdx = content.indexOf(lesson.anchor);
+          // 找到下一个 "## 第 X" 或 "## 第" 作为结束
+          var rest = content.slice(startIdx);
+          var nextSec = rest.slice(lesson.anchor.length).search(/\n##\s/);
+          if (nextSec > 0) content = rest.slice(0, lesson.anchor.length + nextSec);
+          else content = rest;
+        }
+        var mdHtml = (typeof marked!=='undefined') ? marked.parse(content) : ('<pre>'+learnEsc(content)+'</pre>');
+        var isLearned = lesson.status==='learned';
+        var html = '<div class="lesson-view-head"><span class="back" onclick="learnOpenSubject(\''+learnEsc(sid)+'\')">‹ 返回目录</span></div>'
+          + '<div class="learn-md">'+mdHtml+'</div>'
+          + '<div class="lesson-actions">'
+          + '<button class="btn-learn '+(isLearned?'':'primary')+'" onclick="learnMark(\''+learnEsc(sid)+'\',\''+learnEsc(lid)+'\',\''+(isLearned?'todo':'learned')+'\')">'+(isLearned?'↩ 标记为未学':'✅ 标记为已学')+'</button>'
+          + '<button class="btn-learn" onclick="learnMark(\''+learnEsc(sid)+'\',\''+learnEsc(lid)+'\',\'review\')">🔄 标记需复习</button>'
+          + '</div>';
+        view.innerHTML = html;
+        view.parentElement.scrollTop = 0;
+      } catch(e){
+        view.innerHTML = '<div class="learn-loading">加载失败：'+learnEsc(e.message||e)+'</div>';
+      }
+    }
+
+    async function learnMark(sid, lid, status){
+      try {
+        var r = await authFetch('/v1/api/edu/progress', {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({subject_id:sid, lesson_id:lid, status:status})});
+        var d = await r.json();
+        if (d.ok){ _eduData = d.data; if(typeof showCommandToast==='function') showCommandToast('进度已更新 ✅','success'); learnOpenLesson(sid, lid); }
+        else { if(typeof showCommandToast==='function') showCommandToast('更新失败','error'); }
+      } catch(e){ if(typeof showCommandToast==='function') showCommandToast('网络错误','error'); }
+    }
+
+    // 今日拆解：读 news-decoder 文档
+    async function learnOpenDecoder(){
+      learnSetCrumbs([{label:'📚 学习',onclick:'learnGoHome()'},{label:'金融投资',onclick:'learnOpenSubject(\'finance\')'},{label:'📰 每日拆解'}]);
+      var view = document.getElementById('learnView');
+      view.innerHTML = '<div class="learn-loading">加载拆解日志…</div>';
+      try {
+        var r = await authFetch('/v1/api/edu/lesson?file=edu-finance-news-decoder-V1.0-ACTIVE.md');
+        var d = await r.json();
+        if (!d.ok) throw new Error(d.message||'读取失败');
+        var mdHtml = (typeof marked!=='undefined') ? marked.parse(d.content||'') : ('<pre>'+learnEsc(d.content)+'</pre>');
+        view.innerHTML = '<div class="lesson-view-head"><span class="back" onclick="learnOpenSubject(\'finance\')">‹ 返回目录</span></div><div class="learn-md">'+mdHtml+'</div>';
+        view.parentElement.scrollTop = 0;
+      } catch(e){
+        view.innerHTML = '<div class="learn-loading">加载失败：'+learnEsc(e.message||e)+'</div>';
+      }
+    }
+
 
 
     /* ==================== 全局搜索 (Phase 11) ==================== */
